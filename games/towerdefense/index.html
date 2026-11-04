@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tower Defense</title>
+  <link rel="stylesheet" href="../../shared/theme.css">
+  <script src="../../shared/theme.js"></script>
+  <style>
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 24px;
+      margin-bottom: 6px;
+    }
+    .hud {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 18px;
+    }
+    .hud .figure { display: inline-block; min-width: 34px; margin-left: 6px; }
+    #result:empty { display: none; }
+    .tab[aria-selected="true"]:disabled { opacity: 1; }
+    .map-note { margin: 0 0 12px; color: var(--ink-muted); font: 13px var(--font-condensed); }
+
+    .td-layout {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .board-col { flex: 0 1 720px; min-width: 0; }
+    #board {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    #board.armed { cursor: crosshair; }
+
+    .side {
+      flex: 0 0 212px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .wave-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .wave-controls #next-wave { grid-column: 1 / -1; }
+    .wave-note { margin: 6px 0 0; min-height: 32px; color: var(--ink-muted); font: 12px var(--font-condensed); }
+
+    .tower-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .tower-btn {
+      position: relative;
+      justify-content: flex-start;
+      gap: 6px;
+      height: 42px;
+      padding: 0 5px;
+      text-align: left;
+    }
+    .tower-btn canvas { flex: none; width: 30px; height: 30px; border-radius: 2px; background: var(--paper); }
+    .tower-btn span { display: block; font-size: 12px; line-height: 1.2; }
+    .tower-btn .cost { font: 12px var(--font-condensed); opacity: .8; }
+    .tower-btn.poor .cost { color: var(--red-pencil); opacity: 1; }
+    [aria-pressed="true"].tower-btn.poor .cost { color: inherit; }
+    .tower-btn .count { position: absolute; right: 5px; bottom: 5px; font: 11px var(--font-condensed); }
+    .tower-btn:disabled { opacity: .55; }
+
+    .inspect-title { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+    .inspect-title .section-title { margin: 0; }
+    .blurb { margin: 0 0 6px; min-height: 32px; color: var(--ink-muted); font: 12px var(--font-condensed); }
+    .stats .row { padding: 3px 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+    .inspect-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+    .inspect-actions button { padding: 0 4px; font-size: 12px; }
+    [hidden] { display: none !important; }
+
+    .guide { margin-top: 18px; }
+    .guide-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 6px 20px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .guide-list li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .guide-list canvas { flex: none; width: 30px; height: 30px; }
+    .guide-list .label { display: block; }
+    .hint { margin-top: 12px; text-align: center; color: var(--ink-muted); font: 13px var(--font-condensed); }
+
+    @media (max-width: 800px) {
+      .side { flex: 1 1 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="app-header">
+      <div>
+        <a class="back-link" href="../../index.html">&larr; Games</a>
+        <h1 class="app-title">Tower Defense</h1>
+        <div class="app-status" id="status"></div>
+      </div>
+      <div class="theme-controls"></div>
+    </header>
+
+    <main>
+      <div class="toolbar">
+        <div class="tabs" role="tablist" id="maps" aria-label="Map"></div>
+        <div class="hud">
+          <span><span class="label">Gold</span><span class="figure" id="gold">0</span></span>
+          <span><span class="label">Lives</span><span class="figure" id="lives">0</span></span>
+          <span><span class="label">Wave</span><span class="figure" id="wave">0</span></span>
+          <span class="stamp" id="result"></span>
+          <button id="new-game">New game</button>
+        </div>
+      </div>
+      <p class="map-note" id="map-note"></p>
+
+      <div class="td-layout">
+        <div class="board-col">
+          <canvas id="board"></canvas>
+        </div>
+
+        <aside class="side">
+          <section>
+            <div class="wave-controls">
+              <button class="primary" id="next-wave">Next wave</button>
+              <button id="pause" aria-pressed="false">Pause</button>
+              <button id="speed" aria-pressed="false">Speed &times;2</button>
+            </div>
+            <p class="wave-note" id="wave-note"></p>
+          </section>
+
+          <section>
+            <h2 class="section-title">Build</h2>
+            <div class="tower-grid" id="tower-grid"></div>
+          </section>
+
+          <section>
+            <div class="inspect-title">
+              <h2 class="section-title" id="inspect-name"></h2>
+              <span class="label" id="inspect-level"></span>
+            </div>
+            <p class="blurb" id="inspect-blurb"></p>
+            <div class="stats" id="inspect-stats"></div>
+            <div class="inspect-actions" id="inspect-actions">
+              <button id="upgrade"></button>
+              <button id="sell"></button>
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      <section class="guide">
+        <h2 class="section-title">Enemies</h2>
+        <ul class="guide-list" id="guide"></ul>
+      </section>
+      <p class="hint">
+        <kbd>1</kbd>&ndash;<kbd>6</kbd> pick a tower &middot; click a square to build &middot; click a tower to inspect &middot;
+        <kbd>U</kbd> upgrade &middot; <kbd>S</kbd> sell &middot; <kbd>Esc</kbd> or right-click to cancel &middot;
+        <kbd>Space</kbd> next wave &middot; <kbd>P</kbd> pause &middot; <kbd>F</kbd> speed
+      </p>
+    </main>
+  </div>
+
+  <script src="towerdefense.js"></script>
+</body>
+</html>

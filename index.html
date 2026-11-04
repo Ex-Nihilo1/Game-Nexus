@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Games</title>
+  <link rel="stylesheet" href="shared/theme.css">
+  <script src="shared/theme.js"></script>
+  <style>
+    .game-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      border-top: 1px solid var(--rule);
+    }
+    .game-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 16px 12px;
+      border-bottom: 1px solid var(--rule);
+      text-decoration: none;
+    }
+    .game-row:hover { background: var(--hover); }
+    .thumb {
+      flex: none;
+      width: 82px;
+      height: 82px;
+    }
+    .thumb svg { display: block; width: 80px; height: 80px; }
+    .game-info { flex: 1; min-width: 0; }
+    .game-name { display: block; font-size: 17px; font-weight: 600; }
+    .game-blurb { display: block; margin-top: 4px; color: var(--ink-muted); }
+    .coming-soon {
+      padding: 18px 12px;
+      border-bottom: 1px dashed var(--rule);
+      color: var(--ink-muted);
+      font: 13px var(--font-condensed);
+    }
+    @media (max-width: 480px) {
+      .game-row { gap: 12px; }
+      .game-row .button { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="app-header">
+      <div>
+        <h1 class="app-title">Games</h1>
+        <div class="app-status" id="status"></div>
+      </div>
+      <div class="theme-controls"></div>
+    </header>
+
+    <main>
+      <ul class="game-list" id="game-list"></ul>
+      <div class="coming-soon">More games coming. Add one in shared/games.js.</div>
+    </main>
+  </div>
+
+  <script src="shared/games.js"></script>
+  <script>
+    const list = document.getElementById('game-list');
+    for (const game of GAMES) {
+      const li = document.createElement('li');
+      li.innerHTML =
+        `<a class="game-row" href="${game.href}">` +
+          `<span class="thumb paper">${game.thumb}</span>` +
+          `<span class="game-info">` +
+            `<span class="game-name">${game.name}</span>` +
+            `<span class="game-blurb">${game.blurb}</span>` +
+          `</span>` +
+          `<span class="button primary">Play</span>` +
+        `</a>`;
+      list.appendChild(li);
+    }
+    document.getElementById('status').textContent =
+      `${GAMES.length} games on the desk · pick one`;
+  </script>
+</body>
+</html>
