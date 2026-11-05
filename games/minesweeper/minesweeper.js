@@ -2,12 +2,18 @@
 // Light on low-end devices: the grid is built once per game, one listener
 // handles every click, and only cells that change are touched.
 
-const LEVELS = [
-  { id: 'beginner', name: 'Beginner', cols: 9, rows: 9, mines: 10 },
-  { id: 'intermediate', name: 'Intermediate', cols: 16, rows: 16, mines: 40 },
-  { id: 'expert', name: 'Expert', cols: 30, rows: 16, mines: 99 },
-];
-const LEVEL_KEY = 'games.minesweeper.level';
+// Board size comes from the width and height sliders; their limits are on
+// the inputs in index.html.
+const SIZE_KEY = 'games.minesweeper.size';
+// Before the sliders, a saved level picked the size.
+const OLD_LEVEL_KEY = 'games.minesweeper.level';
+const OLD_LEVEL_SIZES = { beginner: [9, 9], intermediate: [16, 16], expert: [30, 16] };
+
+// The share of cells that are mines, from the mines slider.
+const MINE_PCT_KEY = 'games.minesweeper.minePct';
+// Before the slider, a saved density tab set it.
+const OLD_DENSITY_KEY = 'games.minesweeper.density';
+const OLD_DENSITY_PCTS = { low: 12, normal: 16, high: 20 };
 
 const MODES = [
   { id: 'classic', name: 'Classic',
@@ -19,21 +25,25 @@ const MODES = [
 ];
 const MODE_KEY = 'games.minesweeper.mode';
 
-// Scales each level's mine count; Normal is the classic count.
-const DENSITIES = [
-  { id: 'low', name: 'Low', factor: 0.75 },
-  { id: 'normal', name: 'Normal', factor: 1 },
-  { id: 'high', name: 'High', factor: 1.25 },
-];
-const DENSITY_KEY = 'games.minesweeper.density';
+// No-guess search time: this much per board up to NO_GUESS_BUDGET_CELLS,
+// growing with bigger boards up to the cap.
 const NO_GUESS_BUDGET_MS = 1500;
+const NO_GUESS_BUDGET_CELLS = 480;
+const NO_GUESS_BUDGET_MAX_MS = 3000;
 const NUDGES_PER_BOARD = 1500;
+const NUDGE_PICKS = 2; // random targets tried per nudge; the least crowded wins
+const NUDGE_MAX_CROWDING = 0.625; // never move a mine where over 5 of 8 neighbours are mines
 const RELOCATE_MAX_STEPS = 200000;
+const SETTLE_MAX_STEPS = 20000;
 
 const fieldEl = document.getElementById('field');
-const levelsEl = document.getElementById('levels');
+const widthEl = document.getElementById('width');
+const heightEl = document.getElementById('height');
+const widthValueEl = document.getElementById('width-value');
+const heightValueEl = document.getElementById('height-value');
+const minePctEl = document.getElementById('mine-pct');
+const minePctValueEl = document.getElementById('mine-pct-value');
 const modesEl = document.getElementById('modes');
-const densitiesEl = document.getElementById('densities');
 const modeNoteEl = document.getElementById('mode-note');
 const minesLeftEl = document.getElementById('mines-left');
 const timeEl = document.getElementById('time');
@@ -41,12 +51,13 @@ const resultEl = document.getElementById('result');
 const statusEl = document.getElementById('status');
 const flagModeBtn = document.getElementById('flag-mode');
 
-let level = LEVELS[0];
+let size = { cols: 9, rows: 9 };
+let minePct = 16; // about the classic intermediate board's share
 let mode = MODES[0];
-let density = DENSITIES[1];
 let cols, rows, total;
-let mineTotal; // this game's mines: the level's count scaled by density
+let mineTotal; // this game's mines: minePct of its cells
 let mine, count, open, flag; // one Uint8Array entry per cell
+let nbrAt, nbrs; // cell i's neighbours are nbrs[nbrAt[i]] up to nbrs[nbrAt[i + 1]]
 let cells = [];
 let state = 'ready'; // 'ready' (no mines yet) | 'playing' | 'won' | 'lost'
 let opened = 0;
@@ -57,15 +68,25 @@ let startTime = 0;
 let timer = null;
 
 try {
-  const saved = LEVELS.find(l => l.id === localStorage.getItem(LEVEL_KEY));
-  if (saved) level = saved;
+  const saved = JSON.parse(localStorage.getItem(SIZE_KEY));
+  const old = OLD_LEVEL_SIZES[localStorage.getItem(OLD_LEVEL_KEY)];
+  if (saved) size = { cols: clampTo(widthEl, saved.cols), rows: clampTo(heightEl, saved.rows) };
+  else if (old) size = { cols: old[0], rows: old[1] };
+  const savedPct = localStorage.getItem(MINE_PCT_KEY);
+  const oldPct = OLD_DENSITY_PCTS[localStorage.getItem(OLD_DENSITY_KEY)];
+  if (savedPct !== null) minePct = clampTo(minePctEl, savedPct);
+  else if (oldPct) minePct = oldPct;
   const savedMode = MODES.find(m => m.id === localStorage.getItem(MODE_KEY));
   if (savedMode) mode = savedMode;
-  const savedDensity = DENSITIES.find(d => d.id === localStorage.getItem(DENSITY_KEY));
-  if (savedDensity) density = savedDensity;
 } catch (e) { /* storage unavailable */ }
 
 // ---- Setup ----
+
+// A whole number within a slider's limits (its minimum if n isn't a number).
+function clampTo(slider, n) {
+  const v = Math.round(Number(n));
+  return Number.isFinite(v) ? Math.min(+slider.max, Math.max(+slider.min, v)) : +slider.min;
+}
 
 // One tab per option; picking one saves it and starts a new game.
 function buildTabs(el, options, key, pick) {
@@ -76,6 +97,7 @@ function buildTabs(el, options, key, pick) {
     tab.dataset.id = o.id;
     tab.textContent = o.name;
     tab.addEventListener('click', () => {
+      if (state === 'playing') return;
       pick(o);
       try { localStorage.setItem(key, o.id); } catch (e) { /* ignore */ }
       newGame();
@@ -90,12 +112,35 @@ function markTabs(el, id) {
   });
 }
 
+// A setting slider redraws the empty board as it moves and is saved once let
+// go. read gives the setting's value, write sets it; while a game is under
+// way the slider snaps back instead.
+function bindSlider(el, read, write, save) {
+  el.addEventListener('input', () => {
+    if (state === 'playing') { el.value = read(); return; }
+    write(clampTo(el, el.value));
+    newGame();
+  });
+  el.addEventListener('change', () => {
+    try { save(); } catch (e) { /* ignore */ }
+  });
+}
+
+// Size, mines and mode stay put while a game is under way.
+function lockSettings(locked) {
+  widthEl.disabled = locked;
+  heightEl.disabled = locked;
+  minePctEl.disabled = locked;
+  for (const t of modesEl.querySelectorAll('.tab')) t.disabled = locked;
+}
+
 function newGame() {
-  cols = level.cols;
-  rows = level.rows;
+  cols = size.cols;
+  rows = size.rows;
   total = cols * rows;
+  buildNeighbors();
   // Leave room for the first click's clear 3×3.
-  mineTotal = Math.min(total - 9, Math.round(level.mines * density.factor));
+  mineTotal = Math.min(total - 9, Math.round(total * minePct / 100));
   mine = new Uint8Array(total);
   count = new Uint8Array(total);
   open = new Uint8Array(total);
@@ -123,25 +168,41 @@ function newGame() {
   fieldEl.textContent = '';
   fieldEl.appendChild(frag);
 
-  markTabs(levelsEl, level.id);
-  markTabs(densitiesEl, density.id);
+  widthEl.value = widthValueEl.textContent = cols;
+  heightEl.value = heightValueEl.textContent = rows;
+  minePctEl.value = minePct;
+  minePctValueEl.textContent = `${minePct}% · ${mineTotal}`;
   markTabs(modesEl, mode.id);
+  lockSettings(false);
   modeNoteEl.textContent = mode.note;
   updateHud();
-  setStatus(`${level.name} · ${cols}×${rows} · ${mineTotal} mines · ${mode.name}`);
+  setStatus(`${cols}×${rows} · ${mineTotal} mines · ${mode.name}`);
 }
 
 function forNeighbors(i, fn) {
-  const r = Math.floor(i / cols);
-  const c = i % cols;
-  for (let dr = -1; dr <= 1; dr++) {
-    const nr = r + dr;
-    if (nr < 0 || nr >= rows) continue;
-    for (let dc = -1; dc <= 1; dc++) {
-      const nc = c + dc;
-      if ((dr || dc) && nc >= 0 && nc < cols) fn(nr * cols + nc);
+  for (let k = nbrAt[i]; k < nbrAt[i + 1]; k++) fn(nbrs[k]);
+}
+
+// Neighbour lists for every cell, built each new game: the solver walks
+// them constantly.
+function buildNeighbors() {
+  nbrAt = new Int32Array(total + 1);
+  nbrs = new Int32Array(total * 8);
+  let k = 0;
+  for (let i = 0; i < total; i++) {
+    nbrAt[i] = k;
+    const r = Math.floor(i / cols);
+    const c = i % cols;
+    for (let dr = -1; dr <= 1; dr++) {
+      const nr = r + dr;
+      if (nr < 0 || nr >= rows) continue;
+      for (let dc = -1; dc <= 1; dc++) {
+        const nc = c + dc;
+        if ((dr || dc) && nc >= 0 && nc < cols) nbrs[k++] = nr * cols + nc;
+      }
     }
   }
+  nbrAt[total] = k;
 }
 
 // Mines go in after the first click, never on it or next to it,
@@ -176,31 +237,28 @@ function computeCounts() {
 
 // No-guess mode. Random boards rarely clear by logic alone when dense, so
 // while the solver gets stuck, a mine on the edge where it stopped moves to
-// another closed cell; the move stays only if a fresh solve gets at least as
+// an uncrowded empty cell; the move stays only if a fresh solve gets at least as
 // far. Rerolls a board that stalls, and gives up after a time budget.
 function placeSolvable(start) {
   const goal = total - mineTotal;
-  const deadline = performance.now() + NO_GUESS_BUDGET_MS;
+  const budget = NO_GUESS_BUDGET_MS * Math.max(1, total / NO_GUESS_BUDGET_CELLS);
+  const deadline = performance.now() + Math.min(NO_GUESS_BUDGET_MAX_MS, budget);
   do {
     placeMines(start);
     let isOpen = new Uint8Array(total);
     let best = solveFrom(start, isOpen);
     for (let n = 0; best < goal && n < NUDGES_PER_BOARD; n++) {
-      const move = pickNudge(isOpen);
+      const move = pickNudge(isOpen, start);
       if (!move || performance.now() > deadline) break;
       const [from, to] = move;
-      mine[from] = 0;
-      mine[to] = 1;
-      computeCounts();
+      moveMine(from, to);
       const tryOpen = new Uint8Array(total);
       const got = solveFrom(start, tryOpen);
       if (got >= best) {
         best = got;
         isOpen = tryOpen;
       } else {
-        mine[from] = 1;
-        mine[to] = 0;
-        computeCounts();
+        moveMine(to, from);
       }
     }
     if (best === goal) return true;
@@ -209,10 +267,22 @@ function placeSolvable(start) {
   return false;
 }
 
-// A mine next to the solved area, and a closed empty cell to move it to:
-// usually one away from that area, so the edge gets new numbers. The first
-// click's 3×3 is always open, so it never gets a mine.
-function pickNudge(isOpen) {
+// Moves a mine and fixes the counts around both cells.
+function moveMine(from, to) {
+  mine[from] = 0;
+  mine[to] = 1;
+  forNeighbors(from, n => { count[n]--; });
+  forNeighbors(to, n => { count[n]++; });
+}
+
+// A mine next to the solved area, and an empty cell to move it to: usually a
+// closed one away from that area, so the edge gets new numbers. Mines must
+// not pile up, though: unchecked they drain into the unsolved area and pack
+// solid (a sealed block of mines counts as solved). So the target is the
+// least crowded of a few picks, never a crowded one, and when every closed
+// pick is crowded it goes into the solved area instead. The first click's
+// 3×3 is always open, so it never gets a mine.
+function pickNudge(isOpen, start) {
   const edge = [];
   const far = [];
   const closed = [];
@@ -226,17 +296,49 @@ function pickNudge(isOpen) {
       if (!onEdge) far.push(i);
     }
   }
-  const to = far.length && Math.random() < 0.7 ? far : closed;
-  if (!edge.length || !to.length) return null;
-  return [edge[Math.floor(Math.random() * edge.length)], to[Math.floor(Math.random() * to.length)]];
+  if (!edge.length) return null;
+  const from = edge[Math.floor(Math.random() * edge.length)];
+  let to = leastCrowded(far.length && Math.random() < 0.7 ? far : closed, from);
+  if (to < 0) {
+    const solved = [];
+    const sr = Math.floor(start / cols);
+    const sc = start % cols;
+    for (let i = 0; i < total; i++) {
+      if (isOpen[i] && (Math.abs(Math.floor(i / cols) - sr) > 1 || Math.abs(i % cols - sc) > 1)) solved.push(i);
+    }
+    to = leastCrowded(solved, from);
+  }
+  return to < 0 ? null : [from, to];
+}
+
+// The least crowded of a few random cells of pool, or -1 if all are crowded.
+function leastCrowded(pool, moving) {
+  let to = -1;
+  let least = NUDGE_MAX_CROWDING;
+  for (let k = 0; pool.length && k < NUDGE_PICKS; k++) {
+    const i = pool[Math.floor(Math.random() * pool.length)];
+    const c = crowding(i, moving);
+    if (c <= least) { to = i; least = c; }
+  }
+  return to;
+}
+
+// Share of i's neighbours that are mines, not counting the one moving away.
+function crowding(i, moving) {
+  let m = 0;
+  let k = 0;
+  forNeighbors(i, n => { k++; if (mine[n] && n !== moving) m++; });
+  return m / k;
 }
 
 // ---- Solver ----
 // The deductions a player can make from open numbers alone. No-guess mode
 // uses it to check a whole board; forgiving mode uses it to tell a forced
-// guess from a mistake. isOpen and known (deduced mines) are cell masks.
+// guess from a mistake. isOpen and known (deduced mines) are cell masks;
+// done marks open numbers with nothing left to tell, so repeat calls on a
+// growing solve skip them.
 
-function deduce(isOpen, known) {
+function deduce(isOpen, known, done = new Uint8Array(total)) {
   const safe = new Set();
   const mines = new Set();
   const mark = (cells, set) => { for (const c of cells) set.add(c); };
@@ -251,13 +353,14 @@ function deduce(isOpen, known) {
   for (let i = 0; i < total; i++) {
     if (known[i]) { found++; continue; }
     if (!isOpen[i]) { unknown++; continue; }
+    if (done[i]) continue;
     const cells = [];
     let need = count[i];
     forNeighbors(i, n => {
       if (known[n]) need--;
       else if (!isOpen[n]) cells.push(n);
     });
-    if (!cells.length) continue;
+    if (!cells.length) { done[i] = 1; continue; }
     if (need === 0) mark(cells, safe);
     else if (need === cells.length) mark(cells, mines);
     else { conAt[i] = cons.length; cons.push({ i, cells, need }); }
@@ -298,12 +401,96 @@ function deduce(isOpen, known) {
     for (let i = 0; i < total; i++) {
       if (!isOpen[i] && !known[i]) (left === 0 ? safe : mines).add(i);
     }
+    return result();
   }
+
+  // Whole groups: numbers that share closed cells are tried together, every
+  // way their mines could lie. A cell clear in every way is safe; a mine in
+  // every way is a mine. Groups too big to try in time are skipped.
+  for (const group of groups(cons)) settle(group, safe, mines);
   return result();
 }
 
+// Splits numbers into groups that share closed cells.
+function groups(cons) {
+  const at = new Map(); // closed cell -> the numbers next to it
+  cons.forEach((con, k) => {
+    for (const x of con.cells) {
+      if (!at.has(x)) at.set(x, []);
+      at.get(x).push(k);
+    }
+  });
+  const seen = new Uint8Array(cons.length);
+  const out = [];
+  for (let s = 0; s < cons.length; s++) {
+    if (seen[s]) continue;
+    seen[s] = 1;
+    const group = [cons[s]];
+    for (let g = 0; g < group.length; g++) {
+      for (const x of group[g].cells) {
+        for (const k of at.get(x)) if (!seen[k]) { seen[k] = 1; group.push(cons[k]); }
+      }
+    }
+    out.push(group);
+  }
+  return out;
+}
+
+// Backtracks over one group's closed cells, noting which have been a mine
+// and which clear in some valid layout. Stops early once every cell has been
+// both, since then nothing is proven.
+function settle(group, safe, mines) {
+  const cells = [];
+  const slot = new Map(); // closed cell -> its index in cells
+  for (const con of group) {
+    for (const x of con.cells) if (!slot.has(x)) { slot.set(x, cells.length); cells.push(x); }
+  }
+  const touch = cells.map(() => []);
+  group.forEach((con, k) => { for (const x of con.cells) touch[slot.get(x)].push(k); });
+  const placed = new Int32Array(group.length);
+  const left = Int32Array.from(group, con => con.cells.length);
+  const pick = new Uint8Array(cells.length);
+  const asMine = new Uint8Array(cells.length);
+  const asClear = new Uint8Array(cells.length);
+  let undecided = cells.length;
+  let steps = 0;
+
+  const fits = j => touch[j].every(k =>
+    placed[k] <= group[k].need && placed[k] + left[k] >= group[k].need);
+  // Returns false to stop the search.
+  const walk = j => {
+    if (++steps > SETTLE_MAX_STEPS) return false;
+    if (j === cells.length) {
+      for (let x = 0; x < cells.length; x++) {
+        const seen = pick[x] ? asMine : asClear;
+        if (!seen[x]) {
+          seen[x] = 1;
+          if (asMine[x] && asClear[x]) undecided--;
+        }
+      }
+      return undecided > 0;
+    }
+    for (let v = 0; v <= 1; v++) {
+      pick[j] = v;
+      for (const k of touch[j]) { left[k]--; placed[k] += v; }
+      const go = !fits(j) || walk(j + 1);
+      for (const k of touch[j]) { left[k]++; placed[k] -= v; }
+      if (!go) return false;
+    }
+    return true;
+  };
+
+  walk(0);
+  if (steps > SETTLE_MAX_STEPS || !undecided) return;
+  for (let x = 0; x < cells.length; x++) {
+    if (asClear[x] && !asMine[x]) safe.add(cells[x]);
+    else if (asMine[x] && !asClear[x]) mines.add(cells[x]);
+  }
+}
+
 // Opens start on a scratch mask, flooding out from zeros like reveal().
-function flood(isOpen, start) {
+// onOpen, if given, hears about each cell opened.
+function flood(isOpen, start, onOpen) {
   let n = 0;
   const stack = [start];
   while (stack.length) {
@@ -311,21 +498,48 @@ function flood(isOpen, start) {
     if (isOpen[i]) continue;
     isOpen[i] = 1;
     n++;
+    if (onOpen) onOpen(i);
     if (count[i] === 0) forNeighbors(i, x => { if (!isOpen[x]) stack.push(x); });
   }
   return n;
 }
 
 // Plays the current board from start using deductions only. Returns how
-// many cells it opened; isOpen is left showing which.
+// many cells it opened; isOpen is left showing which. The simple rule runs
+// off a list of numbers whose surroundings just changed, so only those are
+// rechecked; the full deduce runs only once that list is used up.
 function solveFrom(start, isOpen) {
+  const goal = total - mineTotal;
   const known = new Uint8Array(total);
-  let opened = flood(isOpen, start);
-  while (opened < total - mineTotal) {
-    const { safe, mines } = deduce(isOpen, known);
+  const done = new Uint8Array(total);
+  const recheck = [];
+  const queued = new Uint8Array(total);
+  const queue = i => { if (!queued[i] && isOpen[i] && !done[i]) { queued[i] = 1; recheck.push(i); } };
+  // Opening or finding a cell changes what it and the numbers around it say.
+  const touched = i => { queue(i); forNeighbors(i, queue); };
+  const openCell = s => flood(isOpen, s, touched);
+  const markMine = m => { if (!known[m]) { known[m] = 1; touched(m); } };
+  let opened = openCell(start);
+  while (opened < goal) {
+    while (recheck.length && opened < goal) {
+      const i = recheck.pop();
+      queued[i] = 0;
+      if (done[i]) continue;
+      const cells = [];
+      let need = count[i];
+      forNeighbors(i, n => {
+        if (known[n]) need--;
+        else if (!isOpen[n]) cells.push(n);
+      });
+      if (!cells.length) done[i] = 1;
+      else if (need === 0) for (const c of cells) opened += openCell(c);
+      else if (need === cells.length) for (const c of cells) markMine(c);
+    }
+    if (opened >= goal) break;
+    const { safe, mines } = deduce(isOpen, known, done);
     if (!safe.length && !mines.length) break;
-    for (const m of mines) known[m] = 1;
-    for (const s of safe) opened += flood(isOpen, s);
+    for (const m of mines) markMine(m);
+    for (const s of safe) opened += openCell(s);
   }
   return opened;
 }
@@ -334,8 +548,9 @@ function solveFrom(start, isOpen) {
 // ignored: they may be wrong.
 function hasSafeMove() {
   const known = new Uint8Array(total);
+  const done = new Uint8Array(total);
   for (;;) {
-    const { safe, mines } = deduce(open, known);
+    const { safe, mines } = deduce(open, known, done);
     if (safe.length) return true;
     if (!mines.length) return false;
     for (const m of mines) known[m] = 1;
@@ -419,6 +634,7 @@ function reveal(start) {
     if (mode.id === 'noguess') placeSolvable(start);
     else placeMines(start);
     state = 'playing';
+    lockSettings(true);
     startTimer();
   }
   if (mine[start]) {
@@ -470,6 +686,7 @@ function toggleFlag(i) {
 function win() {
   state = 'won';
   stopTimer();
+  lockSettings(false);
   for (let i = 0; i < total; i++) {
     if (mine[i] && !flag[i]) {
       flag[i] = 1;
@@ -482,12 +699,13 @@ function win() {
   resultEl.className = 'stamp good';
   updateHud();
   const saves = forgiven ? ` · ${forgiven} forced guess${forgiven > 1 ? 'es' : ''} forgiven` : '';
-  setStatus(`Cleared ${level.name} in ${elapsed()} s${saves}`);
+  setStatus(`Cleared ${cols}×${rows} in ${elapsed()} s${saves}`);
 }
 
 function lose(hit) {
   state = 'lost';
   stopTimer();
+  lockSettings(false);
   for (let i = 0; i < total; i++) {
     if (mine[i] && !flag[i]) {
       cells[i].className = 'cell mine' + (i === hit ? ' hit' : '');
@@ -566,7 +784,9 @@ flagModeBtn.addEventListener('click', () => {
 
 document.getElementById('new-game').addEventListener('click', newGame);
 
-buildTabs(levelsEl, LEVELS, LEVEL_KEY, o => { level = o; });
-buildTabs(densitiesEl, DENSITIES, DENSITY_KEY, o => { density = o; });
+const saveSize = () => localStorage.setItem(SIZE_KEY, JSON.stringify(size));
+bindSlider(widthEl, () => size.cols, v => { size.cols = v; }, saveSize);
+bindSlider(heightEl, () => size.rows, v => { size.rows = v; }, saveSize);
+bindSlider(minePctEl, () => minePct, v => { minePct = v; }, () => localStorage.setItem(MINE_PCT_KEY, minePct));
 buildTabs(modesEl, MODES, MODE_KEY, o => { mode = o; });
 newGame();

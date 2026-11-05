@@ -33,7 +33,19 @@
     }
     .hud .figure { display: inline-block; min-width: 34px; margin-left: 6px; }
     #result:empty { display: none; }
-    .tabs + .tabs { padding-left: 18px; border-left: 1px solid var(--rule); }
+
+    /* Board settings: a caption, then its control */
+    .setting { display: inline-flex; align-items: center; gap: 10px; }
+    .setting + .setting { padding-left: 18px; border-left: 1px solid var(--rule); }
+    .setting-label {
+      font: 11px var(--font-condensed);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+    }
+    .setting .figure { margin-left: 0; min-width: 22px; }
+    .setting input[type="range"] { width: 120px; margin: 0; accent-color: var(--ink); cursor: pointer; }
+    .setting input[type="range"]:disabled { opacity: .35; cursor: default; }
 
     .field-wrap { overflow-x: auto; padding-bottom: 8px; }
     .field {
@@ -133,8 +145,21 @@
     <main>
       <div class="toolbar">
         <div class="hud">
-          <div class="tabs" role="tablist" id="levels" aria-label="Level"></div>
-          <div class="tabs" role="tablist" id="densities" aria-label="Mine density"><span class="label">Density</span></div>
+          <label class="setting">
+            <span class="setting-label">Width</span>
+            <input type="range" id="width" min="8" max="30" step="1">
+            <span class="figure" id="width-value"></span>
+          </label>
+          <label class="setting">
+            <span class="setting-label">Height</span>
+            <input type="range" id="height" min="8" max="24" step="1">
+            <span class="figure" id="height-value"></span>
+          </label>
+          <label class="setting">
+            <span class="setting-label">Mines</span>
+            <input type="range" id="mine-pct" min="10" max="30" step="1">
+            <span class="figure" id="mine-pct-value"></span>
+          </label>
         </div>
         <div class="hud">
           <span><span class="label">Mines</span><span class="figure" id="mines-left">0</span></span>
