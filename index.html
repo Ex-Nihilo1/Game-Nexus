@@ -31,6 +31,19 @@
     .game-info { flex: 1; min-width: 0; }
     .game-name { display: block; font-size: 17px; font-weight: 600; }
     .game-blurb { display: block; margin-top: 4px; color: var(--ink-muted); }
+    .button.credit {
+      height: auto;
+      flex-direction: column;
+      gap: 1px;
+      padding: 5px 14px;
+    }
+    .button.credit small { font: 11px var(--font-condensed); opacity: .8; }
+    .game-credit {
+      display: none;
+      margin-top: 4px;
+      color: var(--ink-muted);
+      font: 12px var(--font-condensed);
+    }
     .coming-soon {
       padding: 18px 12px;
       border-bottom: 1px dashed var(--rule);
@@ -40,6 +53,7 @@
     @media (max-width: 480px) {
       .game-row { gap: 12px; }
       .game-row .button { display: none; }
+      .game-credit { display: block; }
     }
   </style>
 </head>
@@ -64,14 +78,20 @@
     const list = document.getElementById('game-list');
     for (const game of GAMES) {
       const li = document.createElement('li');
+      // Games made by someone else credit their author inside the Play button
+      // (and under the blurb on phones, where the button is hidden).
+      const credit = game.author ? `by ${game.author}` : '';
       li.innerHTML =
         `<a class="game-row" href="${game.href}">` +
           `<span class="thumb paper">${game.thumb}</span>` +
           `<span class="game-info">` +
             `<span class="game-name">${game.name}</span>` +
             `<span class="game-blurb">${game.blurb}</span>` +
+            (credit ? `<span class="game-credit">${credit}</span>` : '') +
           `</span>` +
-          `<span class="button primary">Play</span>` +
+          (credit
+            ? `<span class="button primary credit">Play<small>${credit}</small></span>`
+            : `<span class="button primary">Play</span>`) +
         `</a>`;
       list.appendChild(li);
     }

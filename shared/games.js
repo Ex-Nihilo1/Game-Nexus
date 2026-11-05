@@ -55,6 +55,23 @@ const GAMES = [
       '<path d="M60 26 L66 34 L60 42 L54 34 Z" style="fill: var(--red-pencil); stroke: var(--ink)"/>' +
       '</svg>',
   },
+  {
+    id: 'chronomancer',
+    name: 'Chronomancer',
+    blurb: 'Build a town between waves, hold the wall, and carry blueprints across time loops. English & Russian.',
+    href: 'games/chronomancer/index.html',
+    author: '@KakoriCaster',
+    thumb:
+      '<svg viewBox="0 0 80 80" aria-hidden="true">' +
+      '<path d="M8 72 V58 H16 V52 H24 V58 H36 V52 H44 V58 H56 V52 H64 V58 H72 V72 Z" style="fill: var(--desk); stroke: var(--ink)"/>' +
+      '<path d="M29 9 H51 L42 27 L51 45 H29 L38 27 Z" style="fill: var(--paper); stroke: var(--violet); stroke-width: 1.5"/>' +
+      '<path d="M33 12 H47 L40 25 Z" style="fill: var(--highlighter)"/>' +
+      '<path d="M33 45 L40 37 L47 45 Z" style="fill: var(--highlighter)"/>' +
+      '<line x1="40" y1="26" x2="40" y2="38" style="stroke: var(--orange-pen); stroke-width: 1.5"/>' +
+      '<rect x="25" y="5" width="30" height="4" style="fill: var(--ink)"/>' +
+      '<rect x="25" y="45" width="30" height="4" style="fill: var(--ink)"/>' +
+      '</svg>',
+  },
 ];
 
 // 10px squares on the 80px thumbnail, outlined in ink.
