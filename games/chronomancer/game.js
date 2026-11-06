@@ -1,77 +1,62 @@
 (() => {
 'use strict';
 const $=id=>document.getElementById(id),KEY='chronoguard-v2',LEGACY_KEY='chronoguard-v1';
-// Language: saved choice, otherwise Russian for Russian browsers and English for everyone else.
-const LANG_KEY='chronoguard-lang';
-const LANG=(()=>{try{const saved=localStorage.getItem(LANG_KEY);if(saved==='ru'||saved==='en')return saved;}catch(e){}return /^ru\b/i.test(navigator.language||'')?'ru':'en';})();
-const tr=(ru,en)=>LANG==='en'?en:ru;
-const LOCALE=tr('ru-RU','en-US');
-// Static page text carries its English in data-en* attributes.
-document.documentElement.lang=LANG;
-if(LANG==='en'){
- for(const el of document.querySelectorAll('[data-en]'))el.innerHTML=el.dataset.en;
- for(const el of document.querySelectorAll('[data-en-aria-label]'))el.setAttribute('aria-label',el.dataset.enAriaLabel);
- for(const el of document.querySelectorAll('[data-en-title]'))el.title=el.dataset.enTitle;
- for(const el of document.querySelectorAll('[data-en-content]'))el.content=el.dataset.enContent;
-}
-$('lang').textContent=tr('EN','RU');
-$('lang').setAttribute('aria-label',tr('Switch to English','Переключить на русский'));
-$('lang').title=$('lang').getAttribute('aria-label');
-const city=[{id:'archer',name:tr('Обучить лучника','Train an archer'),glyph:'➶',desc:tr('Лучник · 12 урона одной цели','Archer · 12 damage to one target'),base:45,building:'barracks'},{id:'mage',name:tr('Обучить хрономанта','Train a chronomancer'),glyph:'✦',desc:tr('Маг · 30 урона + небольшой взрыв','Mage · 30 damage + a small blast'),base:110,building:'academy'},{id:'clock',name:tr('Расширить казну','Expand the treasury'),glyph:'◷',desc:tr('+10 хронов за каждую победу','+10 chronos for every victory'),base:60,building:'mint'},{id:'loot',name:tr('Сбор трофеев','Trophy gathering'),glyph:'◇',desc:tr('+1 хрон за монстра · с босса в 5 раз больше','+1 chrono per monster · 5× more from a boss'),base:55,building:'mint'},{id:'wall',name:tr('Укрепить стены','Reinforce the walls'),glyph:'▥',desc:tr('+150 максимальной и текущей прочности','+150 maximum and current durability'),base:70,building:'bastion'}];
-const eternal=[{id:'academy',name:tr('Чертёж академии','Academy blueprint'),glyph:'✦',desc:tr('Построить академию. Открывает найм магов.','Build the academy. Unlocks hiring mages.'),base:4,unlock:true},{id:'mint',name:tr('Чертёж казны','Treasury blueprint'),glyph:'◷',desc:tr('Построить казну. Улучшает награды за волны.','Build the treasury. Improves wave rewards.'),base:3,unlock:true},{id:'bastion',name:tr('Чертёж бастиона','Bastion blueprint'),glyph:'▥',desc:tr('Построить бастион. Укрепление и ремонт стен.','Build the bastion. Reinforces and repairs the walls.'),base:3,unlock:true},{id:'memory',name:tr('Память о рассвете','Memory of dawn'),glyph:'◈',desc:tr('+80 хронов в начале следующей петли','+80 chronos at the start of the next loop'),base:3},{id:'power',name:tr('Урон отряда','Squad damage'),glyph:'✧',desc:tr('+5% к урону всех бойцов за уровень в следующей петле. Каждый уровень стоит 1 осколок.','+5% damage for all fighters per level in the next loop. Each level costs 1 shard.'),base:1},{id:'foundation',name:tr('Вечный фундамент','Eternal foundation'),glyph:'▤',desc:tr('+100 прочности стен в следующей петле','+100 wall durability in the next loop'),base:3},{id:'flow',name:tr('Трофеи времени','Spoils of time'),glyph:'∞',desc:tr('+10 хронов за победу в следующей петле','+10 chronos per victory in the next loop'),base:5}];
-const buildings=[{id:'barracks',name:tr('Казарма','Barracks'),sub:tr('Обучение бойцов','Fighter training'),up:'archer',x:.28,y:.37,roof:'#a87779'},{id:'academy',name:tr('Академия','Academy'),sub:tr('Обучение магов','Mage training'),up:'mage',x:.71,y:.30,roof:'#9a7ac4'},{id:'mint',name:tr('Казна','Treasury'),sub:tr('Награды за волны','Wave rewards'),up:'clock',x:.70,y:.69,roof:'#b39a64'},{id:'bastion',name:tr('Бастион','Bastion'),sub:tr('Прочность и ремонт','Durability and repairs'),up:'wall',x:.27,y:.76,roof:'#7794a3'}];
+const city=[{id:'archer',name:'Обучить лучника',glyph:'➶',desc:'Лучник · 12 урона одной цели',base:45,building:'barracks'},{id:'mage',name:'Обучить хрономанта',glyph:'✦',desc:'Маг · 30 урона + небольшой взрыв',base:110,building:'academy'},{id:'clock',name:'Расширить казну',glyph:'◷',desc:'+10 хронов за каждую победу',base:60,building:'mint'},{id:'loot',name:'Сбор трофеев',glyph:'◇',desc:'+1 хрон за монстра · с босса в 5 раз больше',base:55,building:'mint'},{id:'wall',name:'Укрепить стены',glyph:'▥',desc:'+150 максимальной и текущей прочности',base:70,building:'bastion'}];
+const eternal=[{id:'academy',name:'Чертёж академии',glyph:'✦',desc:'Построить академию. Открывает найм магов.',base:4,unlock:true},{id:'mint',name:'Чертёж казны',glyph:'◷',desc:'Построить казну. Улучшает награды за волны.',base:3,unlock:true},{id:'bastion',name:'Чертёж бастиона',glyph:'▥',desc:'Построить бастион. Укрепление и ремонт стен.',base:3,unlock:true},{id:'memory',name:'Память о рассвете',glyph:'◈',desc:'+80 хронов в начале следующей петли',base:3},{id:'power',name:'Урон отряда',glyph:'✧',desc:'+5% к урону всех бойцов за уровень в следующей петле. Каждый уровень стоит 1 осколок.',base:1},{id:'foundation',name:'Вечный фундамент',glyph:'▤',desc:'+100 прочности стен в следующей петле',base:3},{id:'flow',name:'Трофеи времени',glyph:'∞',desc:'+10 хронов за победу в следующей петле',base:5}];
+const buildings=[{id:'barracks',name:'Казарма',sub:'Обучение бойцов',up:'archer',x:.28,y:.37,roof:'#a87779'},{id:'academy',name:'Академия',sub:'Обучение магов',up:'mage',x:.71,y:.30,roof:'#9a7ac4'},{id:'mint',name:'Казна',sub:'Награды за волны',up:'clock',x:.70,y:.69,roof:'#b39a64'},{id:'bastion',name:'Бастион',sub:'Прочность и ремонт',up:'wall',x:.27,y:.76,roof:'#7794a3'}];
 city.push(
- {id:'farm',name:tr('Возделать поле','Till a field'),glyph:'♧',desc:tr('+2 еды после каждой победы','+2 food after every victory'),base:35,building:'farm'},
- {id:'house',name:tr('Построить жильё','Build housing'),glyph:'⌂',desc:tr('+2 жителя · +2 еды в день на содержание','+2 residents · +2 food per day upkeep'),base:45,building:'house'}
+ {id:'farm',name:'Возделать поле',glyph:'♧',desc:'+2 еды после каждой победы',base:35,building:'farm'},
+ {id:'house',name:'Построить жильё',glyph:'⌂',desc:'+2 жителя · +2 еды в день на содержание',base:45,building:'house'}
 );
 buildings.push(
- {id:'farm',name:tr('Фермы','Farms'),sub:tr('Урожай в конце дня','Harvest at day’s end'),roof:'#a5aa62'},
- {id:'house',name:tr('Дома','Houses'),sub:tr('Расширение жилья','More housing'),roof:'#c69668'}
+ {id:'farm',name:'Фермы',sub:'Урожай в конце дня',roof:'#a5aa62'},
+ {id:'house',name:'Дома',sub:'Расширение жилья',roof:'#c69668'}
 );
 buildings.forEach((building,index)=>{
  building.x=[.18,.50,.82][index%3];
  building.y=index<3?.31:.67;
 });
-buildings.push({id:'workshop',name:tr('Мастерская','Workshop'),sub:tr('Инженеры и ловушки','Engineers and traps'),y:.67,roof:'#ae8b69'});
+buildings.push({id:'workshop',name:'Мастерская',sub:'Инженеры и ловушки',y:.67,roof:'#ae8b69'});
 buildings.slice(3).forEach((building,index)=>{building.x=[.14,.38,.62,.86][index];});
 eternal.unshift(
- {id:'archerTraining',name:tr('Школа лучников','Archery school'),glyph:'➶',desc:tr('Открывает обучение крестьян на лучников в казарме.','Lets the barracks train peasants as archers.'),base:2,unlock:true},
- {id:'warriorTraining',name:tr('Школа воинов','Warrior school'),glyph:'⚔',desc:tr('Открывает обучение крестьян на воинов в казарме.','Lets the barracks train peasants as warriors.'),base:3,unlock:true}
+ {id:'archerTraining',name:'Школа лучников',glyph:'➶',desc:'Открывает обучение крестьян на лучников в казарме.',base:2,unlock:true},
+ {id:'warriorTraining',name:'Школа воинов',glyph:'⚔',desc:'Открывает обучение крестьян на воинов в казарме.',base:3,unlock:true}
 );
 city.push(
- {id:'warrior',name:tr('Обучить воина','Train a warrior'),glyph:'⚔',desc:tr('Один крестьянин становится воином · 120 здоровья · 10 урона','One peasant becomes a warrior · 120 health · 10 damage'),base:65,building:'barracks'},
- {id:'warriorDamage',name:tr('Острые клинки','Sharp blades'),glyph:'⚔',desc:tr('+25% к базовому урону воинов','+25% base warrior damage'),base:55,building:'barracks'},
- {id:'warriorSpeed',name:tr('Боевые упражнения','Combat drills'),glyph:'»',desc:tr('+15% к базовой скорости атаки воинов','+15% base warrior attack speed'),base:65,building:'barracks'},
- {id:'warriorArmor',name:tr('Крепкие доспехи','Sturdy armor'),glyph:'▣',desc:tr('+20% к базовому здоровью воинов','+20% base warrior health'),base:60,building:'barracks'}
+ {id:'warrior',name:'Обучить воина',glyph:'⚔',desc:'Один крестьянин становится воином · 120 здоровья · 10 урона',base:65,building:'barracks'},
+ {id:'warriorDamage',name:'Острые клинки',glyph:'⚔',desc:'+25% к базовому урону воинов',base:55,building:'barracks'},
+ {id:'warriorSpeed',name:'Боевые упражнения',glyph:'»',desc:'+15% к базовой скорости атаки воинов',base:65,building:'barracks'},
+ {id:'warriorArmor',name:'Крепкие доспехи',glyph:'▣',desc:'+20% к базовому здоровью воинов',base:60,building:'barracks'}
 );
-eternal.push({id:'scout',name:tr('Разведка перед волной','Pre-wave scouting'),glyph:'⌖',desc:tr('При расстановке показывает входы орды, число врагов и место появления босса.','During setup, shows the horde’s entrances, the enemy count and where the boss appears.'),base:2,unlock:true});
+eternal.push({id:'scout',name:'Разведка перед волной',glyph:'⌖',desc:'При расстановке показывает входы орды, число врагов и место появления босса.',base:2,unlock:true});
 eternal.push(
- {id:'foodStock',name:tr('Зимние запасы','Winter stores'),glyph:'▣',desc:tr('+6 еды в начале петли.','+6 food at the start of the loop.'),base:2,unlock:true,choice:'supply'},
- {id:'farmYield',name:tr('Плодородная земля','Fertile soil'),glyph:'♧',desc:tr('+1 еда с каждой фермы за день.','+1 food from every farm per day.'),base:2,unlock:true,choice:'supply'},
- {id:'extraSlot',name:tr('Башенный пост','Tower post'),glyph:'▥',desc:tr('Четвёртое место для бойца на каменной стене.','A fourth fighter spot on the stone wall.'),base:2,unlock:true,choice:'wall'},
- {id:'cheapRepair',name:tr('Артель каменщиков','Masons’ guild'),glyph:'✚',desc:tr('Ремонт укрепления стоит 18 хронов вместо 30.','Repairing the fortification costs 18 chronos instead of 30.'),base:2,unlock:true,choice:'wall'}
+ {id:'foodStock',name:'Зимние запасы',glyph:'▣',desc:'+6 еды в начале петли.',base:2,unlock:true,choice:'supply'},
+ {id:'farmYield',name:'Плодородная земля',glyph:'♧',desc:'+1 еда с каждой фермы за день.',base:2,unlock:true,choice:'supply'},
+ {id:'extraSlot',name:'Башенный пост',glyph:'▥',desc:'Четвёртое место для бойца на каменной стене.',base:2,unlock:true,choice:'wall'},
+ {id:'cheapRepair',name:'Артель каменщиков',glyph:'✚',desc:'Ремонт укрепления стоит 18 хронов вместо 30.',base:2,unlock:true,choice:'wall'}
 );
 eternal.push(
- {id:'heroPower',name:tr('Сила мага времени','Time mage’s power'),glyph:'✦',desc:tr('+25% базового урона главного мага за уровень.','+25% base damage for the main mage per level.'),base:2},
- {id:'heroSpeed',name:tr('Ускорение времени','Time acceleration'),glyph:'»',desc:tr('+15% базовой скорости атаки главного мага за уровень.','+15% base attack speed for the main mage per level.'),base:2},
- {id:'heroHealth',name:tr('Временной щит','Time shield'),glyph:'▣',desc:tr('+32 здоровья главного мага за уровень.','+32 health for the main mage per level.'),base:2},
- {id:'heroShards',name:tr('Осколки за волны','Shards for waves'),glyph:'◇',desc:tr('+50% к очкам за пройденные волны за уровень. Начисляется в конце каждой петли, округляется вниз.','+50% points for waves cleared per level. Awarded at the end of each loop, rounded down.'),base:3}
+ {id:'heroPower',name:'Сила мага времени',glyph:'✦',desc:'+25% базового урона главного мага за уровень.',base:2},
+ {id:'heroSpeed',name:'Ускорение времени',glyph:'»',desc:'+15% базовой скорости атаки главного мага за уровень.',base:2},
+ {id:'heroHealth',name:'Временной щит',glyph:'▣',desc:'+32 здоровья главного мага за уровень.',base:2},
+ {id:'heroShards',name:'Осколки за волны',glyph:'◇',desc:'+50% к очкам за пройденные волны за уровень. Начисляется в конце каждой петли, округляется вниз.',base:3}
 );
-eternal.push({id:'battleReport',name:tr('Разбор сражений','Battle review'),glyph:'▤',desc:tr('После волны открывает отчёт об уроне и прорывах.','After a wave, shows a report on damage and breaches.'),base:2,unlock:true},{id:'heroSpells',name:tr('Управление временем','Time control'),glyph:'✧',desc:tr('Перед волной позволяет выбрать стазис, восстановление или ускорение.','Before a wave, lets you choose stasis, mending or haste.'),base:3,unlock:true});
+eternal.push({id:'battleReport',name:'Разбор сражений',glyph:'▤',desc:'После волны открывает отчёт об уроне и прорывах.',base:2,unlock:true},{id:'heroSpells',name:'Управление временем',glyph:'✧',desc:'Перед волной позволяет выбрать стазис, восстановление или ускорение.',base:3,unlock:true});
 const eternityBranches=[
- {name:tr('Войско','Army'),nodes:['archerTraining','warriorTraining'],dx:0,dy:-75},
- {name:tr('Снабжение','Supply'),nodes:['memory','mint','flow'],dx:-88,dy:0},
- {name:tr('Цитадель','Citadel'),nodes:['bastion','foundation','academy'],dx:88,dy:0},
- {name:tr('Разведка','Scouting'),nodes:['scout'],dx:0,dy:90},
- {nodes:['battleReport'],parent:'scout',dx:-58,dy:29},
- {nodes:['heroSpells'],parent:'heroSpeed',dx:54,dy:-28},
- {name:tr('Маг времени','Time Mage'),nodes:['heroPower','heroSpeed','heroHealth','heroShards'],dx:40,dy:34},
- {nodes:['foodStock'],parent:'mint',dx:-14,dy:-87},
- {nodes:['farmYield'],parent:'mint',dx:-14,dy:87},
- {nodes:['extraSlot'],parent:'foundation',dx:14,dy:-87},
- {nodes:['cheapRepair'],parent:'foundation',dx:14,dy:87}
+ {name:'Войско',nodes:['archerTraining','warriorTraining'],dx:0,dy:-82},
+ {name:'Снабжение',nodes:['memory','mint','flow'],dx:-102,dy:0},
+ {name:'Цитадель',nodes:['bastion','foundation','academy'],dx:102,dy:0},
+ {name:'Разведка',nodes:['scout'],dx:0,dy:103},
+ {nodes:['battleReport'],parent:'scout',dx:-74,dy:35},
+ {nodes:['heroSpells'],parent:'heroSpeed',dx:56,dy:-38},
+ {name:'Маг времени',nodes:['heroPower','heroSpeed','heroHealth','heroShards'],dx:48,dy:40},
+ {nodes:['foodStock'],parent:'mint',dx:-21,dy:-100},
+ {nodes:['farmYield'],parent:'mint',dx:-21,dy:100},
+ {nodes:['extraSlot'],parent:'foundation',dx:21,dy:-100},
+ {nodes:['cheapRepair'],parent:'foundation',dx:23,dy:105}
 ];
-const treeCenter={x:320,y:200};
+const treeSize={width:720,height:410};
+const treeCenter={x:360,y:210};
 function previousNode(id){
  if(id==='power')return null;
  const branch=eternityBranches.find(entry=>entry.nodes.includes(id));
@@ -79,12 +64,12 @@ function previousNode(id){
  return index===0?(branch.parent||'power'):branch.nodes[index-1];
 }
 const trainingUnlock={archer:'archerTraining',warrior:'warriorTraining'};
-const professions={archer:tr('Лучник','Archer'),warrior:tr('Воин','Warrior'),mage:tr('Хрономант','Chronomancer')};
-const retrainCost=5;
+const professions={archer:'Лучник',warrior:'Воин',mage:'Хрономант'};
+const retrainFee=5;
 const trainingKind=id=>Object.keys(trainingUnlock).find(kind=>id.startsWith(kind));
 const initialUp=()=>({foodStock:0,farmYield:0,extraSlot:0,cheapRepair:0,scout:0,archerTraining:0,warriorTraining:0,memory:0,power:0,foundation:0,flow:0,academy:0,mint:0,bastion:0,heroPower:0,heroSpeed:0,heroHealth:0,heroShards:0,battleReport:0,heroSpells:0});
 const initialCityUp=()=>({clock:0,archer:0,mage:0,wall:0,loot:0,warrior:0,farm:0,house:0,archerDamage:0,archerSpeed:0,mageDamage:0,mageSpeed:0,mageRadius:0,warriorDamage:0,warriorSpeed:0,warriorArmor:0});
-city.push({id:'archerDamage',name:tr('Закалённые стрелы','Tempered arrows'),glyph:'➶',desc:tr('+25% базового урона всех лучников','+25% base damage for all archers'),base:50,building:'barracks'},{id:'archerSpeed',name:tr('Быстрая тетива','Quick bowstring'),glyph:'»',desc:tr('+15% скорости атаки всех лучников','+15% attack speed for all archers'),base:60,building:'barracks'},{id:'mageDamage',name:tr('Сила заклинаний','Spell power'),glyph:'✦',desc:tr('+25% базового урона всех магов, включая героя','+25% base damage for all mages, the hero included'),base:75,building:'academy'},{id:'mageSpeed',name:tr('Поток заклинаний','Spell flow'),glyph:'»',desc:tr('+15% скорости атаки всех магов, включая героя','+15% attack speed for all mages, the hero included'),base:85,building:'academy'},{id:'mageRadius',name:tr('Расширение разрыва','Widening rift'),glyph:'◎',desc:tr('+15% базового радиуса взрыва всех магов','+15% base blast radius for all mages'),base:90,building:'academy'});
+city.push({id:'archerDamage',name:'Закалённые стрелы',glyph:'➶',desc:'+25% базового урона всех лучников',base:50,building:'barracks'},{id:'archerSpeed',name:'Быстрая тетива',glyph:'»',desc:'+15% скорости атаки всех лучников',base:60,building:'barracks'},{id:'mageDamage',name:'Сила заклинаний',glyph:'✦',desc:'+25% базового урона всех магов, включая героя',base:75,building:'academy'},{id:'mageSpeed',name:'Поток заклинаний',glyph:'»',desc:'+15% скорости атаки всех магов, включая героя',base:85,building:'academy'},{id:'mageRadius',name:'Расширение разрыва',glyph:'◎',desc:'+15% базового радиуса взрыва всех магов',base:90,building:'academy'});
 let meta={loop:1,shards:0,best:0,eternityRecord:0,up:initialUp()},run,logs=[],speed=1,paused=false,freeze=0,cooldown=0,t=0,particles=[],last=performance.now(),saveTimer=0,uiTimer=0,openedBuilding=null,loopPlan=null,saveEpoch=Date.now();
 function fresh(mode='normal'){return {mode,workers:{farm:0,build:0},vacancies:0,defenses:[],spell:'stasis',time:120+meta.up.memory*80,hp:250+meta.up.foundation*100,wave:0,kills:0,up:initialCityUp(),bonus:{...meta.up},active:false,planning:false,dead:false,defeated:false,enemies:[],units:[],formation:{},projectiles:[],spawned:0,spawnTimer:0,enemySerial:0,elapsed:0,stasisUsed:false,freezeTime:0,combatVersion:6,food:meta.up.foodStock?6:0,unfed:0,garrison:Array(meta.up.extraSlot?4:3).fill(null),lastReward:0,waveLoot:0};}
 try{const s=JSON.parse(localStorage.getItem(KEY)??localStorage.getItem(LEGACY_KEY));if(s?.meta){saveEpoch=s.epoch||saveEpoch;meta=s.meta;meta.up={...initialUp(),...meta.up};logs=s.logs||[];run=s.schema===2?s.run:fresh();}if(!run||!Number.isFinite(run.time)||!run.up||!Array.isArray(run.enemies))run=fresh();}catch(e){run=fresh();logs=[];}if(!run)run=fresh();
@@ -102,10 +87,10 @@ run.food=run.food??0;
 run.unfed=run.unfed??0;
 run.garrison=Array.from({length:(run.bonus??meta.up).extraSlot?4:3},(_,index)=>run.up.wall?(run.garrison?.[index]??null):null);
 const modes={
- normal:{name:tr('Обычная петля','Normal loop'),desc:tr('Стандартные правила.','Standard rules.')},
- winter:{name:tr('Вечная зима','Eternal winter'),desc:tr('На каждой волне мороз. Урожай вдвое меньше.','Frost on every wave. The harvest is halved.')},
- noMagic:{name:tr('Без магии','No magic'),desc:tr('Маг времени, академия и заклинания недоступны.','The time mage, the academy and spells are unavailable.')},
- twins:{name:tr('Двойной дозор','Double watch'),desc:tr('На каждой пятой волне одновременно выходят два босса.','Every fifth wave, two bosses come out at once.')}
+ normal:{name:'Обычная петля',desc:'Стандартные правила.'},
+ winter:{name:'Вечная зима',desc:'На каждой волне мороз. Урожай вдвое меньше.'},
+ noMagic:{name:'Без магии',desc:'Маг времени, академия и заклинания недоступны.'},
+ twins:{name:'Двойной дозор',desc:'На каждой пятой волне одновременно выходят два босса.'}
 };
 run.mode=Object.hasOwn(modes,run.mode)?run.mode:'normal';
 run.workers??={farm:0,build:0};
@@ -115,10 +100,10 @@ const population=()=>housing()-(run.vacancies||0);
 const employed=()=>recruits()+run.workers.farm+run.workers.build;
 const freeResidents=()=>population()-employed();
 const weatherTypes=[
- {name:tr('Ясно','Clear'),desc:tr('Обычные условия.','Normal conditions.')},
- {name:tr('Туман','Fog'),desc:tr('Дальность стрельбы ниже на 25%.','Shooting range is 25% lower.')},
- {name:tr('Дождь','Rain'),desc:tr('Враги и наземные бойцы движутся на 20% медленнее.','Enemies and ground fighters move 20% slower.')},
- {name:tr('Мороз','Frost'),desc:tr('Урожай вдвое меньше.','The harvest is halved.')}
+ {name:'Ясно',desc:'Обычные условия.'},
+ {name:'Туман',desc:'Дальность стрельбы ниже на 25%.'},
+ {name:'Дождь',desc:'Враги и наземные бойцы движутся на 20% медленнее.'},
+ {name:'Мороз',desc:'Урожай вдвое меньше.'}
 ];
 const weather=()=>run.mode==='winter'?3:[0,0,1,2,0,3][run.wave%6];
 const movement=()=>weather()===2?.8:1;
@@ -137,14 +122,12 @@ function settleFood(yieldFood=harvest()){
 }
 function foodSummary(){
  const shortage=projectedShortage();
- return tr('<p>Запас <b>'+run.food+' еды</b></p><p>Урожай <b>+'+harvest()+
-  ' еды</b></p><p>Содержание <b>−'+dailyFood()+' еды в день</b></p>',
-  '<p>Stock <b>'+run.food+' food</b></p><p>Harvest <b>+'+harvest()+
-  ' food</b></p><p>Upkeep <b>−'+dailyFood()+' food per day</b></p>')+
-  (shortage?tr('<p>Ожидаемый дефицит <b>'+shortage+' еды</b></p>','<p>Expected shortage <b>'+shortage+' food</b></p>'):'')+
-  (run.unfed?tr('<p>Голод после прошлого дня <b>−'+hungerPenalty()+'% здоровья жителей в следующем бою</b></p>','<p>Hunger from the last day <b>−'+hungerPenalty()+'% resident health in the next battle</b></p>'):'');
+ return '<p>Запас <b>'+run.food+' еды</b></p><p>Урожай <b>+'+harvest()+
+  ' еды</b></p><p>Содержание <b>−'+dailyFood()+' еды в день</b></p>'+
+  (shortage?'<p>Ожидаемый дефицит <b>'+shortage+' еды</b></p>':'')+
+  (run.unfed?'<p>Голод после прошлого дня <b>−'+hungerPenalty()+'% здоровья жителей в следующем бою</b></p>':'');
 }
-const fortName=()=>run.up.wall?tr('Каменная стена','Stone wall'):tr('Частокол','Palisade');
+const fortName=()=>run.up.wall?'Каменная стена':'Частокол';
 const isRanged=unit=>unit.kind==='archer'||unit.kind==='mage';
 const attackRange=unit=>isRanged(unit)?(unit.onWall?.48:.40)*(weather()===1?.75:1):.028;
 const wallPositions=()=>run.bonus.extraSlot?[.18,.39,.61,.82]:[.22,.50,.78];
@@ -161,7 +144,7 @@ function assignWall(slot,id){
  run.units=[];
  save();
  update();
-}run.waveLoot=run.waveLoot||0;run.bonus=run.bonus||{...meta.up};run.enemySerial=run.enemySerial||0;freeze=run.freezeTime||0;cooldown=run.stasisUsed?1:0;
+}run.waveLoot=run.waveLoot||0;run.bonus=run.bonus||{...meta.up};run.enemySerial=run.enemySerial||0;freeze=run.bonus.heroSpells&&run.mode!=='noMagic'?run.freezeTime||0:0;cooldown=run.stasisUsed?1:0;
 const warriorHealth=()=>120+24*run.up.warriorArmor;
 function unitStats(kind,hero=false){
  if(kind==='peasant')return {damage:5,attackRate:1,radius:0};
@@ -176,13 +159,12 @@ function unitStats(kind,hero=false){
 const actualDamage=stats=>stats.damage*(1+.05*run.bonus.power);
 run.hp=Math.min(run.hp,250+run.bonus.foundation*100+run.up.wall*150);
 const monsterLoot=e=>(1+run.up.loot)*(e.boss?5:1);
-const unlocked=id=>!(run.mode==='noMagic'&&id==='academy')&&(['barracks','farm','house','workshop'].includes(id)||meta.up[id]>0),maxHP=()=>250+run.bonus.foundation*100+run.up.wall*150,dps=()=>defenders().reduce((sum,u)=>sum+actualDamage(u)*u.attackRate,0),count=()=>18+run.wave*6,waveReward=()=>60+(run.wave+1)*10+run.up.clock*10+run.bonus.flow*10,reward=()=>Math.floor(run.wave/2)+Math.floor(run.kills/12)+Math.floor(Object.values(run.up).reduce((a,b)=>a+b,0)/4),price=item=>Math.ceil(item.base*Math.pow(1.52,run.up[item.id]||0)),distance=(a,b)=>Math.hypot(a.x-b.x,(a.y-b.y)*300/448);
+const unlocked=id=>!(run.mode==='noMagic'&&id==='academy')&&(['barracks','farm','house','workshop'].includes(id)||meta.up[id]>0),maxHP=()=>250+run.bonus.foundation*100+run.up.wall*150,dps=()=>defenders().reduce((sum,u)=>sum+actualDamage(u)*u.attackRate,0),count=()=>18+run.wave*6,waveReward=()=>60+(run.wave+1)*10+run.up.clock*10+run.bonus.flow*10,reward=()=>Math.floor(run.wave/2)+Math.floor(run.kills/12)+Math.floor(Object.values(run.up).reduce((a,b)=>a+b,0)/4),price=(item,level=run.up[item.id]||0)=>Math.ceil(item.base*Math.pow(1.52,level)),distance=(a,b)=>Math.hypot(a.x-b.x,(a.y-b.y)*300/448);
 let staleTab=false;
 function reloadLatest(){if(staleTab)return;staleTab=true;window.location?.reload();}
-function save(){if(staleTab)return;try{let latest;try{latest=JSON.parse(localStorage.getItem(KEY));}catch(e){}if((latest?.epoch||0)>saveEpoch){reloadLatest();return;}localStorage.setItem(KEY,JSON.stringify({schema:2,epoch:saveEpoch,meta,run,logs}));}catch(e){$('saveLabel').textContent=tr('Сохранение недоступно в этом браузере','Saving is unavailable in this browser');}}
-// Each entry keeps both languages so the chronicle follows a language switch.
-function log(ru,en=ru){logs.unshift({text:ru,en,time:new Date().toLocaleTimeString(LOCALE,{hour:'2-digit',minute:'2-digit'})});logs=logs.slice(0,25);renderLog();}
-function renderLog(){$('log').replaceChildren(...logs.map(l=>{const d=document.createElement('div'),time=document.createElement('time'),s=document.createElement('span');d.className='log-row';time.textContent=l.time;s.textContent=tr(l.text,l.en??l.text);d.append(time,s);return d;}));}
+function save(){if(staleTab)return;try{let latest;try{latest=JSON.parse(localStorage.getItem(KEY));}catch(e){}if((latest?.epoch||0)>saveEpoch){reloadLatest();return;}localStorage.setItem(KEY,JSON.stringify({schema:2,epoch:saveEpoch,meta,run,logs}));}catch(e){$('saveLabel').textContent='Сохранение недоступно в этом браузере';}}
+function log(text){logs.unshift({text,time:new Date().toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'})});logs=logs.slice(0,25);renderLog();}
+function renderLog(){$('log').replaceChildren(...logs.map(l=>{const d=document.createElement('div'),time=document.createElement('time'),s=document.createElement('span');d.className='log-row';time.textContent=l.time;s.textContent=l.text;d.append(time,s);return d;}));}
 function toast(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').classList.remove('show'),2400);}
 function show(html){$('modal').classList.toggle('loop-planner',Boolean(loopPlan));$('modalContent').innerHTML=html;if(!$('modal').open)$('modal').showModal();}
 // Refund exactly the integer prices originally paid for every purchased level.
@@ -208,7 +190,7 @@ function excludedBy(item,up){
  return item.choice?eternal.find(other=>other.id!==item.id&&other.choice===item.choice&&up[other.id]):null;
 }
 function challengePicker(){
- return tr('<h3>Режим следующей петли</h3><p>У каждого режима свой рекорд. Осколки поступают в общий пул.</p>','<h3>Next loop mode</h3><p>Each mode has its own record. Shards go into a shared pool.</p>')+
+ return '<h3>Режим следующей петли</h3><p>У каждого режима свой рекорд. Осколки поступают в общий пул.</p>'+
  Object.entries(modes).map(([id,mode])=>{
   const record=id==='normal'?(meta.scoreRecord??meta.eternityRecord):(meta.challengeRecords?.[id]||0);
   return '<button class="speed" data-mode="'+id+'" aria-pressed="'+(loopPlan.mode===id)+'">'+mode.name+' · '+record+' ✧</button>';
@@ -229,12 +211,47 @@ function treeNodePosition(id){
  const origin=branch.parent?treeNodePosition(branch.parent):treeCenter;
  return {x:origin.x+branch.dx*rank,y:origin.y+branch.dy*rank};
 }
+function treeGoalRoute(){
+ const goal=meta.treeGoal;
+ const target=eternal.find(item=>item.id===goal?.id);
+ if(!target)return null;
+ const path=[];
+ let cost=0,targetCost=0,blocked=null;
+ for(let id=target.id;id;id=previousNode(id)){
+  const item=eternal.find(entry=>entry.id===id);
+  path.unshift(id);
+  const required=id===target.id?goal.level:1;
+  const owned=loopPlan.up[id]||0;
+  if(owned>=required)continue;
+  blocked??=excludedBy(item,loopPlan.up);
+  for(let level=owned;level<required;level++){
+   const price=eternalPrice(item,level);
+   cost+=price;
+   if(id===target.id)targetCost+=price;
+  }
+ }
+ return {path,cost,targetCost,blocked,target};
+}
+function treeGoalSummary(){
+ const route=treeGoalRoute();
+ if(!route)return '';
+ const {cost,targetCost,blocked,target}=route;
+ const balance=Math.max(0,cost-loopPlan.shards);
+ let message='Цель достигнута в этом плане.';
+ if(cost)message='Осталось вложить '+cost+' ✧. '+(balance?'Не хватает '+balance+' ✧.':'Осколков хватает.');
+ if(blocked)message='Чтобы открыть путь, снимите «'+blocked.name+'». Стоимость оставшихся уровней — '+cost+' ✧.';
+ const breakdown=cost>targetCost?'<br>Сам узел '+targetCost+' ✧ · Предшественники '+(cost-targetCost)+' ✧':'';
+ return '<div class="tree-goal-summary"><p><b>Цель — '+target.name+' · ур. '+meta.treeGoal.level+'</b><br>'+message+breakdown+'</p>'+
+  '<button class="speed" data-tree-goal="clear">Снять отметку</button></div>';
+}
 function renderTreeMap(){
  const ids=['power',...eternityBranches.flatMap(branch=>branch.nodes)];
+ const route=treeGoalRoute();
+ const marked=new Set(route?.path);
  const edges=ids.slice(1).map(id=>{
   const parent=previousNode(id);
   const from=treeNodePosition(parent),to=treeNodePosition(id);
-  return '<line x1="'+from.x+'" y1="'+from.y+'" x2="'+to.x+'" y2="'+to.y+'" class="'+(loopPlan.up[parent]?'open-edge':'')+'"/>';
+  return '<line x1="'+from.x+'" y1="'+from.y+'" x2="'+to.x+'" y2="'+to.y+'" class="'+(loopPlan.up[parent]?'open-edge ':'')+(marked.has(id)?'goal-edge':'')+'"/>';
  }).join('');
  const nodes=ids.map(id=>{
   const item=eternal.find(entry=>entry.id===id);
@@ -244,16 +261,19 @@ function renderTreeMap(){
   const state=excluded?'excluded':level?'invested':parent&&!loopPlan.up[parent]?'locked':'ready';
   const shape=item.choice?'radial-choice':item.unlock?'radial-square':'radial-round';
   const pos=treeNodePosition(id);
-  return `<button class="radial-node ${state} ${shape} ${id==='power'?'radial-core':''}" data-tree-node="${id}" aria-pressed="${loopPlan.node===id}" aria-label="${item.name}, ${tr('уровень','level')} ${level}${excluded?tr(", исключено выбором ",", excluded by choosing ")+excluded.name:""}" title="${item.name}" style="left:${pos.x/6.4}%;top:${pos.y/3.65}%"><span aria-hidden="true">${item.glyph}</span><b>${level}</b></button>`;
+  const complete=item.unlock&&level>0;
+  const goalClass=id===route?.target.id?'goal-node':marked.has(id)?'goal-path':'';
+  return `<button class="radial-node ${state} ${shape} ${id==='power'?'radial-core':''} ${goalClass}" data-tree-node="${id}" aria-pressed="${loopPlan.node===id}" aria-label="${item.name}, уровень ${level}${complete?", изучено полностью":""}${excluded?", исключено выбором "+excluded.name:""}" title="${item.name}" style="left:${pos.x*100/treeSize.width}%;top:${pos.y*100/treeSize.height}%"><span aria-hidden="true">${item.glyph}</span><b class="${complete?'tree-complete':''}" aria-hidden="true">${complete?'✓':level}</b></button>`;
  }).join('');
- return '<div class="tree-map"><div class="tree-toolbar"><button class="speed" data-tree-zoom="out" aria-label="'+tr('Отдалить','Zoom out')+'">−</button><output id="treeZoomLabel">100%</output><button class="speed" data-tree-zoom="in" aria-label="'+tr('Приблизить','Zoom in')+'">+</button><button class="speed" data-tree-zoom="reset">'+tr('Сбросить вид','Reset view')+'</button></div><small class="tree-nav-hint">'+tr('Колесо меняет масштаб. Потяните за фон, чтобы сдвинуть карту.','The wheel zooms. Drag the background to move the map.')+'</small>'+
-  '<div class="radial-tree" id="treeViewport" tabindex="0" aria-label="'+tr('Дерево вечности. Стрелки перемещают карту, плюс и минус меняют масштаб','Eternity tree. Arrow keys move the map, plus and minus zoom')+'"><div class="tree-stage" id="treeStage"><svg viewBox="0 0 640 365" aria-hidden="true">'+edges+'</svg>'+
-  '<span class="tree-theme theme-army">'+tr('Войско','Army')+'</span><span class="tree-theme theme-supply">'+tr('Снабжение','Supply')+'</span><span class="tree-theme theme-wall">'+tr('Цитадель','Citadel')+'</span><span class="tree-theme theme-scout">'+tr('Разведка','Scouting')+'</span><span class="tree-theme theme-hero">'+tr('Маг времени','Time Mage')+'</span>'+nodes+'</div></div></div>';
+ return '<div class="tree-map"><div class="tree-toolbar"><button class="speed" data-tree-zoom="out" aria-label="Отдалить">−</button><output id="treeZoomLabel">100%</output><button class="speed" data-tree-zoom="in" aria-label="Приблизить">+</button><button class="speed" data-tree-zoom="reset">Сбросить вид</button></div><small class="tree-nav-hint">Колесо меняет масштаб. Потяните за фон, чтобы сдвинуть карту.</small>'+
+  '<div class="radial-tree" id="treeViewport" tabindex="0" aria-label="Дерево вечности. Стрелки перемещают карту, плюс и минус меняют масштаб"><div class="tree-stage" id="treeStage"><svg viewBox="0 0 '+treeSize.width+' '+treeSize.height+'" aria-hidden="true">'+edges+'</svg>'+
+  '<span class="tree-theme theme-army">Войско</span><span class="tree-theme theme-supply">Снабжение</span><span class="tree-theme theme-wall">Цитадель</span><span class="tree-theme theme-scout">Разведка</span><span class="tree-theme theme-hero">Маг времени</span>'+nodes+'</div></div></div>';
 }
 function bindTreeNavigation(){
  const viewport=$('treeViewport'),stage=$('treeStage'),view=loopPlan.view;
  function paint(){
-  const maxX=(viewport.clientWidth||0)*view.scale/2,maxY=(viewport.clientHeight||0)*view.scale/2;
+  const panLimit=Math.max(0,(view.scale-1)/2)+.15;
+  const maxX=(viewport.clientWidth||0)*panLimit,maxY=(viewport.clientHeight||0)*panLimit;
   view.x=Math.max(-maxX,Math.min(maxX,view.x));
   view.y=Math.max(-maxY,Math.min(maxY,view.y));
   stage.style.transform='translate('+view.x+'px,'+view.y+'px) scale('+view.scale+')';
@@ -280,11 +300,13 @@ function bindTreeNavigation(){
  let drag=null;
  viewport.addEventListener('pointerdown',event=>{
   if(drag||event.button!==0||event.target.closest('button'))return;
-  drag={id:event.pointerId,x:event.clientX,y:event.clientY};
+  drag={id:event.pointerId,x:event.clientX,y:event.clientY,moved:false};
   viewport.setPointerCapture(event.pointerId);
  });
  viewport.addEventListener('pointermove',event=>{
   if(drag?.id!==event.pointerId)return;
+  if(!drag.moved&&Math.hypot(event.clientX-drag.x,event.clientY-drag.y)<5)return;
+  drag.moved=true;
   view.x+=event.clientX-drag.x;
   view.y+=event.clientY-drag.y;
   drag.x=event.clientX;drag.y=event.clientY;
@@ -302,8 +324,7 @@ function bindTreeNavigation(){
  });
  paint();
 }
-function renderLoopPlanner(){
- if(!loopPlan)return;
+function treeInspector(){
  const id=loopPlan.node;
  const item=eternal.find(entry=>entry.id===id);
  const level=loopPlan.up[id]||0;
@@ -313,26 +334,34 @@ function renderLoopPlanner(){
  const excluded=excludedBy(item,loopPlan.up);
  const price=eternalPrice(item,level);
  const parentName=parent?eternal.find(entry=>entry.id===parent).name:'';
- show(`<div class="eyebrow">${tr('ПЕРЕД НОВЫМ РАССВЕТОМ','BEFORE A NEW DAWN')}</div><h2>${tr('Дерево вечности','Eternity tree')}</h2>
- <p>${tr('Начните с урона в центре. Первый уровень открывает путь дальше. Круги можно улучшать повторно, квадраты — один раз. В каждой жёлтой паре доступен один выбор.','Start with damage in the center. The first level opens the way further. Circles can be upgraded repeatedly, squares only once. Each yellow pair allows one choice.')}</p>
- <div class="plan-budget"><span>${tr('Свободно','Free')} <b>${loopPlan.shards} ✧</b></span><span>${tr('Общий пул','Total pool')} <b>${loopPlan.total} ✧</b></span></div>
- ${loopPlan.refunded?tr('<p>Возвращено '+loopPlan.refunded+' ✧ за прежние улучшения без обязательных предшественников.</p>','<p>Refunded '+loopPlan.refunded+' ✧ for earlier upgrades missing their required predecessors.</p>'):''}
- <div class="challenge-list">${challengePicker()}</div><div class="tree-layout">${renderTreeMap()}
- <article class="tree-node tree-inspector">
+ return `
   <div class="tree-node-heading"><span aria-hidden="true">${item.glyph}</span><h3>${item.name}</h3></div>
   <p>${item.desc}</p>
-  <small>${excluded?tr('Зачёркнуто: выбрано «'+excluded.name+'»','Crossed out: “'+excluded.name+'” is chosen'):locked?tr('Требуется: '+parentName+' · ур. 1','Requires: '+parentName+' · lv. 1'):item.choice?tr('Выберите один из двух вариантов','Choose one of the two options'):item.unlock?tr('Один уровень','Single level'):tr('Несколько уровней','Multiple levels')}</small>
+  <small>${excluded?'Зачёркнуто: выбрано «'+excluded.name+'»':locked?'Требуется: '+parentName+' · ур. 1':item.choice?'Выберите один из двух вариантов':item.unlock?'Один уровень':'Несколько уровней'}</small>
   <div class="tree-node-controls">
-   <button data-plan="remove" data-id="${id}" ${level?'':'disabled'} aria-label="${tr('Уменьшить','Decrease')} ${item.name}">−</button>
+   <button data-plan="remove" data-id="${id}" ${level?'':'disabled'} aria-label="Уменьшить ${item.name}">−</button>
    <b>${level}${item.unlock?' / 1':''}</b>
-   <button data-plan="add" data-id="${id}" ${excluded||locked||capped||loopPlan.shards<price?'disabled':''} aria-label="${tr('Увеличить','Increase')} ${item.name}">+</button>
-   <span>${capped?tr('Освоено','Mastered'):price+' ✧'}</span>
+   <button data-plan="add" data-id="${id}" ${excluded||locked||capped||loopPlan.shards<price?'disabled':''} aria-label="Увеличить ${item.name}">+</button>
+   <span>${capped?'Освоено':price+' ✧'}</span>
   </div>
- </article></div>
- <p class="plan-note">${tr('Снятие последнего уровня узла возвращает очки всех следующих узлов.','Removing a node’s last level refunds the points of every node after it.')}</p>
- <button class="refund-button" id="refundAll" ${invested(loopPlan.up)===0?'disabled':''}>${tr('Вернуть все очки','Refund all points')}</button>
- <button class="primary" id="confirmLoopPlan">${tr('Начать петлю','Start loop')} ${meta.loop+1} →</button><button class="cancel" id="closeModal">${tr('Отмена','Cancel')}</button>`);
+  ${capped?'':'<button class="speed tree-goal-button" data-tree-goal="set">Отметить как цель</button>'}
+ `;
+}
+function renderLoopPlanner(){
+ if(!loopPlan)return;
+ const modal=$('modal');
+ const scroll=modal.open?modal.scrollTop:0;
+ show(`<div class="eyebrow">ПЕРЕД НОВЫМ РАССВЕТОМ</div><h2>Дерево вечности</h2>
+ <p>Начните с урона в центре. Первый уровень открывает путь дальше. Круги можно улучшать повторно, квадраты — один раз. В каждой жёлтой паре доступен один выбор.</p>
+ <div class="plan-budget"><span>Свободно <b>${loopPlan.shards} ✧</b></span><span>Общий пул <b>${loopPlan.total} ✧</b></span></div>
+ ${loopPlan.refunded?'<p>Возвращено '+loopPlan.refunded+' ✧ за прежние улучшения без обязательных предшественников.</p>':''}
+ <div class="challenge-list">${challengePicker()}</div>${treeGoalSummary()}<div class="tree-layout">${renderTreeMap()}
+ <article class="tree-node tree-inspector" id="treeInspector">${treeInspector()}</article></div>
+ <p class="plan-note">Снятие последнего уровня узла возвращает очки всех следующих узлов.</p>
+ <button class="refund-button" id="refundAll" ${invested(loopPlan.up)===0?'disabled':''}>Вернуть все очки</button>
+ <button class="primary" id="confirmLoopPlan">Начать петлю ${meta.loop+1} →</button><button class="cancel" id="closeModal">Отмена</button>`);
  bindTreeNavigation();
+ modal.scrollTop=scroll;
 }
 function adjustLoopPlan(id,action){
  if(!loopPlan||!run.dead)return;
@@ -354,56 +383,65 @@ function adjustLoopPlan(id,action){
 function refundLoopPlan(){if(!loopPlan||!run.dead)return;loopPlan.up=initialUp();loopPlan.shards=loopPlan.total;renderLoopPlanner();}
 function commitLoopPlan(){if(!loopPlan||!run.dead)return;meta.up={...loopPlan.up};meta.shards=loopPlan.shards;const mode=loopPlan.mode;loopPlan=null;newLoop(mode);}
 function resetProgress(){
- saveEpoch=Math.max(Date.now(),saveEpoch+1);meta={loop:1,shards:0,best:0,eternityRecord:0,up:initialUp()};run=fresh();logs=[];particles=[];loopPlan=null;openedBuilding=null;freeze=0;cooldown=0;paused=false;speed=1;t=0;$('speed').textContent='1×';$('pause').textContent='Ⅱ';$('pause').setAttribute('aria-label',tr('Пауза','Pause'));$('modal').close();log('Новая история. Крестьяне и маг времени готовы к первому дню.','A new story. The peasants and the time mage are ready for the first day.');shop();save();toast(tr('Прогресс сброшен. Начинается первая петля.','Progress reset. The first loop begins.'));
+ saveEpoch=Math.max(Date.now(),saveEpoch+1);meta={loop:1,shards:0,best:0,eternityRecord:0,up:initialUp()};run=fresh();logs=[];particles=[];loopPlan=null;openedBuilding=null;freeze=0;cooldown=0;paused=false;speed=1;t=0;$('speed').textContent='1×';$('pause').textContent='Ⅱ';$('pause').setAttribute('aria-label','Пауза');$('modal').close();log('Новая история. Крестьяне и маг времени готовы к первому дню.');shop();save();toast('Прогресс сброшен. Начинается первая петля.');
 }
 function cityDescription(item){
- if(item.id==='farm')return '+'+(run.bonus.farmYield?3:2)+tr(' еды после каждой победы',' food after every victory');
+ if(item.id==='farm')return '+'+(run.bonus.farmYield?3:2)+' еды после каждой победы';
  const requirement=trainingUnlock[trainingKind(item.id)];
- if(requirement&&!meta.up[requirement])return tr('Откройте школу за осколки вечности.','Unlock the school with eternity shards.');
- if(['archer','mage','warrior'].includes(item.id)&&freeResidents()<=0)return tr('Нет свободных крестьян. Постройте или улучшите дома.','No free peasants. Build or upgrade houses.');
-if(item.id==='wall')return run.up.wall?tr('Укрепить каменную стену · +150 прочности','Reinforce the stone wall · +150 durability'):tr('Заменить частокол каменной стеной · +150 прочности','Replace the palisade with a stone wall · +150 durability');if(item.id==='archer'||item.id==='mage'){const st=unitStats(item.id==='archer'?'archer':'mage');return Math.round(actualDamage(st))+tr(' урона · ',' damage · ')+st.attackRate.toFixed(2)+tr(' атак/с',' attacks/s')+(item.id==='mage'?tr(' · взрыв ×',' · blast ×')+(st.radius/.055).toFixed(2):tr(' · одна цель',' · single target'));}return item.desc;}
+ if(requirement&&!meta.up[requirement])return 'Откройте школу за осколки вечности.';
+ if(['archer','mage','warrior'].includes(item.id)&&freeResidents()<=0)return 'Нет свободных крестьян. Постройте или улучшите дома.';
+if(item.id==='wall')return run.up.wall?'Укрепить каменную стену · +150 прочности':'Заменить частокол каменной стеной · +150 прочности';if(item.id==='archer'||item.id==='mage'){const st=unitStats(item.id==='archer'?'archer':'mage');return Math.round(actualDamage(st))+' урона · '+st.attackRate.toFixed(2)+' атак/с'+(item.id==='mage'?' · взрыв ×'+(st.radius/.055).toFixed(2):' · одна цель');}return item.desc;}
 function trainingSummary(kind){
  const st=unitStats(kind);
- const extra=kind==='mage'?'<span>'+tr('Радиус','Radius')+' <b>×'+(st.radius/.055).toFixed(2)+'</b></span>':kind==='warrior'?'<span>'+tr('Здоровье','Health')+' <b>'+Math.round(warriorHealth())+'</b></span>':'';
- return '<div class="unit-training"><strong>'+tr('Боевые параметры','Combat stats')+'</strong><div><span>'+tr('Урон','Damage')+' <b>'+Math.round(actualDamage(st))+'</b></span><span>'+tr('Атак/с','Attacks/s')+' <b>'+st.attackRate.toFixed(2)+'</b></span>'+extra+'</div>'+(kind==='mage'?'<small>'+tr('Герой получает урон и скорость атаки: ','The hero gets the damage and attack speed: ')+Math.round(actualDamage(unitStats('mage',true)))+tr(' урона за удар по одной цели.',' damage per hit on a single target.')+'</small>':'')+'</div>';
+ const extra=kind==='mage'?'<span>Радиус <b>×'+(st.radius/.055).toFixed(2)+'</b></span>':kind==='warrior'?'<span>Здоровье <b>'+Math.round(warriorHealth())+'</b></span>':'';
+ return '<div class="unit-training"><strong>Боевые параметры</strong><div><span>Урон <b>'+Math.round(actualDamage(st))+'</b></span><span>Атак/с <b>'+st.attackRate.toFixed(2)+'</b></span>'+extra+'</div>'+(kind==='mage'?'<small>Герой получает урон и скорость атаки: '+Math.round(actualDamage(unitStats('mage',true)))+' урона за удар по одной цели.</small>':'')+'</div>';
 }
 function canTrainProfession(kind){
  const course=city.find(item=>item.id===kind);
  const requirement=trainingUnlock[kind];
  return unlocked(course.building)&&(!requirement||meta.up[requirement]>0);
 }
+function retrainPrice(from,to){
+ if(to==='civilian')return retrainFee;
+ const source=city.find(item=>item.id===from);
+ const target=city.find(item=>item.id===to);
+ const sourcePrice=price(source,run.up[from]-1);
+ return retrainFee+Math.max(0,price(target)-sourcePrice);
+}
 function professionControls(kind){
  if(!run.up[kind])return '';
  const options=['civilian',...Object.keys(professions).filter(target=>target!==kind&&canTrainProfession(target))];
  const buttons=options.map(target=>{
-  const label=target==='civilian'?tr('Вернуть к мирной работе','Return to civilian work'):tr('Переобучить: ','Retrain: ')+professions[target];
-  return '<button class="speed" data-town-action="retrain-'+kind+'-'+target+'" '+(run.time<retrainCost?'disabled':'')+'>'+label+' · '+retrainCost+' ◷</button>';
+  const label=target==='civilian'?'Вернуть к мирной работе':'Переобучить: '+professions[target];
+  const cost=retrainPrice(kind,target);
+  return '<button class="speed" data-town-action="retrain-'+kind+'-'+target+'" '+(run.time<cost?'disabled':'')+'>'+label+' · '+cost+' ◷</button>';
  });
  return '<div class="patch-actions">'+buttons.join('')+'</div>';
 }
 function buildingUpgrades(id,items){
- if(id==='barracks')return '<div class="barracks-grid">'+[['warrior',tr('Воины','Warriors')],['archer',tr('Лучники','Archers')]].map(([kind,name])=>'<section><h3>'+name+'</h3>'+trainingSummary(kind)+items.filter(item=>trainingKind(item.id)===kind).map(upgradeCard).join('')+professionControls(kind)+'</section>').join('')+'</div>';
+ if(id==='barracks')return '<div class="barracks-grid">'+[['warrior','Воины'],['archer','Лучники']].map(([kind,name])=>'<section><h3>'+name+'</h3>'+trainingSummary(kind)+items.filter(item=>trainingKind(item.id)===kind).map(upgradeCard).join('')+professionControls(kind)+'</section>').join('')+'</div>';
  return (id==='academy'?trainingSummary('mage'):'')+items.map(upgradeCard).join('')+(id==='academy'?professionControls('mage'):'');
 }
 function upgradeCard(item){
- const title=item.id==='wall'&&!run.up.wall?tr('Построить каменную стену','Build a stone wall'):item.name;
+ const title=item.id==='wall'&&!run.up.wall?'Построить каменную стену':item.name;
  const cost=price(item)+' ◷';
  return '<button class="upgrade" data-city="'+item.id+'" '+(canBuyCity(item)?'':'disabled')+
   '><span class="glyph">'+item.glyph+'</span><span class="upgrade-copy"><span class="name">'+
-  title+' <small>'+tr('ур. ','lv. ')+run.up[item.id]+'</small></span><small class="desc">'+cityDescription(item)+
+  title+' <small>ур. '+run.up[item.id]+'</small></span><small class="desc">'+cityDescription(item)+
   '</small></span><span class="cost">'+cost+'</span></button>';
 }
-function cityMarkers(){$('cityMarkers').innerHTML=buildings.map(b=>`<button class="building-marker ${unlocked(b.id)?'available':'locked'}" style="left:${b.x*100}%;top:${b.y*100+10}%" data-building="${b.id}" ${!unlocked(b.id)||run.dead?'disabled':''}><span>${unlocked(b.id)?(b.id==='farm'&&!run.up.farm?tr('Участок ферм','Farm plot'):b.id==='house'&&!run.up.house?tr('Участок домов','Housing plot'):b.name):tr('▧ Участок','▧ Plot')}</span><small>${unlocked(b.id)?b.sub:tr('Нужен чертёж вечности','Needs an eternity blueprint')}</small></button>`).join('');}
+function cityMarkers(){$('cityMarkers').innerHTML=buildings.map(b=>`<button class="building-marker ${unlocked(b.id)?'available':'locked'}" style="left:${b.x*100}%;top:${b.y*100+10}%" data-building="${b.id}" ${!unlocked(b.id)||run.dead?'disabled':''}><span>${unlocked(b.id)?(b.id==='farm'&&!run.up.farm?'Участок ферм':b.id==='house'&&!run.up.house?'Участок домов':b.name):'▧ Участок'}</span><small>${unlocked(b.id)?b.sub:'Нужен чертёж вечности'}</small></button>`).join('');}
 function shop(){
- $('shopTitle').textContent=run.active?tr('Защитники города','Town defenders'):run.planning?tr('Расстановка отряда','Squad setup'):tr('Подготовка деревни','Village preparation');
+ hoveredFormation=null;
+ $('shopTitle').textContent=run.active?'Защитники города':run.planning?'Расстановка отряда':'Подготовка деревни';
  $('shopIntro').innerHTML=run.active
-  ?tr('<h2>Защитники в бою</h2><p>Крестьяне и воины сражаются в ближнем бою. Лучники и маг времени поражают одну цель. Хрономанты бьют по области.</p>','<h2>Defenders in battle</h2><p>Peasants and warriors fight in melee. Archers and the time mage hit a single target. Chronomancers strike an area.</p>')
-  :run.planning?tr('<h2>Займите позиции</h2><p>Выберите бойца, чтобы увидеть дальность атаки, затем нажмите на свободную точку. Лучников и магов можно поставить на свободное место каменной стены.</p>','<h2>Take your positions</h2><p>Select a fighter to see their attack range, then click a free spot. Archers and mages can be placed on a free spot on the stone wall.</p>')
-  :tr('<h2>Решения на сегодня</h2><p>Открывайте здания на карте, чтобы строить, улучшать и обучать жителей.</p>','<h2>Today’s decisions</h2><p>Open buildings on the map to build, upgrade and train residents.</p>');
+  ?'<h2>Защитники в бою</h2><p>Крестьяне и воины сражаются в ближнем бою. Лучники и маг времени поражают одну цель. Хрономанты бьют по области.</p>'
+  :run.planning?'<h2>Займите позиции</h2><p>Выберите бойца, чтобы увидеть дальность атаки, затем нажмите на свободную точку. Лучников и магов можно поставить на свободное место каменной стены.</p>'
+  :'<h2>Решения на сегодня</h2><p>Открывайте здания на карте, чтобы строить, улучшать и обучать жителей.</p>';
  $('shop').innerHTML=run.active||run.planning
   ?scoutReport()+(run.planning?planningTools():'')+'<div id="unitRoster"></div>'
-  :(run.bonus.battleReport&&run.lastReport?reportMarkup():'')+'<div class="village-summary"><p>'+tr('Крестьяне в отряде','Peasants in the squad')+' <b>'+Math.max(0,freeResidents())+'</b></p><p>'+tr('Обученные бойцы','Trained fighters')+' <b>'+recruits()+'</b></p>'+foodSummary()+'<p>'+tr('Укрепление','Fortification')+' <b>'+fortName()+'</b></p></div>';
- $('shopNote').textContent=run.active?tr('⚔ Павшие возвращаются после победы.','⚔ The fallen return after a victory.'):run.dead?tr('Распределите осколки в окне «Начать новую петлю».','Spend your shards in the “Start a new loop” window.'):tr('Каждый житель съедает 1 еду после сбора урожая. Нехватка снижает здоровье отряда на следующий день.','Each resident eats 1 food after the harvest. A shortage lowers the squad’s health the next day.');
+  :(run.bonus.battleReport&&run.lastReport?reportMarkup():'')+'<div class="village-summary"><p>Крестьяне в отряде <b>'+Math.max(0,freeResidents())+'</b></p><p>Обученные бойцы <b>'+recruits()+'</b></p>'+foodSummary()+'<p>Укрепление <b>'+fortName()+'</b></p></div>';
+ $('shopNote').textContent=run.active?'⚔ Павшие возвращаются после победы.':run.dead?'Распределите осколки в дереве вечности перед новой петлёй.':'Каждый житель съедает 1 еду после сбора урожая. Нехватка снижает здоровье отряда на следующий день.';
  $('forecast').textContent=modes[run.mode].name+' · '+weatherTypes[weather()].name+'. '+weatherTypes[weather()].desc;
  cityMarkers();
  update();
@@ -412,8 +450,8 @@ function shop(){
 function renderRoster(){
  if(!run.active&&!run.planning)return;
  $('unitRoster').innerHTML=defenders().map(unit=>{
-  const name=unit.hero?tr('Маг времени','Time Mage'):({mage:tr('Хрономант','Chronomancer'),archer:tr('Лучник','Archer'),peasant:tr('Крестьянин','Peasant'),warrior:tr('Воин','Warrior')})[unit.kind];
-  const status=unit.hp<=0?tr('Пал · вернётся после победы','Fallen · returns after a victory'):unit.onWall?tr('На укреплении · защищён','On the fortification · protected'):Math.ceil(unit.hp)+' / '+unit.maxHp+tr(' здоровья',' health');
+  const name=unit.hero?'Маг времени':({mage:'Хрономант',archer:'Лучник',peasant:'Крестьянин',warrior:'Воин'})[unit.kind];
+  const status=unit.hp<=0?'Пал · вернётся после победы':unit.onWall?'На укреплении · защищён':Math.ceil(unit.hp)+' / '+unit.maxHp+' здоровья';
   return '<div class="roster-unit"><span class="unit-icon">'+({mage:'✦',archer:'➶',peasant:'⚒',warrior:'⚔'})[unit.kind]+'</span><span><b>'+name+'</b><small>'+status+'</small></span><span class="roster-damage">'+Math.round(actualDamage(unit))+'</span></div>';
  }).join('');
 }
@@ -427,39 +465,39 @@ function openArmy(){
   const unit=group[0];
   const onWall=group.filter(member=>member.onWall).length;
   const stats=[
-   tr('Здоровье ','Health ')+unit.maxHp,
-   tr('Урон за удар ','Damage per hit ')+formatArmyStat(actualDamage(unit)),
-   tr('Атак/с ','Attacks/s ')+formatArmyStat(unit.attackRate)
+   'Здоровье '+unit.maxHp,
+   'Урон за удар '+formatArmyStat(actualDamage(unit)),
+   'Атак/с '+formatArmyStat(unit.attackRate)
   ];
-  if(unit.radius)stats.push(tr('Радиус взрыва ×','Blast radius ×')+formatArmyStat(unit.radius/.055));
-  if(onWall)stats.push(tr('На стене ','On the wall ')+onWall);
+  if(unit.radius)stats.push('Радиус взрыва ×'+formatArmyStat(unit.radius/.055));
+  if(onWall)stats.push('На стене '+onWall);
   rows.push('<li><strong>'+unitNames[kind]+' · '+group.length+'</strong><span>'+stats.join(' · ')+'</span></li>');
  }
  const hunger=hungerPenalty();
- show(tr('<div class="eyebrow">ГОРОД / ЗАЩИТНИКИ</div><h2>Армия</h2><p>Всего бойцов: <b>','<div class="eyebrow">TOWN / DEFENDERS</div><h2>Army</h2><p>Total fighters: <b>')+units.length+'</b></p>'+
-  (rows.length?'<ul class="army-stats">'+rows.join('')+'</ul>':tr('<p>Сейчас в отряде нет бойцов.</p>','<p>There are no fighters in the squad right now.</p>'))+
-  (hunger&&units.some(unit=>!unit.hero)?tr('<p>Нехватка еды: жители начнут следующую волну с запасом здоровья на '+hunger+'% меньше.</p>','<p>Food shortage: residents will start the next wave with '+hunger+'% less health.</p>'):'')+
-  '<button class="cancel" id="closeModal">'+tr('Вернуться в город','Back to town')+'</button>');
+ show('<div class="eyebrow">ГОРОД / ЗАЩИТНИКИ</div><h2>Армия</h2><p>Всего бойцов: <b>'+units.length+'</b></p>'+
+  (rows.length?'<ul class="army-stats">'+rows.join('')+'</ul>':'<p>Сейчас в отряде нет бойцов.</p>')+
+  (hunger&&units.some(unit=>!unit.hero)?'<p>Нехватка еды: жители начнут следующую волну с запасом здоровья на '+hunger+'% меньше.</p>':'')+
+  '<button class="cancel" id="closeModal">Вернуться в город</button>');
 }
 function formatArmyStat(value){
- return Number(value.toFixed(2)).toLocaleString(LOCALE);
+ return Number(value.toFixed(2)).toLocaleString('ru-RU');
 }
 function update(){
- $('time').textContent=Math.floor(run.time);$('shards').textContent=meta.shards;$('recordTotal').textContent=`${tr('Общий пул','Total pool')}: ${meta.eternityRecord} ✧`;$('income').textContent=`${tr('Победа','Victory')}: +${waveReward()} ◷`;$('lootEarned').textContent=`${tr('Добыча','Loot')}: +${run.waveLoot} ◷`;$('loop').textContent=String(meta.loop).padStart(2,'0');$('best').textContent=meta.best;$('hpText').textContent=`${Math.ceil(Math.max(0,run.hp))} / ${maxHP()}`;$('hpBar').style.width=`${Math.max(0,run.hp/maxHP()*100)}%`;$('hpBar').style.background=run.hp/maxHP()<.3?'#d2878c':'#a4dfb0';
+ $('time').textContent=Math.floor(run.time);$('shards').textContent=meta.shards;$('recordTotal').textContent=`Общий пул: ${meta.eternityRecord} ✧`;$('income').textContent=`Победа: +${waveReward()} ◷`;$('lootEarned').textContent=`Добыча: +${run.waveLoot} ◷`;$('loop').textContent=String(meta.loop).padStart(2,'0');$('best').textContent=meta.best;$('hpText').textContent=`${Math.ceil(Math.max(0,run.hp))} / ${maxHP()}`;$('hpBar').style.width=`${Math.max(0,run.hp/maxHP()*100)}%`;$('hpBar').style.background=run.hp/maxHP()<.3?'#d2878c':'#a4dfb0';
  $('army').textContent=defenders().filter(unit=>unit.hp>0).length;
  $('provisions').textContent=run.food;
  $('population').textContent=population();
  $('fortLabel').textContent=fortName();
  $('garrisonButton').hidden=run.active||run.dead||run.planning;
  $('armyButton').hidden=run.active||run.dead||run.planning;
- $('garrisonButton').textContent=run.up.wall?tr('Гарнизон стены · ','Wall garrison · ')+run.garrison.filter(Boolean).length+'/'+wallPositions().length:tr('Частокол','Palisade');$('damage').textContent=Math.round(dps());$('waveLabel').textContent=run.active?`${tr('Волна','Wave')} ${run.wave+1}${(run.wave+1)%5===0?tr(' · БОСС',' · BOSS'):''}`:`${tr('Перед волной','Before wave')} ${run.wave+1}`;$('fieldTitle').textContent=run.active?tr('Защитите южный рубеж','Defend the southern line'):tr('Ваш город вне времени','Your town outside time');$('phaseLabel').textContent=run.active?tr('ЭТАП 02 / ОБОРОНА','STAGE 02 / DEFENSE'):tr('ЭТАП 01 / ПОДГОТОВКА','STAGE 01 / PREPARATION');
+ $('garrisonButton').textContent=run.up.wall?'Гарнизон стены · '+run.garrison.filter(Boolean).length+'/'+wallPositions().length:'Частокол';$('damage').textContent=Math.round(dps());$('waveLabel').textContent=run.active?`Волна ${run.wave+1}${(run.wave+1)%5===0?' · БОСС':''}`:`Перед волной ${run.wave+1}`;$('fieldTitle').textContent=run.active?'Защитите южный рубеж':'Ваш город вне времени';$('phaseLabel').textContent=run.active?'ЭТАП 02 / ОБОРОНА':'ЭТАП 01 / ПОДГОТОВКА';
  $('field').classList.toggle('in-battle',run.active||run.planning);
  $('field').classList.toggle('in-planning',Boolean(run.planning));
  $('field').classList.toggle('fallen-city',Boolean(run.defeated));
  $('cityMarkers').hidden=run.active||run.planning||run.defeated;
- $('restoreFormation').hidden=!run.planning;$('cancelPlanning').hidden=!run.planning;$('start').hidden=run.active;$('start').textContent=run.dead?tr('Начать новую петлю ↶','Start a new loop ↶'):run.planning?tr('В бой','To battle'):`${tr('Начать волну','Start wave')} ${run.wave+1} ↓`;$('freeze').hidden=!run.active||run.mode==='noMagic';$('speed').hidden=!run.active;$('pause').hidden=!run.active;$('freeze').disabled=run.dead||cooldown>0;$('freezeName').textContent=spells[currentSpell()].name;$('freezeLabel').textContent=cooldown>0?tr('Использовано в этой волне','Used this wave'):tr('Бесплатно · 1 раз за волну','Free · once per wave');
- $('sceneMessage').hidden=run.active||run.planning;$('sceneMessage').innerHTML=run.dead?(run.defeated?tr('Город пал','The town has fallen'):tr('Петля завершена','Loop complete'))+tr('<span>Распределите осколки перед новой петлёй</span>','<span>Spend your shards before the new loop</span>'):run.lastReward?tr(`Волна ${run.wave} отражена · +${run.lastReward} ◷<span>Посетите здания и подготовьте отряд</span>`,`Wave ${run.wave} repelled · +${run.lastReward} ◷<span>Visit your buildings and prepare the squad</span>`):tr('Первый день новой истории<span>Постройте ферму, чтобы собрать первый урожай</span>','The first day of a new story<span>Build a farm to gather your first harvest</span>');$('enemyCount').textContent=run.active?`${tr('Монстров','Monsters')}: ${run.enemies.length+count()-run.spawned}`:tr(`Урожай: +${harvest()} еды / день`,`Harvest: +${harvest()} food / day`);$('phaseHint').textContent=run.active?tr('Враги наступают с севера. Крестьяне встречают орду перед укреплением.','Enemies advance from the north. Peasants meet the horde in front of the fortification.'):run.dead?tr('Город вернётся с новой петлёй. Открытые здания сохранятся.','The town returns with the new loop. Unlocked buildings are kept.'):tr('Дома стоят хроны. В конце дня каждый житель съедает 1 еду из урожая и запасов.','Houses cost chronos. At the end of the day, each resident eats 1 food from the harvest and stores.');$('battleLegend').hidden=!run.active;if(run.planning){$('fieldTitle').textContent=tr('Расстановка перед волной','Setup before the wave');$('phaseLabel').textContent=tr('ЭТАП 02 / РАССТАНОВКА','STAGE 02 / SETUP');$('phaseHint').textContent=tr('Выберите бойца и нажмите на точку. «В бой» запустит волну.','Select a fighter and click a spot. “To battle” starts the wave.');}else if(run.active){$('phaseLabel').textContent=tr('ЭТАП 03 / ОБОРОНА','STAGE 03 / DEFENSE');
-  if(run.mode!=='noMagic')$('phaseHint').textContent=tr('Нажмите на мага времени, затем на поле, чтобы переместить его. Он продолжит атаковать на ходу.','Click the time mage, then the field, to move him. He keeps attacking on the move.');
+ $('restoreFormation').hidden=!run.planning;$('cancelPlanning').hidden=!run.planning;$('start').hidden=run.active;$('start').textContent=run.dead?'Дерево вечности ↶':run.planning?'В бой':`Начать волну ${run.wave+1} ↓`;$('freeze').hidden=!run.active||!spellUnlocked();$('speed').hidden=!run.active;$('pause').hidden=!run.active;$('freeze').disabled=run.dead||cooldown>0;$('freezeName').textContent=spells[currentSpell()].name;$('freezeLabel').textContent=cooldown>0?'Использовано в этой волне':'Бесплатно · 1 раз за волну';
+ $('sceneMessage').hidden=run.active||run.planning;$('sceneMessage').innerHTML=run.dead?(run.defeated?'Город пал':'Петля завершена')+'<span>Распределите осколки перед новой петлёй</span>':run.lastReward?`Волна ${run.wave} отражена · +${run.lastReward} ◷<span>Посетите здания и подготовьте отряд</span>`:'Первый день новой истории<span>Постройте ферму, чтобы собрать первый урожай</span>';$('enemyCount').textContent=run.active?`Монстров: ${run.enemies.length+count()-run.spawned}`:`Урожай: +${harvest()} еды / день`;$('phaseHint').textContent=run.active?'Враги наступают с севера. Крестьяне встречают орду перед укреплением.':run.dead?'Город вернётся с новой петлёй. Открытые здания сохранятся.':'Дома стоят хроны. В конце дня каждый житель съедает 1 еду из урожая и запасов.';$('battleLegend').hidden=!run.active;if(run.planning){$('fieldTitle').textContent='Расстановка перед волной';$('phaseLabel').textContent='ЭТАП 02 / РАССТАНОВКА';$('phaseHint').textContent='Выберите бойца и нажмите на точку. «В бой» запустит волну.';}else if(run.active){$('phaseLabel').textContent='ЭТАП 03 / ОБОРОНА';
+  if(run.mode!=='noMagic')$('phaseHint').textContent='Нажмите на мага времени, затем на поле, чтобы переместить его. Он продолжит атаковать на ходу.';
  }
 }
 function buy(id){
@@ -469,51 +507,56 @@ function buy(id){
  run.up[id]++;
  if(id==='wall')run.hp=Math.min(maxHP(),run.hp+150);
  run.units=[];
- log(item.name+': уровень '+run.up[id]+'.',item.name+': level '+run.up[id]+'.');
+ log(item.name+': уровень '+run.up[id]+'.');
  shop();
  save();
 }
-function repair(){if(run.active||run.planning||run.dead||!unlocked('bastion')||run.time<repairCost()||run.hp>=maxHP())return;run.time-=repairCost();run.hp=Math.min(maxHP(),run.hp+100);toast(tr('Укрепление восстановлено: +100','Fortification repaired: +100'));save();update();}
+function repair(){if(run.active||run.planning||run.dead||!unlocked('bastion')||run.time<repairCost()||run.hp>=maxHP())return;run.time-=repairCost();run.hp=Math.min(maxHP(),run.hp+100);toast('Укрепление восстановлено: +100');save();update();}
 const defenseTypes={
- stakes:{name:tr('Колья','Stakes'),cost:35,hp:65,desc:tr('Ранят врагов, пока те ломают колья.','Wound enemies while they break the stakes.')},
- trap:{name:tr('Ловушка','Trap'),cost:30,hp:1,desc:tr('Один раз наносит урон и замедляет врага.','Damages and slows an enemy once.')},
- barricade:{name:tr('Баррикада','Barricade'),cost:50,hp:180,desc:tr('Задерживает врагов, пока они её ломают.','Holds enemies back while they break it.')}
+ stakes:{name:'Колья',cost:35,hp:65,desc:'Ранят врагов, пока те ломают колья.'},
+ trap:{name:'Ловушка',cost:30,hp:1,desc:'Один раз наносит урон и замедляет врага.'},
+ barricade:{name:'Баррикада',cost:50,hp:180,desc:'Задерживает врагов, пока они её ломают.'}
 };
 function defenseRepairCost(item){
  const type=defenseTypes[item.kind];
  return Math.ceil(type.cost*(1-item.hp/type.hp)/5);
 }
 function defenseShop(button){
- return Object.entries(defenseTypes).map(([id,type])=>{
+ const total=run.defenses.reduce((sum,item)=>sum+defenseRepairCost(item),0);
+ const bulk=total?'<div class="patch-actions">'+button('fix-all','Починить всё за '+total+' ◷',run.time<total)+'</div>':'';
+ return bulk+Object.entries(defenseTypes).map(([id,type])=>{
   const count=run.defenses.filter(item=>item.kind===id).length;
   const repairs=run.defenses.map((item,index)=>{
    if(item.kind!==id||item.hp>=type.hp)return '';
    const cost=defenseRepairCost(item);
-   return '<div class="patch-actions"><span>'+tr('№','#')+(index+1)+' · '+(item.hp>0?Math.ceil(item.hp)+' / '+type.hp:tr('сломано или израсходовано','broken or used up'))+'</span>'+
-    button('fix-'+index,tr('Восстановить за ','Restore for ')+cost+' ◷',run.time<cost)+'</div>';
+   return '<div class="patch-actions"><span>№'+(index+1)+' · '+(item.hp>0?Math.ceil(item.hp)+' / '+type.hp:'сломано или израсходовано')+'</span>'+
+    button('fix-'+index,'Восстановить за '+cost+' ◷',run.time<cost)+'</div>';
   }).join('');
-  return '<p><b>'+type.name+' · '+count+'</b> — '+type.desc+'</p>'+button('buy-'+id,tr('Купить за ','Buy for ')+type.cost+' ◷',run.time<type.cost||run.defenses.length>=9)+repairs;
- }).join('')+tr('<p>До 9 сооружений. Расставьте их перед волной.</p>','<p>Up to 9 structures. Place them before the wave.</p>');
+  return '<p><b>'+type.name+' · '+count+'</b> — '+type.desc+'</p>'+button('buy-'+id,'Купить за '+type.cost+' ◷',run.time<type.cost||run.defenses.length>=9)+repairs;
+ }).join('')+'<p>До 9 сооружений. Расставьте их перед волной.</p>';
 }
-function repairDefense(index){
- const item=run.defenses[index];
- if(openedBuilding!=='workshop'||!item||item.hp>=defenseTypes[item.kind].hp)return false;
- const cost=defenseRepairCost(item);
- if(run.time<cost)return false;
+function repairDefenses(selection){
+ if(openedBuilding!=='workshop')return false;
+ const items=selection==='all'?run.defenses:[run.defenses[Number(selection)]];
+ const damaged=items.filter(item=>item&&item.hp<defenseTypes[item.kind].hp);
+ const cost=damaged.reduce((sum,item)=>sum+defenseRepairCost(item),0);
+ if(!damaged.length||run.time<cost)return false;
  run.time-=cost;
- item.hp=defenseTypes[item.kind].hp;
+ for(const item of damaged)item.hp=defenseTypes[item.kind].hp;
  return true;
 }
 function retrainProfession(from,to){
- if(!Object.hasOwn(professions,from)||!run.up[from]||run.time<retrainCost)return false;
+ if(!Object.hasOwn(professions,from)||!run.up[from])return false;
  const course=city.find(item=>item.id===from);
  if(openedBuilding!==course.building||!unlocked(course.building)||from===to)return false;
  if(to!=='civilian'&&(!Object.hasOwn(professions,to)||!canTrainProfession(to)))return false;
+ const cost=retrainPrice(from,to);
+ if(run.time<cost)return false;
  const formerKey=from+'-'+(--run.up[from]);
  delete run.formation[formerKey];
  run.garrison=run.garrison.map(key=>key===formerKey?null:key);
  if(to!=='civilian')run.up[to]++;
- run.time-=retrainCost;
+ run.time-=cost;
  return true;
 }
 function buyDefense(action){
@@ -527,16 +570,16 @@ function buyDefense(action){
 }
 function townControls(id){
  const button=(action,label,disabled)=>'<button class="speed" data-town-action="'+action+'" '+(disabled?'disabled':'')+'>'+label+'</button>';
- if(id==='house')return tr('<p>Жители: '+population()+' / '+housing()+'. Занято: '+employed()+'. Свободно: '+freeResidents()+'. Каждый житель расходует 1 еду в день.</p>','<p>Residents: '+population()+' / '+housing()+'. Employed: '+employed()+'. Free: '+freeResidents()+'. Each resident uses 1 food per day.</p>')+'<div class="patch-actions">'+
-  button('resident+',tr('Принять жителя','Take in a resident'),population()>=housing())+button('resident-',tr('Убрать жителя','Remove a resident'),freeResidents()<=0)+'</div>';
- if(id==='farm')return tr('<p>Урожай: '+harvest()+' еды. Расход: '+dailyFood()+'.</p>','<p>Harvest: '+harvest()+' food. Consumption: '+dailyFood()+'.</p>')+jobControls('farm',tr('Фермеры','Farmers'),run.up.farm,tr('+2 еды за фермера до поправки на погоду. Одно место на уровень фермы.','+2 food per farmer before weather. One spot per farm level.'),button);
- if(id==='workshop')return jobControls('build',tr('Строители','Builders'),Infinity,tr('+20 прочности после победы за строителя.','+20 durability after a victory per builder.'),button)+defenseShop(button);
+ if(id==='house')return '<p>Жители: '+population()+' / '+housing()+'. Занято: '+employed()+'. Свободно: '+freeResidents()+'. Каждый житель расходует 1 еду в день.</p><div class="patch-actions">'+
+  button('resident+','Принять жителя',population()>=housing())+button('resident-','Убрать жителя',freeResidents()<=0)+'</div>';
+ if(id==='farm')return '<p>Урожай: '+harvest()+' еды. Расход: '+dailyFood()+'.</p>'+jobControls('farm','Фермеры',run.up.farm,'+2 еды за фермера до поправки на погоду. Одно место на уровень фермы.',button);
+ if(id==='workshop')return jobControls('build','Строители',Infinity,'+20 прочности после победы за строителя.',button)+defenseShop(button);
  return '';
 }
 function jobControls(job,name,limit,desc,button){
  const count=run.workers[job];
  return '<p>'+name+': '+count+'. '+desc+'</p><div class="patch-actions">'+
-  button(job+'+',tr('Назначить','Assign'),freeResidents()<=0||count>=limit)+button(job+'-',tr('Освободить','Release'),!count)+'</div>';
+  button(job+'+','Назначить',freeResidents()<=0||count>=limit)+button(job+'-','Освободить',!count)+'</div>';
 }
 function townAction(action){
  if(run.active||run.planning||run.dead)return;
@@ -546,38 +589,38 @@ function townAction(action){
  else if(action==='farm-'&&openedBuilding==='farm'&&run.workers.farm>0)run.workers.farm--;
  else if(action==='build+'&&openedBuilding==='workshop'&&freeResidents()>0)run.workers.build++;
  else if(action==='build-'&&openedBuilding==='workshop'&&run.workers.build>0)run.workers.build--;
- else if(action.startsWith('fix-')){if(!repairDefense(Number(action.slice(4))))return;}
+ else if(action.startsWith('fix-')){if(!repairDefenses(action.slice(4)))return;}
  else if(action.startsWith('retrain-')){if(!retrainProfession(...action.split('-').slice(1)))return;}
  else if(!buyDefense(action))return;
  run.units=[];
  shop();save();openBuilding(openedBuilding);
 }
-function openBuilding(id){const b=buildings.find(b=>b.id===id);if(!b||!unlocked(id)||run.active||run.planning||run.dead)return;openedBuilding=id;const items=city.filter(i=>i.building===id);show(`<div class="eyebrow">${tr('ГОРОД','TOWN')} / ${b.sub.toUpperCase()}</div><h2>${b.name}</h2><p>${tr('Бюджет подготовки','Preparation budget')}: <b>${Math.floor(run.time)} ◷</b>. ${tr('Улучшения действуют до конца петли.','Upgrades last until the end of the loop.')}</p>${townControls(id)}${id==='barracks'||id==='academy'?tr('<p>Лучники, воины и хрономанты обучаются из крестьян. Обучено жителей: '+recruits()+' / '+population()+'. Свободно: '+freeResidents()+'.</p>','<p>Archers, warriors and chronomancers are trained from peasants. Residents trained: '+recruits()+' / '+population()+'. Free: '+freeResidents()+'.</p>'):''}${buildingUpgrades(id,items)}${id==='bastion'?`<button class="upgrade" data-repair="yes" ${run.time<repairCost()||run.hp>=maxHP()?'disabled':''}><span class="glyph">✚</span><span class="upgrade-copy"><span class="name">${tr('Починить укрепление','Repair the fortification')}</span><small class="desc">${tr('+100 прочности','+100 durability')} · ${Math.ceil(run.hp)} / ${maxHP()}</small></span><span class="cost">${repairCost()} ◷</span></button>`:''}<button class="cancel" id="closeModal">${tr('Вернуться в город','Back to town')}</button>`);}
+function openBuilding(id){const b=buildings.find(b=>b.id===id);if(!b||!unlocked(id)||run.active||run.planning||run.dead)return;openedBuilding=id;const items=city.filter(i=>i.building===id);show(`<div class="eyebrow">ГОРОД / ${b.sub.toUpperCase()}</div><h2>${b.name}</h2><p>Бюджет подготовки: <b>${Math.floor(run.time)} ◷</b>. Улучшения действуют до конца петли.</p>${townControls(id)}${id==='barracks'||id==='academy'?'<p>Лучники, воины и хрономанты обучаются из крестьян. Обучено жителей: '+recruits()+' / '+population()+'. Свободно: '+freeResidents()+'.</p>':''}${buildingUpgrades(id,items)}${id==='bastion'?`<button class="upgrade" data-repair="yes" ${run.time<repairCost()||run.hp>=maxHP()?'disabled':''}><span class="glyph">✚</span><span class="upgrade-copy"><span class="name">Починить укрепление</span><small class="desc">+100 прочности · ${Math.ceil(run.hp)} / ${maxHP()}</small></span><span class="cost">${repairCost()} ◷</span></button>`:''}<button class="cancel" id="closeModal">Вернуться в город</button>`);}
 const spells={
- stasis:{name:tr('Стазис','Stasis'),desc:tr('Останавливает врагов на 5 секунд.','Stops enemies for 5 seconds.')},
- mend:{name:tr('Восстановление','Mend'),desc:tr('Возвращает выжившим бойцам до 40% максимального здоровья.','Restores up to 40% of maximum health to surviving fighters.')},
- haste:{name:tr('Ускорение','Haste'),desc:tr('Удваивает скорость атак отряда на 6 секунд.','Doubles the squad’s attack speed for 6 seconds.')}
+ stasis:{name:'Стазис',desc:'Останавливает врагов на 5 секунд.'},
+ mend:{name:'Восстановление',desc:'Возвращает выжившим бойцам до 40% максимального здоровья.'},
+ haste:{name:'Ускорение',desc:'Удваивает скорость атак отряда на 6 секунд.'}
 };
 const spellUnlocked=()=>run.mode!=='noMagic'&&run.bonus.heroSpells;
 const currentSpell=()=>spellUnlocked()&&Object.hasOwn(spells,run.spell)?run.spell:'stasis';
 function planningTools(){
  const buttons=Array.from({length:3},(_,index)=>{
   const stored=meta.formations?.[index];
-  return '<div class="patch-actions"><span>'+tr('Строй ','Formation ')+(index+1)+'</span><button class="speed" data-save-formation="'+index+'">'+tr('Сохранить','Save')+'</button><button class="speed" data-load-formation="'+index+'" '+(stored?'':'disabled')+'>'+tr('Применить','Apply')+'</button></div>';
+  return '<div class="patch-actions" data-formation-row="'+index+'"><span>Строй '+(index+1)+'</span><button class="speed" data-save-formation="'+index+'">Сохранить</button><button class="speed" data-preview-formation="'+index+'" aria-pressed="'+(pinnedFormation===index)+'" '+(stored?'':'disabled')+'>Просмотр</button><button class="speed" data-load-formation="'+index+'" '+(stored?'':'disabled')+'>Применить</button></div>';
  }).join('');
- const spell=spellUnlocked()?tr('<h3>Заклинание на волну</h3>','<h3>Spell for the wave</h3>')+'<div class="patch-actions">'+Object.entries(spells).map(([id,item])=>'<button class="speed" data-spell="'+id+'" aria-pressed="'+(currentSpell()===id)+'">'+item.name+'</button>').join('')+'</div><p>'+spells[currentSpell()].desc+'</p>':'';
- const defenses=run.defenses.length?tr('<h3>Сооружения</h3>','<h3>Structures</h3>')+'<div class="patch-actions">'+run.defenses.map((item,index)=>'<button class="speed" data-defense="'+index+'" '+(item.hp<=0?'disabled ':'')+'aria-pressed="'+(selectedDefense===index)+'">'+defenseTypes[item.kind].name+' '+(index+1)+(item.hp<=0?tr(' · ремонт',' · repair'):Number.isFinite(item.x)?' ✓':'')+'</button>').join('')+'</div>'+tr('<p>Выберите сооружение и нажмите на поле перед укреплением.</p>','<p>Select a structure and click the field in front of the fortification.</p>'):'';
- return '<div class="patch-panel">'+tr('<h3>Шаблоны расстановки</h3>','<h3>Formation presets</h3>')+buttons+spell+defenses+'</div>';
+ const spell=spellUnlocked()?'<h3>Заклинание на волну</h3><div class="patch-actions">'+Object.entries(spells).map(([id,item])=>'<button class="speed" data-spell="'+id+'" aria-pressed="'+(currentSpell()===id)+'">'+item.name+'</button>').join('')+'</div><p>'+spells[currentSpell()].desc+'</p>':'';
+ const defenses=run.defenses.length?'<h3>Сооружения</h3><div class="patch-actions">'+run.defenses.map((item,index)=>'<button class="speed" data-defense="'+index+'" '+(item.hp<=0?'disabled ':'')+'aria-pressed="'+(selectedDefense===index)+'">'+defenseTypes[item.kind].name+' '+(index+1)+(item.hp<=0?' · ремонт':Number.isFinite(item.x)?' ✓':'')+'</button>').join('')+'</div><p>Выберите сооружение и нажмите на поле перед укреплением.</p>':'';
+ return '<div class="patch-panel"><h3>Шаблоны расстановки</h3><p>Наведите на строй или нажмите «Просмотр», чтобы увидеть позиции на поле.</p>'+buttons+spell+defenses+'</div>';
 }
 function saveFormationSlot(index){
  if(!run.planning||index<0||index>=3)return;
  meta.formations??=[];
  meta.formations[index]=Object.fromEntries(defenders().map(unit=>[unit.key,{x:unit.x,y:unit.y,onWall:unit.onWall}]));
- shop();save();toast(tr('Шаблон сохранён.','Preset saved.'));
+ shop();save();toast('Шаблон сохранён.');
 }
-function loadFormationSlot(index){
+function formationPositions(index){
  const stored=meta.formations?.[index];
- if(!run.planning||!stored)return;
+ if(!run.planning||!stored)return [];
  const units=defenders(),occupied=[];
  const nextUnits=[...units.filter(unit=>stored[unit.key]),...units.filter(unit=>!stored[unit.key])];
  for(const unit of nextUnits){
@@ -592,11 +635,16 @@ function loadFormationSlot(index){
     }
    }
   }
-  Object.assign(unit,{x:point.x,y:point.y,onWall:wall});
-  occupied.push(unit);
+  occupied.push({unit,x:point.x,y:point.y,onWall:wall});
  }
+ return occupied;
+}
+function loadFormationSlot(index){
+ if(!run.planning||!meta.formations?.[index])return;
+ for(const {unit,x,y,onWall} of formationPositions(index))Object.assign(unit,{x,y,onWall});
+ pinnedFormation=null;
  selectedUnit=null;selectedDefense=null;
- shop();save();toast(tr('Шаблон применён.','Preset applied.'));
+ shop();save();toast('Шаблон применён.');
 }
 function rememberFormation(){
  const units=defenders();
@@ -604,7 +652,7 @@ function rememberFormation(){
  run.formation=Object.fromEntries(units.filter(unit=>!unit.onWall).map(unit=>[unit.key,{x:unit.x,y:unit.y}]));
  run.garrison=positions.map(x=>units.find(unit=>unit.onWall&&unit.x===x)?.key??null);
 }
-function start(){if(run.active||run.dead)return;const fromPlanning=run.planning;if(fromPlanning)rememberFormation();run.planning=false;selectedUnit=null;run.active=true;selectedDefense=null;run.haste=0;run.report={damage:{},breaches:{},gates:{}};paused=false;cooldown=0;freeze=0;particles=[];run.stasisUsed=false;run.freezeTime=0;run.projectiles=[];run.spawned=0;run.spawnTimer=.15;run.enemies=[];run.lastReward=0;run.waveLoot=0;if(!fromPlanning)run.units=[];defenders().forEach((u,i)=>{u.cool=i*.12;u.target=null;if(!u.hero)u.hp=Math.round(u.maxHp*(1-hungerPenalty()/100));});$('pause').textContent='Ⅱ';log(`Волна ${run.wave+1}: орда наступает с севера.`,`Wave ${run.wave+1}: the horde advances from the north.`);shop();save();}
+function start(){if(run.active||run.dead)return;const fromPlanning=run.planning;if(fromPlanning)rememberFormation();run.planning=false;selectedUnit=null;run.active=true;selectedDefense=null;run.haste=0;run.report={damage:{},breaches:{},gates:{}};paused=false;cooldown=0;freeze=0;particles=[];run.stasisUsed=false;run.freezeTime=0;run.projectiles=[];run.spawned=0;run.spawnTimer=.15;run.enemies=[];run.lastReward=0;run.waveLoot=0;if(!fromPlanning)run.units=[];defenders().forEach((u,i)=>{u.cool=i*.12;u.target=null;if(!u.hero)u.hp=Math.round(u.maxHp*(1-hungerPenalty()/100));});$('pause').textContent='Ⅱ';log(`Волна ${run.wave+1}: орда наступает с севера.`);shop();save();}
 function finishLoop(defeated=false){
  if(!run.dead){
   const score=reward(),bonus=shardBonus(),record=scoreGain(),added=record+bonus;
@@ -618,20 +666,20 @@ function finishLoop(defeated=false){
   meta.shards+=added;
   meta.eternityRecord+=added;
   meta.best=Math.max(meta.best,run.wave);
-  log('Петля завершена. За рекорд +'+record+' ✧, бонус за волны +'+bonus+' ✧.','Loop complete. Record +'+record+' ✧, wave bonus +'+bonus+' ✧.');
+  log('Петля завершена. За рекорд +'+record+' ✧, бонус за волны +'+bonus+' ✧.');
   save();
  }
  const result=run.result||{score:reward(),added:0};
  const record=result.record??result.added-(result.bonus||0);
  shop();
- show('<div class="modal-icon">↶</div><div class="eyebrow">'+tr('ИТОГ ПЕТЛИ','LOOP SUMMARY')+'</div><h2>'+
-  (record?tr('Вы переписали рекорд.','You rewrote the record.'):tr('Петля завершена.','Loop complete.'))+'</h2><div class="reward">+'+result.added+' ✧</div>'+
-  '<div class="plan-budget"><span>'+tr('Оценка попытки','Attempt score')+'<b>'+result.score+' ✧</b></span><span>'+tr('Общий пул','Total pool')+'<b>'+meta.eternityRecord+' ✧</b></span></div>'+
-  tr('<p>Прирост рекорда +'+record+' ✧ · Бонус за волны +'+(result.bonus||0)+' ✧.</p>','<p>Record gain +'+record+' ✧ · Wave bonus +'+(result.bonus||0)+' ✧.</p>')+
-  tr('<p>Волн: '+run.wave+' · Монстров: '+run.kills+'<br>Оценка: ⌊волны / 2⌋ + ⌊враги / 12⌋ + ⌊улучшения / 4⌋</p>','<p>Waves: '+run.wave+' · Monsters: '+run.kills+'<br>Score: ⌊waves / 2⌋ + ⌊enemies / 12⌋ + ⌊upgrades / 4⌋</p>')+
-  '<button class="primary" id="betweenLoops">'+tr('К городу и вечности →','To the town and eternity →')+'</button>');
+ show('<div class="modal-icon">↶</div><div class="eyebrow">ИТОГ ПЕТЛИ</div><h2>'+
+  (record?'Вы переписали рекорд.':'Петля завершена.')+'</h2><div class="reward">+'+result.added+' ✧</div>'+
+  '<div class="plan-budget"><span>Оценка попытки<b>'+result.score+' ✧</b></span><span>Общий пул<b>'+meta.eternityRecord+' ✧</b></span></div>'+
+  '<p>Прирост рекорда +'+record+' ✧ · Бонус за волны +'+(result.bonus||0)+' ✧.</p>'+
+  '<p>Волн: '+run.wave+' · Монстров: '+run.kills+'<br>Оценка: ⌊волны / 2⌋ + ⌊враги / 12⌋ + ⌊улучшения / 4⌋</p>'+
+  '<button class="primary" id="betweenLoops">Открыть дерево вечности →</button>');
 }
-function newLoop(mode=run.mode){if(!run.dead)return;saveEpoch=Math.max(Date.now(),saveEpoch+1);loopPlan=null;meta.loop++;run=fresh(mode);particles=[];freeze=0;cooldown=0;paused=false;openedBuilding=null;$('modal').close();log('Новый рассвет. Открытые здания снова ждут вас.','A new dawn. Your unlocked buildings await you again.');shop();save();}
+function newLoop(mode=run.mode){if(!run.dead)return;saveEpoch=Math.max(Date.now(),saveEpoch+1);loopPlan=null;meta.loop++;run=fresh(mode);particles=[];freeze=0;cooldown=0;paused=false;openedBuilding=null;$('modal').close();log('Новый рассвет. Открытые здания снова ждут вас.');shop();save();}
 function defenders(){
  if(!run.units.length){
   const units=run.mode==='noMagic'?[]:[{kind:'mage',hero:true,key:'hero'}];
@@ -668,16 +716,16 @@ function moveHero(dt){
  march(hero,hero.destination,dt*.15*movement());
  if(distance(hero,hero.destination)<.001)delete hero.destination;
 }
-const unitNames={hero:tr('Маг времени','Time Mage'),peasant:tr('Крестьяне','Peasants'),warrior:tr('Воины','Warriors'),archer:tr('Лучники','Archers'),mage:tr('Хрономанты','Chronomancers'),stakes:tr('Колья','Stakes'),trap:tr('Ловушки','Traps')};
+const unitNames={hero:'Маг времени',peasant:'Крестьяне',warrior:'Воины',archer:'Лучники',mage:'Хрономанты',stakes:'Колья',trap:'Ловушки'};
 function reportMarkup(){
  const report=run.lastReport;
  const damage=Object.entries(report.damage).sort((a,b)=>b[1]-a[1]).map(([source,value])=>{
   const [kind,index]=source.split('-');
-  return '<p>'+unitNames[kind]+(index===undefined?'':tr(' №',' #')+(Number(index)+1))+' <b>'+Math.round(value)+'</b></p>';
+  return '<p>'+unitNames[kind]+(index===undefined?'':' №'+(Number(index)+1))+' <b>'+Math.round(value)+'</b></p>';
  }).join('');
  const breaches=Object.entries(report.breaches).sort((a,b)=>b[1]-a[1]).map(([kind,value])=>'<p>'+enemyLabel(kind)+' <b>'+value+'</b></p>').join('');
  const gates=Object.entries(report.gates).sort((a,b)=>b[1]-a[1]).map(([gate,value])=>gateNames[gate]+' — '+value).join(', ');
- return '<div class="scout-report"><strong>'+tr('Разбор последней волны','Last wave review')+'</strong><p><b>'+tr('Урон бойцов и сооружений','Damage by fighters and structures')+'</b></p>'+(damage||tr('<p>Урон не нанесён.</p>','<p>No damage dealt.</p>'))+'<p><b>'+tr('Враги у укрепления','Enemies at the fortification')+'</b></p>'+(breaches||tr('<p>Прорывов нет.</p>','<p>No breaches.</p>'))+(gates?tr('<p>Входы прорыва: ','<p>Breach entrances: ')+gates+'.</p>':'')+'</div>';
+ return '<div class="scout-report"><strong>Разбор последней волны</strong><p><b>Урон бойцов и сооружений</b></p>'+(damage||'<p>Урон не нанесён.</p>')+'<p><b>Враги у укрепления</b></p>'+(breaches||'<p>Прорывов нет.</p>')+(gates?'<p>Входы прорыва: '+gates+'.</p>':'')+'</div>';
 }
 function hurtEnemy(enemy,damage,physical=false,source){
  const dealt=damage*(physical?(enemy.kind==='armored'?.65:1)*(enemy.covered?.7:1):1);
@@ -686,6 +734,15 @@ function hurtEnemy(enemy,damage,physical=false,source){
  enemy.hurt=.18;
 }
 function impact(p){const primary=run.enemies.find(e=>e.id===p.target&&e.hp>0);if(primary)hurtEnemy(primary,p.damage,p.kind==='archer',p.source||p.kind);if(p.kind==='mage'){const radius=p.radius??.055;for(const e of run.enemies)if(e!==primary&&e.hp>0&&distance(e,p)<=radius)hurtEnemy(e,p.damage*.45,false,p.source||'mage');particles.push({kind:'blast',x:p.x,y:p.y,life:.38,max:.38,radius});}else particles.push({kind:'hit',x:p.x,y:p.y,life:.15,max:.15});}
+function advanceArcher(unit,dt){
+ let closest=null,gap=Infinity;
+ for(const enemy of run.enemies){
+  if(enemy.hp<=0||enemy.y<=0)continue;
+  const distanceToEnemy=distance(unit,enemy);
+  if(distanceToEnemy<gap){closest=enemy;gap=distanceToEnemy;}
+ }
+ if(closest)march(unit,closest,dt*.026*movement());
+}
 function combat(dt){
  const claimed=new Set();run.projectiles=run.projectiles||[];
  for(const u of defenders()){
@@ -695,7 +752,13 @@ function combat(dt){
   const available=run.enemies.filter(e=>e.hp>0&&e.y>0&&(!ranged||distance(u,e)<=range));
   let target=available.find(e=>e.id===u.target&&!claimed.has(e.id));
   if(!target)target=available.filter(e=>!claimed.has(e.id)).sort((a,b)=>distance(u,a)-distance(u,b))[0]||available.sort((a,b)=>distance(u,a)-distance(u,b))[0];
-  u.target=target?.id??null;if(!target){u.cool=Math.max(0,u.cool);continue;}claimed.add(target.id);
+  u.target=target?.id??null;
+  if(!target){
+   if(u.kind==='archer'&&!u.onWall)advanceArcher(u,dt);
+   u.cool=Math.max(0,u.cool);
+   continue;
+  }
+  claimed.add(target.id);
   if(!ranged&&distance(u,target)>.025)march(u,target,dt*.065*movement());
   if(distance(u,target)>range){u.cool=Math.max(0,u.cool);continue;}
   while(u.cool<=0&&target.hp>0){
@@ -705,7 +768,7 @@ function combat(dt){
  }
  const flying=[];for(const p of run.projectiles){const target=run.enemies.find(e=>e.id===p.target&&e.hp>0);if(target){p.tx=target.x;p.ty=target.y;}const d=distance(p,{x:p.tx,y:p.ty}),move=dt*(p.kind==='archer'?1.4:.9);p.travel+=dt;if(d<=move||p.travel>2){p.x=p.tx;p.y=p.ty;impact(p);}else{p.x+=(p.tx-p.x)*move/d;p.y+=(p.ty-p.y)*move/d;flying.push(p);}}run.projectiles=flying;
 }
-const gateNames=[tr('левый','left'),tr('центральный','center'),tr('правый','right')];
+const gateNames=['левый','центральный','правый'];
 const gatePositions=[.18,.49,.80];
 function waveGates(){
  return [[0,1,2],[0,2],[1],[1,2]][run.wave%4];
@@ -715,14 +778,14 @@ function gateFor(index){
  return gates[index%gates.length];
 }
 const enemyTypes={
- runner:{name:tr('Бегуны','Runners'),hint:tr('проскакивают мимо ближнего строя — прикройте фланги стрелками','slip past the melee line — cover the flanks with archers'),hp:.75,speed:1.65},
- armored:{name:tr('Бронированные','Armored'),hint:tr('снижают физический урон на 35% — используйте магию','take 35% less physical damage — use magic'),hp:1.55,speed:.75},
- siege:{name:tr('Осадные','Siege'),hint:tr('бьют по стене издалека — выставьте бойцов вперёд','hit the wall from afar — push fighters forward'),hp:1.15,speed:.8},
- shaman:{name:tr('Шаманы','Shamans'),hint:tr('лечат соседей','heal their neighbors'),hp:.85,speed:.85},
- banner:{name:tr('Знаменосцы','Standard-bearers'),hint:tr('ускоряют соседей','speed up their neighbors'),hp:.95,speed:.9},
- shield:{name:tr('Щитоносцы','Shield-bearers'),hint:tr('прикрывают соседей от физического урона','shield their neighbors from physical damage'),hp:1.2,speed:.9}
+ runner:{name:'Бегуны',hint:'проскакивают мимо ближнего строя — прикройте фланги стрелками',hp:.75,speed:1.65},
+ armored:{name:'Бронированные',hint:'снижают физический урон на 35% — используйте магию',hp:1.55,speed:.75},
+ siege:{name:'Осадные',hint:'бьют по стене издалека — выставьте бойцов вперёд',hp:1.15,speed:.8},
+ shaman:{name:'Шаманы',hint:'лечат соседей',hp:.85,speed:.85},
+ banner:{name:'Знаменосцы',hint:'ускоряют соседей',hp:.95,speed:.9},
+ shield:{name:'Щитоносцы',hint:'прикрывают соседей от физического урона',hp:1.2,speed:.9}
 };
-const enemyLabel=kind=>enemyTypes[kind]?.name||(kind==='boss'?tr('Боссы','Bosses'):tr('Обычные монстры','Regular monsters'));
+const enemyLabel=kind=>enemyTypes[kind]?.name||(kind==='boss'?'Боссы':'Обычные монстры');
 function enemyKind(index){
  const wave=run.wave+1;
  if(wave%5===0&&index>=count()-(run.mode==='twins'?2:1))return 'boss';
@@ -739,7 +802,7 @@ function scoutReport(){
  const entries=waveGates().map(gate=>gateNames[gate]);
  const bossGates=[];
  for(let index=count()-2;index<count();index++)if(enemyKind(index)==='boss')bossGates.push(gateNames[gateFor(index)]);
- const boss=bossGates.length===1?tr(' Босс: '+bossGates[0]+' вход.',' Boss: '+bossGates[0]+' entrance.'):bossGates.length?tr(' Два босса: ',' Two bosses: ')+bossGates.join(', ')+'.':'';
+ const boss=bossGates.length===1?' Босс: '+bossGates[0]+' вход.':bossGates.length?' Два босса: '+bossGates.join(', ')+'.':'';
  const reports=Object.entries(enemyTypes).map(([kind,type])=>{
   let amount=0;
   const gates=new Set();
@@ -750,7 +813,7 @@ function scoutReport(){
   }
   return amount?'<p><b>'+type.name+': '+amount+'</b> · '+[...gates].join(', ')+' · '+type.hint+'.</p>':'';
  }).join('');
- return '<div class="scout-report"><strong>'+tr('Разведка','Scouting')+'</strong><p>'+tr('Врагов: ','Enemies: ')+count()+tr('. Входы: ','. Entrances: ')+entries.join(', ')+'.'+boss+'</p>'+reports+'</div>';
+ return '<div class="scout-report"><strong>Разведка</strong><p>Врагов: '+count()+'. Входы: '+entries.join(', ')+'.'+boss+'</p>'+reports+'</div>';
 }
 function step(dt){
  if(paused||run.dead||$('modal').open)return;run.elapsed+=dt;freeze=Math.max(0,freeze-dt);run.freezeTime=freeze;particles.forEach(p=>p.life-=dt);particles=particles.filter(p=>p.life>0);if(!run.active)return;run.spawnTimer-=dt;
@@ -819,21 +882,21 @@ function step(dt){
    }
   }
  }
- combat(dt);run.haste=Math.max(0,(run.haste||0)-dt);run.enemies=run.enemies.filter(e=>{if(e.hp<=0){const drop=monsterLoot(e);run.kills++;run.time+=drop;run.waveLoot+=drop;particles.push({kind:'loot',x:e.x,y:e.y,life:.65,max:.65});return false;}return true;});if(run.hp<=0){run.lastReport=run.report;finishLoop(true);return;}if(run.spawned>=count()&&!run.enemies.length){const bonus=waveReward(),yieldFood=harvest();run.lastReport=run.report;run.active=false;run.wave++;run.lastReward=bonus;run.projectiles=[];run.units=[];const eaten=settleFood(yieldFood);meta.best=Math.max(meta.best,run.wave);run.time+=bonus;run.hp=Math.min(maxHP(),run.hp+25+20*run.workers.build);log(`Волна ${run.wave} отражена. +${bonus} хронов. Урожай: +${yieldFood} еды. Съедено: ${eaten}/${dailyFood()}. ${run.unfed?'Дефицит: '+run.unfed+'. ':''}Павшие вернулись.`,`Wave ${run.wave} repelled. +${bonus} chronos. Harvest: +${yieldFood} food. Eaten: ${eaten}/${dailyFood()}. ${run.unfed?'Shortage: '+run.unfed+'. ':''}The fallen have returned.`);shop();save();}
+ combat(dt);run.haste=Math.max(0,(run.haste||0)-dt);run.enemies=run.enemies.filter(e=>{if(e.hp<=0){const drop=monsterLoot(e);run.kills++;run.time+=drop;run.waveLoot+=drop;particles.push({kind:'loot',x:e.x,y:e.y,life:.65,max:.65});return false;}return true;});if(run.hp<=0){run.lastReport=run.report;finishLoop(true);return;}if(run.spawned>=count()&&!run.enemies.length){const bonus=waveReward(),yieldFood=harvest();run.lastReport=run.report;run.active=false;run.wave++;run.lastReward=bonus;run.projectiles=[];run.units=[];const eaten=settleFood(yieldFood);meta.best=Math.max(meta.best,run.wave);run.time+=bonus;run.hp=Math.min(maxHP(),run.hp+25+20*run.workers.build);log(`Волна ${run.wave} отражена. +${bonus} хронов. Урожай: +${yieldFood} еды. Съедено: ${eaten}/${dailyFood()}. ${run.unfed?'Дефицит: '+run.unfed+'. ':''}Павшие вернулись.`);shop();save();}
 }
 function openGarrison(){
  if(run.active||run.dead)return;
  if(!run.up.wall){
-  show(tr('<h2>Частокол</h2><p>Для назначения лучников и магов нужна каменная стена. Постройте её в бастионе. На стене будет '+wallPositions().length+' защищённых места.</p>','<h2>Palisade</h2><p>Posting archers and mages requires a stone wall. Build it in the bastion. The wall will have '+wallPositions().length+' protected spots.</p>')+'<button class="cancel" id="closeModal">'+tr('Вернуться в город','Back to town')+'</button>');
+  show('<h2>Частокол</h2><p>Для назначения лучников и магов нужна каменная стена. Постройте её в бастионе. На стене будет '+wallPositions().length+' защищённых места.</p><button class="cancel" id="closeModal">Вернуться в город</button>');
   return;
  }
  const units=defenders().filter(isRanged);
- const rows=wallPositions().map((_,slot)=>'<label class="garrison-slot">'+tr('Место ','Spot ')+(slot+1)+
-  '<select data-wall-slot="'+slot+'"><option value="">'+tr('Свободно','Empty')+'</option>'+
+ const rows=wallPositions().map((_,slot)=>'<label class="garrison-slot">Место '+(slot+1)+
+  '<select data-wall-slot="'+slot+'"><option value="">Свободно</option>'+
   units.map(unit=>'<option value="'+unit.key+'" '+(run.garrison[slot]===unit.key?'selected':'')+'>'+
-   (unit.hero?tr('Маг времени','Time Mage'):unit.kind==='archer'?tr('Лучник ','Archer ')+(unit.id):tr('Хрономант ','Chronomancer ')+(unit.id))+
+   (unit.hero?'Маг времени':unit.kind==='archer'?'Лучник '+(unit.id):'Хрономант '+(unit.id))+
    '</option>').join('')+'</select></label>').join('');
- show('<div class="eyebrow">'+tr('РАССТАНОВКА В ГОРОДЕ','TOWN SETUP')+'</div><h2>'+fortName()+'</h2><p>'+tr('Лучники и маги на укреплении продолжают стрелять, пока орда атакует стену. На земле защитников могут ранить.','Archers and mages on the fortification keep shooting while the horde attacks the wall. On the ground, defenders can be wounded.')+'</p>'+rows+'<button class="cancel" id="closeModal">'+tr('Вернуться в город','Back to town')+'</button>');
+ show('<div class="eyebrow">РАССТАНОВКА В ГОРОДЕ</div><h2>'+fortName()+'</h2><p>Лучники и маги на укреплении продолжают стрелять, пока орда атакует стену. На земле защитников могут ранить.</p>'+rows+'<button class="cancel" id="closeModal">Вернуться в город</button>');
 }
 $('garrisonButton').onclick=openGarrison;
 $('armyButton').onclick=openArmy;
@@ -842,10 +905,11 @@ $('modalContent').onchange=event=>{
  assignWall(Number(event.target.dataset.wallSlot),event.target.value||null);
  openGarrison();
 };
-let selectedUnit=null,selectedDefense=null;
+let selectedUnit=null,selectedDefense=null,hoveredFormation=null,pinnedFormation=null;
 function beginPlanning(){
  if(run.active||run.dead||run.planning)return;
  run.planning=true;
+ pinnedFormation=null;
  selectedUnit=null;selectedDefense=null;
  run.units=[];
  shop();
@@ -865,7 +929,7 @@ function restoreFormation(){
  selectedUnit=null;selectedDefense=null;
  shop();
  save();
- toast(tr('Исходная расстановка восстановлена.','Original formation restored.'));
+ toast('Исходная расстановка восстановлена.');
 }
 function orderHero(x,y){
  const hero=defenders().find(unit=>unit.hero&&unit.hp>0);
@@ -875,7 +939,7 @@ function orderHero(x,y){
   return;
  }
  if(selectedUnit!=='hero')return;
- if(y>.81){toast(tr('Укажите точку перед укреплением.','Pick a spot in front of the fortification.'));return;}
+ if(y>.81){toast('Укажите точку перед укреплением.');return;}
  hero.destination={x:Math.max(.06,Math.min(.94,x)),y:Math.max(.08,Math.min(.79,y))};
  save();
 }
@@ -885,7 +949,7 @@ function placeUnit(x,y){
  if(selectedDefense!==null){
   const item=run.defenses[selectedDefense];
   if(y<.08||y>.79||x<.06||x>.94||run.defenses.some(other=>other!==item&&Number.isFinite(other.x)&&distance(other,point)<.035)){
-   toast(tr('Выберите свободное место перед укреплением.','Pick a free spot in front of the fortification.'));return;
+   toast('Выберите свободное место перед укреплением.');return;
   }
   Object.assign(item,point);
   selectedDefense=null;shop();save();return;
@@ -902,10 +966,10 @@ function placeUnit(x,y){
  const unit=units.find(unit=>unit.key===selectedUnit);
  if(!unit)return;
  if(y>=.81){
-  if(!run.up.wall||!isRanged(unit)||y>.91){toast(tr('Выберите точку перед укреплением.','Pick a spot in front of the fortification.'));return;}
+  if(!run.up.wall||!isRanged(unit)||y>.91){toast('Выберите точку перед укреплением.');return;}
   const slot=wallPositions().find(position=>Math.abs(position-x)<.05);
   if(slot===undefined||units.some(other=>other!==unit&&other.onWall&&other.x===slot)){
-   toast(tr('Выберите свободное место на стене.','Pick a free spot on the wall.'));return;
+   toast('Выберите свободное место на стене.');return;
   }
   unit.x=slot;
   unit.y=.84;
@@ -924,6 +988,15 @@ $('shop').onclick=event=>{
  if(!button)return;
  const data=button.dataset;
  if(data.saveFormation!==undefined)saveFormationSlot(Number(data.saveFormation));
+ if(data.previewFormation!==undefined){
+  const index=Number(data.previewFormation);
+  if(!meta.formations?.[index])return;
+  pinnedFormation=pinnedFormation===index?null:index;
+  hoveredFormation=null;
+  for(const preview of $('shop').querySelectorAll('[data-preview-formation]')){
+   preview.setAttribute('aria-pressed',String(Number(preview.dataset.previewFormation)===pinnedFormation));
+  }
+ }
  if(data.loadFormation!==undefined)loadFormationSlot(Number(data.loadFormation));
  if(Object.hasOwn(spells,data.spell)&&spellUnlocked()){run.spell=data.spell;shop();save();}
  if(data.defense!==undefined&&run.defenses[Number(data.defense)]?.hp>0){
@@ -931,33 +1004,58 @@ $('shop').onclick=event=>{
   selectedDefense=selectedDefense===index?null:index;selectedUnit=null;shop();
  }
 };
+$('shop').onpointerover=event=>{
+ if(!run.planning||event.pointerType!=='mouse')return;
+ const row=event.target.closest('[data-formation-row]');
+ const index=Number(row?.dataset.formationRow);
+ hoveredFormation=meta.formations?.[index]?index:null;
+};
+$('shop').onpointerout=event=>{
+ const row=event.target.closest('[data-formation-row]');
+ if(row&&!row.contains(event.relatedTarget))hoveredFormation=null;
+};
 $('start').onclick=()=>{
  if(run.dead)openLoopPlanner();
  else if(run.planning)start();
  else beginPlanning();
 };
-$('restoreFormation').onclick=restoreFormation;$('cancelPlanning').onclick=cancelPlanning;$('speed').onclick=()=>{speed=speed===1?2:speed===2?3:1;$('speed').textContent=speed+'×';};$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'▶':'Ⅱ';$('pause').setAttribute('aria-label',paused?tr('Продолжить','Resume'):tr('Пауза','Pause'));};$('freeze').onclick=()=>{if(cooldown>0||!run.active||run.dead||run.mode==='noMagic')return;
+$('restoreFormation').onclick=restoreFormation;$('cancelPlanning').onclick=cancelPlanning;$('speed').onclick=()=>{speed=speed===1?2:speed===2?3:1;$('speed').textContent=speed+'×';};$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'▶':'Ⅱ';$('pause').setAttribute('aria-label',paused?'Продолжить':'Пауза');};$('freeze').onclick=()=>{if(cooldown>0||!run.active||run.dead||!spellUnlocked())return;
  const spell=currentSpell();cooldown=1;run.stasisUsed=true;
  if(spell==='stasis'){freeze=5;run.freezeTime=5;}
  if(spell==='haste')run.haste=6;
  if(spell==='mend')for(const unit of defenders())if(unit.hp>0)unit.hp=Math.min(unit.maxHp,unit.hp+unit.maxHp*.4);
- log(spells[spell].name+': '+spells[spell].desc,spells[spell].name+': '+spells[spell].desc);update();save();};
+ log(spells[spell].name+': '+spells[spell].desc);update();save();};
 $('cityMarkers').onclick=e=>{const b=e.target.closest('[data-building]');if(b)openBuilding(b.dataset.building);};
 $('modalContent').onclick=e=>{
  const mode=e.target.closest('[data-mode]');
  if(mode&&loopPlan&&Object.hasOwn(modes,mode.dataset.mode)){loopPlan.mode=mode.dataset.mode;renderLoopPlanner();return;}
  const action=e.target.closest('[data-town-action]');
  if(action){townAction(action.dataset.townAction);return;}
+ const goalButton=e.target.closest('[data-tree-goal]');
+ if(goalButton&&loopPlan){
+  if(goalButton.dataset.treeGoal==='clear')delete meta.treeGoal;
+  else{
+   const id=loopPlan.node;
+   const level=(loopPlan.up[id]||0)+1;
+   meta.treeGoal={id,level};
+  }
+  save();
+  renderLoopPlanner();
+  return;
+ }
  const node=e.target.closest('[data-tree-node]');
- if(node&&loopPlan){loopPlan.node=node.dataset.treeNode;renderLoopPlanner();return;}
- const planButton=e.target.closest('[data-plan]');if(planButton){adjustLoopPlan(planButton.dataset.id,planButton.dataset.plan);return;}if(e.target.id==='refundAll'){refundLoopPlan();return;}if(e.target.id==='confirmLoopPlan'){commitLoopPlan();return;}if(e.target.id==='confirmReset'){resetProgress();return;}const b=e.target.closest('[data-city]');if(b){buy(b.dataset.city);openBuilding(openedBuilding);return;}if(e.target.closest('[data-repair]')){repair();openBuilding('bastion');return;}if(e.target.id==='betweenLoops'||e.target.id==='closeModal'){$('modal').close();openedBuilding=null;loopPlan=null;}if(e.target.id==='confirmRewind')finishLoop();};
-$('rewind').onclick=()=>{if(run.dead){finishLoop();return;}show(tr(`<div class="modal-icon">↶</div><h2>Завершить эту петлю?</h2><p>Оценка сейчас: ${reward()} ✧. Рекорд оценки: ${bestScore()} ✧. Новых очков: +${recordGain()} ✧. Армия и улучшения зданий вернутся к началу; чертежи и улучшения вечности останутся.</p><button class="primary" id="confirmRewind">Завершить петлю</button><button class="cancel" id="closeModal">Продолжить</button>`,`<div class="modal-icon">↶</div><h2>End this loop?</h2><p>Current score: ${reward()} ✧. Score record: ${bestScore()} ✧. New points: +${recordGain()} ✧. The army and building upgrades reset; blueprints and eternity upgrades stay.</p><button class="primary" id="confirmRewind">End the loop</button><button class="cancel" id="closeModal">Keep playing</button>`));};
-$('resetProgress').onclick=()=>{loopPlan=null;show(tr('<div class="eyebrow">ПОЛНОЕ ОБНУЛЕНИЕ</div><h2>Начать всё сначала?</h2><p>Будут удалены текущая попытка, рекорд, осколки, все улучшения вечности и чертежи зданий в этом браузере. Вернуть их после сброса нельзя.</p><button class="primary danger-button" id="confirmReset">Сбросить весь прогресс</button><button class="cancel" id="closeModal">Отмена — сохранить прогресс</button>','<div class="eyebrow">FULL RESET</div><h2>Start over from scratch?</h2><p>This deletes the current attempt, the record, shards, every eternity upgrade and the building blueprints in this browser. They can’t be brought back after the reset.</p><button class="primary danger-button" id="confirmReset">Reset all progress</button><button class="cancel" id="closeModal">Cancel — keep my progress</button>'));};
-// The Russian help text below is the original; HELP_EN is its English version.
-const HELP_EN='<div class="eyebrow">TOWN → DEFENSE → NEW LOOP</div><h2>Rewrite fate.</h2><p>Each attempt starts with 120 chronos. Archers and warriors are trained from peasants in the barracks once you unlock their schools with eternity shards. Chronomancers are trained from peasants in the academy. Currency doesn’t build up over time. Every regular monster gives 1 chrono, a boss gives 5. In the treasury, “Trophy gathering” raises the loot by 1 per level (by 5 for a boss).</p><p>Before a new loop, unlock the academy, treasury, bastion and fighter schools with shards. Click them to upgrade during an attempt. In the barracks you can raise archers’ damage (+25% base per level) and attack speed (+15%). In the academy, the damage and speed of all mages, plus the chronomancers’ blast radius. The time mage hits a single target.</p><p>Monsters run from the top down toward the southern wall. Each defender picks a target. Arrows and the time mage hit one enemy. Chronomancers also hit neighbors (45% damage). Peasants fight in melee. The fallen return after a victory. Before a battle, press “Start wave”, pick a fighter and a spot on the field, then press “To battle”. Stasis is free, once per wave.</p><p>Victory pays 60 + 10 × the wave number, plus treasury and eternity bonuses. After a victory you return to the town. Repairs in the bastion restore 100 durability. Purchases are closed during battle. After a victory, farms give their harvest, then each resident eats 1 food. Leftovers are kept. With a shortage, residents start the next battle with less health (down to −50%). Houses cost chronos and add two residents each. The bastion replaces the palisade with a stone wall. Only the stone wall has protected spots for archers and mages.</p><p>At the end of a loop, eternity points are awarded for beating the current mode’s record. The mage upgrade separately gives a bonus for the waves cleared in each loop. All shards go into a shared pool. Chosen eternity upgrades apply at the start of a new loop. Before starting a new loop you can redistribute all eternity points for free, blueprints included. Progress is saved in the browser; the button at the bottom lets you reset it completely.</p><button class="primary" id="closeModal">To your town →</button>';
-$('help').onclick=()=>show(LANG==='en'?HELP_EN:'<div class="eyebrow">ГОРОД → ОБОРОНА → НОВАЯ ПЕТЛЯ</div><h2>Перепишите судьбу.</h2><p>В начале попытки вы получаете 120 хронов. Лучники и воины обучаются в казарме из крестьян после открытия соответствующих школ за осколки вечности. Хрономанты обучаются из крестьян в академии. Валюта не накапливается со временем. Каждый обычный монстр даёт 1 хрон, босс — 5. В казне «Сбор трофеев» повышает добычу на 1 за уровень (для босса — на 5).</p><p>Перед новой петлёй открывайте академию, казну, бастион и школы бойцов за осколки. Нажимайте на них для прокачки внутри попытки. В казарме можно улучшить урон (+25% базового за уровень) и скорость атак (+15%) лучников. В академии — урон и скорость всех магов, а также радиус взрыва хрономантов. Маг времени поражает одну цель.</p><p>Монстры бегут сверху вниз к южной стене. Каждый защитник выбирает цель. Стрелы и маг времени поражают одного врага. Хрономанты задевают соседей (45% урона). Крестьяне дерутся в ближнем бою. Павшие возвращаются после победы. Перед боем нажмите «Начать волну», выберите бойца и точку на поле, затем нажмите «В бой». Стазис бесплатный, один раз за волну.</p><p>За победу: 60 + 10 × номер волны, плюс бонусы казны и вечности. После победы вы вернётесь в город. Ремонт в бастионе восстанавливает 100 прочности. В бою покупки закрыты. После победы фермы дают урожай, затем каждый житель съедает 1 еду. Остаток сохраняется. При дефиците жители начинают следующий бой с меньшим здоровьем (до −50%). Дома стоят хроны и добавляют по два жителя. Бастион заменяет частокол каменной стеной. Только на каменной стене есть защищённые места для лучников и магов.</p><p>В конце петли очки вечности начисляются за прирост рекорда текущего режима. Улучшение мага отдельно даёт бонус за пройденные волны каждой петли. Все осколки идут в общий пул. Выбранные улучшения вечности применяются в начале новой петли. Перед началом новой петли можно бесплатно перераспределить все очки вечности, включая чертежи. Прогресс сохраняется в браузере; кнопка внизу позволяет полностью его сбросить.</p><button class="primary" id="closeModal">К своему городу →</button>');$('modal').addEventListener('cancel',()=>{openedBuilding=null;loopPlan=null;});
-// Switching language saves first, then reloads; the game resumes from the save.
-$('lang').onclick=()=>{try{localStorage.setItem(LANG_KEY,LANG==='en'?'ru':'en');}catch(e){}save();window.location.reload();};
+ if(node&&loopPlan){
+  loopPlan.node=node.dataset.treeNode;
+  for(const button of $('treeStage').querySelectorAll('[data-tree-node]')){
+   button.setAttribute('aria-pressed',String(button===node));
+  }
+  $('treeInspector').innerHTML=treeInspector();
+  return;
+ }
+ const planButton=e.target.closest('[data-plan]');if(planButton){adjustLoopPlan(planButton.dataset.id,planButton.dataset.plan);return;}if(e.target.id==='refundAll'){refundLoopPlan();return;}if(e.target.id==='confirmLoopPlan'){commitLoopPlan();return;}if(e.target.id==='confirmReset'){resetProgress();return;}const b=e.target.closest('[data-city]');if(b){buy(b.dataset.city);openBuilding(openedBuilding);return;}if(e.target.closest('[data-repair]')){repair();openBuilding('bastion');return;}if(e.target.id==='betweenLoops'){openLoopPlanner();$('modal').scrollTop=0;return;}if(e.target.id==='closeModal'){$('modal').close();openedBuilding=null;loopPlan=null;}if(e.target.id==='confirmRewind')finishLoop();};
+$('rewind').onclick=()=>{if(run.dead){finishLoop();return;}show(`<div class="modal-icon">↶</div><h2>Завершить эту петлю?</h2><p>Оценка сейчас: ${reward()} ✧. Рекорд оценки: ${bestScore()} ✧. Новых очков: +${recordGain()} ✧. Армия и улучшения зданий вернутся к началу; чертежи и улучшения вечности останутся.</p><button class="primary" id="confirmRewind">Завершить петлю</button><button class="cancel" id="closeModal">Продолжить</button>`);};
+$('resetProgress').onclick=()=>{loopPlan=null;show('<div class="eyebrow">ПОЛНОЕ ОБНУЛЕНИЕ</div><h2>Начать всё сначала?</h2><p>Будут удалены текущая попытка, рекорд, осколки, все улучшения вечности и чертежи зданий в этом браузере. Вернуть их после сброса нельзя.</p><button class="primary danger-button" id="confirmReset">Сбросить весь прогресс</button><button class="cancel" id="closeModal">Отмена — сохранить прогресс</button>');};
+$('help').onclick=()=>show('<div class="eyebrow">ГОРОД → ОБОРОНА → НОВАЯ ПЕТЛЯ</div><h2>Перепишите судьбу.</h2><p>В начале попытки вы получаете 120 хронов. Лучники и воины обучаются в казарме из крестьян после открытия соответствующих школ за осколки вечности. Хрономанты обучаются из крестьян в академии. Валюта не накапливается со временем. Каждый обычный монстр даёт 1 хрон, босс — 5. В казне «Сбор трофеев» повышает добычу на 1 за уровень (для босса — на 5).</p><p>Перед новой петлёй открывайте академию, казну, бастион и школы бойцов за осколки. Нажимайте на них для прокачки внутри попытки. В казарме можно улучшить урон (+25% базового за уровень) и скорость атак (+15%) лучников. В академии — урон и скорость всех магов, а также радиус взрыва хрономантов. Маг времени поражает одну цель.</p><p>Монстры бегут сверху вниз к южной стене. Каждый защитник выбирает цель. Стрелы и маг времени поражают одного врага. Хрономанты задевают соседей (45% урона). Крестьяне дерутся в ближнем бою. Павшие возвращаются после победы. Перед боем нажмите «Начать волну», выберите бойца и точку на поле, затем нажмите «В бой». Стазис доступен после улучшения «Управление временем» и применяется один раз за волну.</p><p>За победу: 60 + 10 × номер волны, плюс бонусы казны и вечности. После победы вы вернётесь в город. Ремонт в бастионе восстанавливает 100 прочности. В бою покупки закрыты. После победы фермы дают урожай, затем каждый житель съедает 1 еду. Остаток сохраняется. При дефиците жители начинают следующий бой с меньшим здоровьем (до −50%). Дома стоят хроны и добавляют по два жителя. Бастион заменяет частокол каменной стеной. Только на каменной стене есть защищённые места для лучников и магов.</p><p>В конце петли очки вечности начисляются за прирост рекорда текущего режима. Улучшение мага отдельно даёт бонус за пройденные волны каждой петли. Все осколки идут в общий пул. Выбранные улучшения вечности применяются в начале новой петли. Перед началом новой петли можно бесплатно перераспределить все очки вечности, включая чертежи. Прогресс сохраняется в браузере; кнопка внизу позволяет полностью его сбросить.</p><button class="primary" id="closeModal">К своему городу →</button>');$('modal').addEventListener('cancel',()=>{openedBuilding=null;loopPlan=null;});
 // Native 448 × 300 pixel maps: city planning and north-to-south defence.
 const canvas=$('scene'),ctx=canvas.getContext('2d'),W=448,H=300;canvas.width=W;canvas.height=H;ctx.imageSmoothingEnabled=false;
 canvas.onclick=event=>{
@@ -1036,6 +1134,15 @@ function battlefield(){
    if(run.active&&picked.destination)ring(picked.destination.x*W,picked.destination.y*H,5,'#fff0ab');
   }
  }
+ const preview=hoveredFormation??pinnedFormation;
+ if(run.planning&&preview!==null){
+  for(const {unit,x,y} of formationPositions(preview)){
+   const color=unit.hero?'#ffe3a1':'#9ce9ef';
+   if(distance(unit,{x,y})>.008)line(unit.x*W,unit.y*H,x*W,y*H,'#6996a0');
+   ring(x*W,y*H,8,color);
+   rect(x*W-1,y*H-1,3,3,color);
+  }
+ }
  for(const item of run.defenses){
   if(item.hp<=0||!Number.isFinite(item.x))continue;
   const x=item.x*W,y=item.y*H;
@@ -1076,5 +1183,5 @@ function draw(){
 function frame(now){const dt=Math.min((now-last)/1000,.1);last=now;if(!paused)t+=dt;step(dt*speed);draw();uiTimer+=dt;if(uiTimer>.12){update();renderRoster();uiTimer=0;}saveTimer+=dt;if(saveTimer>3){save();saveTimer=0;}requestAnimationFrame(frame);}
 // A stale tab cannot restore progress from before a full reset or a new loop.
 window.addEventListener('storage',e=>{if(e.key!==KEY||!e.newValue)return;try{const incoming=JSON.parse(e.newValue),epoch=incoming.epoch||0;if(epoch>saveEpoch)reloadLatest();else if(epoch<saveEpoch)save();}catch(err){}});
-window.addEventListener('beforeunload',save);document.addEventListener('visibilitychange',()=>{last=performance.now();save();});if(!logs.length)log('Два крестьянина и маг времени готовятся защищать частокол.','Two peasants and the time mage prepare to defend the palisade.');renderLog();shop();save();requestAnimationFrame(frame);if(run.dead)finishLoop();
+window.addEventListener('beforeunload',save);document.addEventListener('visibilitychange',()=>{last=performance.now();save();});if(!logs.length)log('Два крестьянина и маг времени готовятся защищать частокол.');renderLog();shop();save();requestAnimationFrame(frame);if(run.dead)finishLoop();
 })();

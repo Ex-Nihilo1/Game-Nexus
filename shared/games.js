@@ -58,9 +58,8 @@ const GAMES = [
   {
     id: 'chronomancer',
     name: 'Chronomancer',
-    blurb: 'Build a town between waves, hold the wall, and carry blueprints across time loops. English & Russian.',
+    blurb: 'Build a town between waves, hold the wall, and carry blueprints across time loops.',
     href: 'games/chronomancer/index.html',
-    author: '@KakoriCaster',
     thumb:
       '<svg viewBox="0 0 80 80" aria-hidden="true">' +
       '<path d="M8 72 V58 H16 V52 H24 V58 H36 V52 H44 V58 H56 V52 H64 V58 H72 V72 Z" style="fill: var(--desk); stroke: var(--ink)"/>' +

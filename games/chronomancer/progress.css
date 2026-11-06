@@ -23,7 +23,7 @@ dialog.loop-planner{width:min(94vw,900px);max-width:900px}
 @media(max-width:650px){.eternity-tree{grid-template-columns:1fr}.tree-branch{grid-template-rows:auto;gap:22px}.tree-node+.tree-node::before{height:23px}}
 .in-planning .wall-status{display:none}
 .in-planning .scene-caption,.in-planning .scene-message{pointer-events:none}
-.radial-tree{position:relative;width:100%;max-width:700px;aspect-ratio:640/365;margin:14px auto 18px;background:radial-gradient(ellipse at center,#283c51,#121b2a 74%);border:1px solid #4e647c}
+.radial-tree{position:relative;width:100%;max-width:700px;aspect-ratio:720/410;margin:14px auto 18px;background:radial-gradient(ellipse at center,#283c51,#121b2a 74%);border:1px solid #4e647c}
 .radial-tree svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .radial-tree line{stroke:#51667b;stroke-width:2}
 .radial-tree line.open-edge{stroke:#d4b878;stroke-width:3}
@@ -49,11 +49,11 @@ dialog.loop-planner{width:min(94vw,900px);max-width:900px}
 .scout-report{border:1px solid #8d7850;background:#322c27;padding:9px 12px;color:#f3d99d;font-size:11px}
 .scout-report p{margin:4px 0 0}
 @media(max-width:430px){.radial-node b{min-width:12px;font-size:8px;line-height:11px}.radial-node[aria-pressed="true"]{outline-offset:1px}.tree-theme{font-size:7px}}
-.tree-layout{display:grid;grid-template-columns:minmax(0,1fr) 205px;align-items:start;gap:12px;margin:14px 0}
+.tree-layout{display:grid;grid-template-columns:minmax(0,1fr) 170px;align-items:start;gap:12px;margin:14px 0}
 .tree-layout .radial-tree,.tree-layout .tree-inspector{margin:0}
 .tree-layout .tree-inspector{min-height:140px}
 @media(max-width:760px){.tree-layout{grid-template-columns:1fr}.tree-layout .tree-inspector{min-height:0}}
-.theme-hero{left:77%;top:81%}
+.theme-hero{left:83%;top:86%}
 .patch-panel,.challenge-list{border:1px solid #667e8d;background:#223548;padding:10px;margin:10px 0}
 .patch-panel h3,.challenge-list h3{font-size:11px;color:#eed6a1;margin:5px 0 9px}
 .patch-panel p,.challenge-list p{font-size:10px;line-height:1.65;margin:7px 0}
@@ -76,3 +76,17 @@ dialog.loop-planner{width:min(94vw,900px);max-width:900px}
 .radial-tree .radial-core{width:clamp(24px,5.3vw,41px)}
 .radial-tree .radial-node b{min-width:11px;font-size:8px;line-height:10px}
 .tree-nav-hint{display:block;margin:0 0 7px;color:#b9c7d4;font-size:9px}
+dialog.loop-planner{overflow-anchor:none}
+.radial-node b.tree-complete{color:#182f29;background:#c5e2b5;border-color:#e0f2c6;font-weight:bold}
+.radial-tree .radial-node:active:not(:disabled){transform:translate(-50%,-50%)}
+.radial-node>span{pointer-events:none;transition:transform 90ms ease-out}
+.radial-node:hover>span{transform:translateY(-1px)}
+.radial-node:active>span{transform:translateY(1px)}
+@media(prefers-reduced-motion:reduce){.radial-node>span{transition:none}}
+.radial-tree line.goal-edge{stroke:#8fe2d4;stroke-width:3;stroke-dasharray:5 3}
+.radial-tree .radial-node.goal-path,.radial-tree .radial-node.goal-node{border-color:#8fe2d4;opacity:1}
+.radial-tree .radial-node.goal-node{box-shadow:0 0 0 3px #8fe2d473}
+.tree-goal-summary{border:1px solid #699b96;background:#203a42;padding:9px 12px;margin:10px 0}
+.tree-goal-summary p{margin:0 0 6px}
+.tree-goal-summary .speed,.tree-goal-button{width:auto;padding:6px 9px;font-size:10px}
+.tree-goal-button{margin-top:10px}
