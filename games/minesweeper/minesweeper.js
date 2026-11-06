@@ -36,7 +36,15 @@ const NUDGE_MAX_CROWDING = 0.625; // never move a mine where over 5 of 8 neighbo
 const RELOCATE_MAX_STEPS = 200000;
 const SETTLE_MAX_STEPS = 20000;
 
+// The board is zoomed to the largest size that is still fully visible.
+const CELL_PX = 28; // .field --cell in index.html
+const MAX_ZOOM = 2;
+const MIN_ZOOM = 0.5; // below this the board scrolls sideways instead
+const FIT_MARGIN = 8 + 40; // .field-wrap bottom padding + .page bottom padding (theme.css)
+
 const fieldEl = document.getElementById('field');
+const fieldWrapEl = fieldEl.parentElement;
+const hintEl = document.querySelector('.hint');
 const widthEl = document.getElementById('width');
 const heightEl = document.getElementById('height');
 const widthValueEl = document.getElementById('width-value');
@@ -62,10 +70,10 @@ let cells = [];
 let state = 'ready'; // 'ready' (no mines yet) | 'playing' | 'won' | 'lost'
 let opened = 0;
 let flags = 0;
-let forgiven = 0; // forced guesses saved this game (forgiving mode)
 let flagMode = false;
 let startTime = 0;
 let timer = null;
+let fitDPR = window.devicePixelRatio || 1; // pixel ratio when the board was last fitted
 
 try {
   const saved = JSON.parse(localStorage.getItem(SIZE_KEY));
@@ -148,7 +156,6 @@ function newGame() {
   state = 'ready';
   opened = 0;
   flags = 0;
-  forgiven = 0;
   stopTimer();
   timeEl.textContent = '0';
   resultEl.textContent = '';
@@ -176,7 +183,22 @@ function newGame() {
   lockSettings(false);
   modeNoteEl.textContent = mode.note;
   updateHud();
-  setStatus(`${cols}×${rows} · ${mineTotal} mines · ${mode.name}`);
+  setStatus(''); // the status line only carries crucial notes, like a forced guess
+  fitField();
+}
+
+// CSS zoom re-renders the cells at the new size, so they stay sharp.
+function fitField() {
+  fitDPR = window.devicePixelRatio || 1;
+  const boardW = cols * CELL_PX + 2, boardH = rows * CELL_PX + 2; // + 1px border each side
+  const top = fieldEl.getBoundingClientRect().top + window.scrollY;
+  const hint = hintEl.offsetHeight + parseFloat(getComputedStyle(hintEl).marginTop);
+  const widthFit = (fieldWrapEl.clientWidth - 1) / boardW; // 1px slack for rounding
+  const room = window.innerHeight - hint - FIT_MARGIN;
+  // On phones the settings above fill over half the screen: then fit the board
+  // to the screen on its own, once scrolled to, instead of to the strip below them.
+  const heightFit = (top > window.innerHeight / 2 ? room - 16 : room - top) / boardH;
+  fieldEl.style.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, widthFit, heightFit));
 }
 
 function forNeighbors(i, fn) {
@@ -640,7 +662,6 @@ function reveal(start) {
   if (mine[start]) {
     // Forgiving mode spares a hit only when logic offered no safe cell.
     if (mode.id === 'forgiving' && !hasSafeMove() && relocateMine(start)) {
-      forgiven++;
       setStatus(`Forced guess · mine moved, keep going`);
     } else {
       lose(start);
@@ -698,8 +719,7 @@ function win() {
   resultEl.textContent = 'CLEARED';
   resultEl.className = 'stamp good';
   updateHud();
-  const saves = forgiven ? ` · ${forgiven} forced guess${forgiven > 1 ? 'es' : ''} forgiven` : '';
-  setStatus(`Cleared ${cols}×${rows} in ${elapsed()} s${saves}`);
+  setStatus(''); // the stamp and timer already say it
 }
 
 function lose(hit) {
@@ -716,7 +736,7 @@ function lose(hit) {
   fieldEl.classList.add('done');
   resultEl.textContent = 'BOOM';
   resultEl.className = 'stamp bad';
-  setStatus(`Hit a mine after ${elapsed()} s · press New game to try again`);
+  setStatus('');
 }
 
 // ---- Rendering ----
@@ -789,4 +809,10 @@ bindSlider(widthEl, () => size.cols, v => { size.cols = v; }, saveSize);
 bindSlider(heightEl, () => size.rows, v => { size.rows = v; }, saveSize);
 bindSlider(minePctEl, () => minePct, v => { minePct = v; }, () => localStorage.setItem(MINE_PCT_KEY, minePct));
 buildTabs(modesEl, MODES, MODE_KEY, o => { mode = o; });
+// Browser zoom also fires resize: then keep the board's zoom so the browser's
+// zoom takes effect. A real window resize re-fits the board.
+window.addEventListener('resize', () => {
+  if ((window.devicePixelRatio || 1) !== fitDPR) fitDPR = window.devicePixelRatio || 1;
+  else fitField();
+});
 newGame();

@@ -16,6 +16,9 @@
     }
     #board {
       display: block;
+      box-sizing: content-box; /* the border must not eat into the 300px of drawing */
+      width: 300px;
+      height: auto;
       max-width: 100%;
       border: 1px solid var(--rule);
       border-radius: 2px;
@@ -28,6 +31,9 @@
     }
     #next {
       display: block;
+      box-sizing: content-box;
+      width: 120px;
+      height: 120px;
       border: 1px solid var(--rule);
       border-radius: 2px;
     }
@@ -45,9 +51,8 @@
   <div class="page">
     <header class="app-header">
       <div>
-        <a class="back-link" href="../../index.html">&larr; Games</a>
+        <a class="back-link" href="../../index.html">&larr; Game Nexus</a>
         <h1 class="app-title">Tetris</h1>
-        <div class="app-status" id="status">Press Enter to start</div>
       </div>
       <div class="theme-controls"></div>
     </header>

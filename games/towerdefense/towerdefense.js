@@ -8,7 +8,26 @@ const COLS = 20;
 const ROWS = 13;
 const W = COLS * CELL;
 const H = ROWS * CELL;
-const DPR = Math.min(2, window.devicePixelRatio || 1);
+const MAX_DPR = 2;
+const MAX_SCALE = 2; // the board is shown up to twice its 720×468 size
+const SIDE_PANEL = 212 + 20; // .side width + layout gap (index.html)
+const PAGE_PAD = 24 * 2; // .page side padding (theme.css)
+const PAGE_BOTTOM_PAD = 40; // .page bottom padding (theme.css)
+const NARROW = 800; // at this width and below the side panel wraps under the board (index.html)
+
+// The board is shown about BOARD_SCALE times its 720×468 size, and canvases get
+// one pixel per screen pixel (browser zoom and high-DPI screens raise
+// devicePixelRatio), while all drawing stays in board coordinates.
+let DPR = 1;
+let BOARD_SCALE = 1;
+let RES = 1; // board canvas pixels per board unit: every cell is whole device pixels
+const currentDPR = () => Math.min(MAX_DPR, window.devicePixelRatio || 1);
+const boardRes = () => Math.max(1, Math.floor(CELL * BOARD_SCALE * DPR)) / CELL;
+
+// Board coordinates rounded to the board's pixel grid, and a line width of whole
+// device pixels, for crisp grid lines at any scale.
+const snap = v => Math.round(v * RES) / RES;
+const hairline = () => Math.max(1, Math.round(RES)) / RES;
 
 const INCOME_EVERY = 10; // seconds of wave time between a Mint's payouts
 const SELL_BACK = 0.7;
@@ -177,11 +196,10 @@ const upgradeBtn = document.getElementById('upgrade');
 const sellBtn = document.getElementById('sell');
 const guideEl = document.getElementById('guide');
 
-canvas.width = W * DPR;
-canvas.height = H * DPR;
 const mapCanvas = document.createElement('canvas');
-mapCanvas.width = W * DPR;
-mapCanvas.height = H * DPR;
+const boardColEl = canvas.parentElement;
+const layoutEl = canvas.closest('.td-layout');
+const pageEl = document.querySelector('.page');
 
 let pal = {};
 let map = MAPS[0];
@@ -457,7 +475,6 @@ function finishWave() {
     markMapTabs();
   } else {
     phase = 'build';
-    say(`Wave ${wave} cleared · +${bonus} gold`);
   }
   dirty = true;
 }
@@ -764,22 +781,19 @@ function drawGate(c, p, text, color) {
 
 function drawMap() {
   const c = mapCanvas.getContext('2d');
-  c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  c.setTransform(RES, 0, 0, RES, 0, 0);
   c.fillStyle = pal.paper;
   c.fillRect(0, 0, W, H);
 
-  c.lineWidth = 1;
-  c.strokeStyle = pal['grid-minor'];
-  c.beginPath();
+  // Lines are thin rectangles snapped to the pixel grid, so they stay crisp.
+  const line = hairline();
   const minor = CELL / 4;
-  for (let x = minor; x < W; x += minor) { c.moveTo(x + 0.5, 0); c.lineTo(x + 0.5, H); }
-  for (let y = minor; y < H; y += minor) { c.moveTo(0, y + 0.5); c.lineTo(W, y + 0.5); }
-  c.stroke();
-  c.strokeStyle = pal['grid-major'];
-  c.beginPath();
-  for (let x = CELL; x < W; x += CELL) { c.moveTo(x + 0.5, 0); c.lineTo(x + 0.5, H); }
-  for (let y = CELL; y < H; y += CELL) { c.moveTo(0, y + 0.5); c.lineTo(W, y + 0.5); }
-  c.stroke();
+  c.fillStyle = pal['grid-minor'];
+  for (let x = minor; x < W; x += minor) c.fillRect(snap(x), 0, line, H);
+  for (let y = minor; y < H; y += minor) c.fillRect(0, snap(y), W, line);
+  c.fillStyle = pal['grid-major'];
+  for (let x = CELL; x < W; x += CELL) c.fillRect(snap(x), 0, line, H);
+  for (let y = CELL; y < H; y += CELL) c.fillRect(0, snap(y), W, line);
 
   // Rocks: hatched squares you can't build on.
   for (const [rc, rr] of map.rocks) {
@@ -1060,7 +1074,7 @@ function drawOverlay(title, subtitle, titleColor, stamped) {
 }
 
 function draw() {
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.setTransform(RES, 0, 0, RES, 0, 0);
   ctx.drawImage(mapCanvas, 0, 0, W, H);
 
   if (selected && selected.stats.range) {
@@ -1116,14 +1130,10 @@ function markMapTabs() {
   mapNoteEl.textContent = `${map.level} · ${map.waves} waves · ${map.note}${record}`;
 }
 
+// The status line only carries notices that nothing else on screen shows,
+// like why a build failed; the HUD, stamp and buttons cover the rest.
 function statusText() {
-  if (noticeTime > 0 && notice) return notice;
-  if (phase === 'won') return `${map.name} cleared with ${lives} lives left`;
-  if (phase === 'lost') return `${map.name} overrun on wave ${wave}`;
-  if (paused) return 'Paused';
-  if (phase === 'wave') return `${map.name} · wave ${wave} of ${map.waves}`;
-  if (wave === 0) return `${map.name} · build some towers, then press Space`;
-  return `${map.name} · wave ${wave} cleared · press Space for the next one`;
+  return noticeTime > 0 ? notice : '';
 }
 
 function updateHud() {
@@ -1285,6 +1295,56 @@ function readTheme() {
   dirty = true;
 }
 
+// Largest board that still leaves the Enemies legend and the hint under it on
+// screen, without scrolling, with the side panel beside it. On narrow windows
+// the side panel wraps under the board, so only the board itself is fitted.
+function fitBoardScale() {
+  const wide = window.innerWidth > NARROW;
+  const top = canvas.getBoundingClientRect().top + window.scrollY;
+  // Legend + hint + page padding, measured as laid out right now.
+  const below = wide
+    ? pageEl.getBoundingClientRect().bottom - layoutEl.getBoundingClientRect().bottom
+    : PAGE_BOTTOM_PAD;
+  const heightFit = (window.innerHeight - top - below - 2) / H; // 2: board border
+  const content = document.documentElement.clientWidth - PAGE_PAD - 2;
+  const widthFit = (wide ? content - SIDE_PANEL : content) / W;
+  return Math.min(MAX_SCALE, heightFit, widthFit);
+}
+
+function sizeBoardBox() {
+  // Shown at exactly the canvas's pixel size, so the browser never resamples it.
+  RES = boardRes();
+  const width = Math.round(W * RES) / DPR;
+  const height = Math.round(H * RES) / DPR;
+  // The canvas is border-box, so its size includes the 1px border.
+  boardColEl.style.flex = `0 0 ${width + 2}px`;
+  canvas.style.width = width + 2 + 'px';
+  canvas.style.height = height + 2 + 'px';
+  // Widen the page past its usual 1000px when the board and side panel need it.
+  pageEl.style.maxWidth = Math.max(1000, width + 2 + SIDE_PANEL + PAGE_PAD) + 'px';
+}
+
+const scaleChanged = () => Math.abs(fitBoardScale() - BOARD_SCALE) > 0.005;
+
+function fitBoard(rescale) {
+  DPR = currentDPR();
+  // A new board width changes the page width, which can wrap the legend onto
+  // another row and change the room below, so settle in a few passes.
+  for (let pass = 0; rescale && pass < 3 && scaleChanged(); pass++) {
+    BOARD_SCALE = fitBoardScale();
+    sizeBoardBox();
+  }
+  sizeBoardBox();
+  for (const c of [canvas, mapCanvas]) {
+    c.width = Math.round(W * RES);
+    c.height = Math.round(H * RES);
+  }
+  for (const icon of document.querySelectorAll('.tower-btn canvas, .guide-list canvas')) {
+    icon.width = icon.height = 30 * DPR;
+  }
+  readTheme(); // resizing clears the canvases, so redraw the map and icons
+}
+
 // ---- Game loop ----
 
 function running() {
@@ -1407,10 +1467,17 @@ document.addEventListener('keydown', e => {
 });
 
 document.addEventListener('themechange', readTheme);
+// Browser zoom also fires resize: then keep the board's size so the zoom takes
+// effect, and only match the new pixel ratio. A real window resize re-fits it.
+window.addEventListener('resize', () => {
+  if (currentDPR() !== DPR) fitBoard(false);
+  else if (scaleChanged()) fitBoard(true);
+});
 
 buildMapTabs();
 buildTowerButtons();
 buildGuide();
 readTheme();
 newGame();
+fitBoard(true); // after newGame, which fills in the map note above the board
 requestAnimationFrame(loop);

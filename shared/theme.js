@@ -81,13 +81,20 @@ const Theme = (function () {
     updateControls();
   }
 
+  // Light/dark toggle icons, drawn in the button's ink color.
+  const ICON = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+  const SUN_ICON = ICON + '<circle cx="8" cy="8" r="3"/>' +
+    '<path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/></svg>';
+  const MOON_ICON = ICON + '<path d="M13.5 9.6A5.5 5.5 0 1 1 6.4 2.5a4.5 4.5 0 0 0 7.1 7.1z"/></svg>';
+
   function updateControls() {
     document.querySelectorAll('.swatch').forEach(b => {
       b.setAttribute('aria-pressed', String(b.dataset.scheme === scheme));
     });
     const dark = resolvedMode() === 'dark';
     document.querySelectorAll('.mode-toggle').forEach(b => {
-      b.textContent = dark ? '☀' : '☾'; // sun / moon
+      b.innerHTML = dark ? SUN_ICON : MOON_ICON;
       b.title = dark ? 'Switch to light' : 'Switch to dark';
       b.setAttribute('aria-label', b.title);
     });

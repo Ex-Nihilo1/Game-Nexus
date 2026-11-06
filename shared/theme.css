@@ -117,6 +117,7 @@ a { color: inherit; }
   font: 13px var(--font-condensed);
   color: var(--ink-muted);
 }
+.app-status:empty { display: none; }
 
 .back-link {
   display: inline-block;

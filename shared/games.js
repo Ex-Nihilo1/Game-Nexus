@@ -1,6 +1,10 @@
 // Games shown on the menu. To add a game: make games/<id>/index.html and add an entry here.
 // `thumb` is a small SVG (80x80) drawn with the theme's pens via style="fill: var(--pen)".
 
+// Game Nexus version, MAJOR.MINOR.PATCH: major = big overhaul or lost saves,
+// minor = a new game or feature, patch = fixes and tweaks. Tag releases vX.Y.Z.
+const NEXUS_VERSION = '1.0.1';
+
 const GAMES = [
   {
     id: 'tetris',

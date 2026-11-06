@@ -7,6 +7,13 @@ const COLS = 10;
 const ROWS = 20;
 const BLOCK = 30;
 const PREVIEW_BLOCK = 24;
+const BOARD_W = COLS * BLOCK;
+const BOARD_H = ROWS * BLOCK;
+const NEXT_SIZE = 120;
+const MAX_DPR = 4; // more canvas pixels than this costs too much on low-end devices
+const MAX_SCALE = 2; // the board is shown up to twice its 300×600 size
+const SIDE_PANEL = 200 + 32; // .side width + layout gap (index.html)
+const FIT_MARGIN = 40 + 2; // .page bottom padding (theme.css) + the board's 1px border top and bottom
 
 const SHAPES = {
   I: [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]],
@@ -36,11 +43,57 @@ const nextCtx = nextCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
-const statusEl = document.getElementById('status');
 
 const gridCanvas = document.createElement('canvas');
-gridCanvas.width = canvas.width;
-gridCanvas.height = canvas.height;
+const gridCtx = gridCanvas.getContext('2d');
+
+// The board is shown about BOARD_SCALE times its 300×600 size, and canvases get
+// one pixel per screen pixel (browser zoom and high-DPI screens raise
+// devicePixelRatio), while all drawing stays in board coordinates.
+let DPR = 1;
+let BOARD_SCALE = 1;
+const currentDPR = () => Math.min(MAX_DPR, window.devicePixelRatio || 1);
+
+// Draws at `res` device pixels per board unit. The canvas gets exactly that many
+// pixels and is shown at exactly that size, so the browser never resamples it.
+function sizeCanvas(c, context, width, height, res) {
+  c.width = Math.round(width * res);
+  c.height = Math.round(height * res);
+  c.style.width = c.width / DPR + 'px';
+  c.style.height = c.height / DPR + 'px';
+  context.res = res;
+  context.setTransform(res, 0, 0, res, 0, 0);
+}
+
+// Device pixels per board unit for cells of `cell` units: rounded down so every
+// cell is a whole number of screen pixels and its edges stay crisp.
+const cellRes = (cell, scale) => Math.max(1, Math.floor(cell * scale * DPR)) / cell;
+
+// Board coordinates rounded to a context's pixel grid, and a line width of whole
+// device pixels, for crisp lines and edges at any scale.
+const snap = (c, v) => Math.round(v * c.res) / c.res;
+const hairline = (c, width = 1) => Math.max(1, Math.round(width * c.res)) / c.res;
+
+// Largest board that is still fully visible without scrolling. The side panel
+// stays beside it when there's room; on narrow screens it wraps below anyway.
+function fitBoardScale() {
+  const content = canvas.parentElement.clientWidth;
+  const top = canvas.getBoundingClientRect().top + window.scrollY;
+  const heightFit = (window.innerHeight - top - FIT_MARGIN) / BOARD_H;
+  const sideFit = (content - SIDE_PANEL - 2) / BOARD_W;
+  const widthFit = sideFit >= 1 ? sideFit : (content - 2) / BOARD_W;
+  return Math.max(0.5, Math.min(MAX_SCALE, heightFit, widthFit));
+}
+
+function fitCanvases(rescale = true) {
+  DPR = currentDPR();
+  if (rescale) BOARD_SCALE = fitBoardScale();
+  const res = cellRes(BLOCK, BOARD_SCALE);
+  sizeCanvas(canvas, ctx, BOARD_W, BOARD_H, res);
+  sizeCanvas(gridCanvas, gridCtx, BOARD_W, BOARD_H, res);
+  sizeCanvas(nextCanvas, nextCtx, NEXT_SIZE, NEXT_SIZE, cellRes(PREVIEW_BLOCK, 1));
+  readTheme(); // resizing clears the canvases, so redraw the graph paper
+}
 
 let pal = {};
 let colors = [];
@@ -59,7 +112,6 @@ let clearRows = []; // full rows currently being animated away
 let clearElapsed = 0;
 let state = 'start'; // 'start' | 'playing' | 'clearing' | 'paused' | 'over'
 let dirty = true; // true when the screen needs a redraw
-let lastStatus = '';
 
 // ---- Theme ----
 
@@ -67,24 +119,21 @@ let lastStatus = '';
 function drawGraph(c, width, height, cell) {
   c.fillStyle = pal.paper;
   c.fillRect(0, 0, width, height);
-  c.lineWidth = 1;
-  c.strokeStyle = pal['grid-minor'];
-  c.beginPath();
+  // Lines are thin rectangles snapped to the pixel grid, so they stay crisp.
+  const line = hairline(c);
   const minor = cell / 3;
-  for (let x = minor; x < width; x += minor) { c.moveTo(Math.round(x) + 0.5, 0); c.lineTo(Math.round(x) + 0.5, height); }
-  for (let y = minor; y < height; y += minor) { c.moveTo(0, Math.round(y) + 0.5); c.lineTo(width, Math.round(y) + 0.5); }
-  c.stroke();
-  c.strokeStyle = pal['grid-major'];
-  c.beginPath();
-  for (let x = cell; x < width; x += cell) { c.moveTo(x + 0.5, 0); c.lineTo(x + 0.5, height); }
-  for (let y = cell; y < height; y += cell) { c.moveTo(0, y + 0.5); c.lineTo(width, y + 0.5); }
-  c.stroke();
+  c.fillStyle = pal['grid-minor'];
+  for (let x = minor; x < width; x += minor) c.fillRect(snap(c, x), 0, line, height);
+  for (let y = minor; y < height; y += minor) c.fillRect(0, snap(c, y), width, line);
+  c.fillStyle = pal['grid-major'];
+  for (let x = cell; x < width; x += cell) c.fillRect(snap(c, x), 0, line, height);
+  for (let y = cell; y < height; y += cell) c.fillRect(0, snap(c, y), width, line);
 }
 
 function readTheme() {
   pal = Theme.palette();
   colors = PIECE_PENS.map(name => name && pal[name]);
-  drawGraph(gridCanvas.getContext('2d'), gridCanvas.width, gridCanvas.height, BLOCK);
+  drawGraph(gridCtx, BOARD_W, BOARD_H, BLOCK);
   dirty = true;
 }
 
@@ -261,14 +310,22 @@ function reset() {
 
 // ---- Rendering ----
 
+// A rectangle outline whose edges and line width sit exactly on device pixels.
+function crispStroke(c, x, y, w, h, width = 1) {
+  const x0 = snap(c, x), y0 = snap(c, y);
+  const line = hairline(c, width);
+  c.lineWidth = line;
+  c.strokeRect(x0 + line / 2, y0 + line / 2, snap(c, x + w) - x0 - line, snap(c, y + h) - y0 - line);
+}
+
 function drawCell(c, x, y, color, size) {
-  const px = x * size;
-  const py = y * size;
+  const px = x * size + 1;
+  const py = y * size + 1;
+  const x0 = snap(c, px), y0 = snap(c, py);
   c.fillStyle = color;
-  c.fillRect(px + 1, py + 1, size - 2, size - 2);
+  c.fillRect(x0, y0, snap(c, px + size - 2) - x0, snap(c, py + size - 2) - y0);
   c.strokeStyle = pal.ink;
-  c.lineWidth = 1;
-  c.strokeRect(px + 1.5, py + 1.5, size - 3, size - 3);
+  crispStroke(c, px, py, size - 2, size - 2);
 }
 
 function drawMatrix(c, matrix, ox, oy, size) {
@@ -283,18 +340,17 @@ function drawMatrix(c, matrix, ox, oy, size) {
 // Dashed outline where the piece will land.
 function drawGhost(matrix, ox, oy) {
   ctx.strokeStyle = pal['ink-muted'];
-  ctx.lineWidth = 1;
   ctx.setLineDash([4, 3]);
   for (let r = 0; r < matrix.length; r++) {
     for (let c = 0; c < matrix[r].length; c++) {
-      if (matrix[r][c]) ctx.strokeRect((ox + c) * BLOCK + 3.5, (oy + r) * BLOCK + 3.5, BLOCK - 7, BLOCK - 7);
+      if (matrix[r][c]) crispStroke(ctx, (ox + c) * BLOCK + 3, (oy + r) * BLOCK + 3, BLOCK - 6, BLOCK - 6);
     }
   }
   ctx.setLineDash([]);
 }
 
 function drawNext() {
-  drawGraph(nextCtx, nextCanvas.width, nextCanvas.height, PREVIEW_BLOCK);
+  drawGraph(nextCtx, NEXT_SIZE, NEXT_SIZE, PREVIEW_BLOCK);
   if (!nextPiece) return;
 
   // Center the piece by its filled cells, ignoring empty rows/columns.
@@ -307,8 +363,8 @@ function drawNext() {
   }));
   const w = (maxC - minC + 1) * PREVIEW_BLOCK;
   const h = (maxR - minR + 1) * PREVIEW_BLOCK;
-  const ox = (nextCanvas.width - w) / 2 / PREVIEW_BLOCK - minC;
-  const oy = (nextCanvas.height - h) / 2 / PREVIEW_BLOCK - minR;
+  const ox = (NEXT_SIZE - w) / 2 / PREVIEW_BLOCK - minC;
+  const oy = (NEXT_SIZE - h) / 2 / PREVIEW_BLOCK - minR;
   drawMatrix(nextCtx, m, ox, oy, PREVIEW_BLOCK);
 }
 
@@ -316,7 +372,7 @@ function drawNext() {
 function drawClearing() {
   if (clearElapsed < CLEAR_FLASH_MS) {
     ctx.fillStyle = pal.highlighter;
-    for (const r of clearRows) ctx.fillRect(0, r * BLOCK, canvas.width, BLOCK);
+    for (const r of clearRows) ctx.fillRect(0, r * BLOCK, BOARD_W, BLOCK);
     return;
   }
   const p = Math.min(1, (clearElapsed - CLEAR_FLASH_MS) / (CLEAR_MS - CLEAR_FLASH_MS));
@@ -325,7 +381,8 @@ function drawClearing() {
     for (let c = 0; c < COLS; c++) {
       if (Math.abs(c + 0.5 - COLS / 2) < radius) {
         const x = c * BLOCK, y = r * BLOCK;
-        ctx.drawImage(gridCanvas, x, y, BLOCK, BLOCK, x, y, BLOCK, BLOCK);
+        const k = gridCtx.res; // grid canvas pixels per board unit
+        ctx.drawImage(gridCanvas, x * k, y * k, BLOCK * k, BLOCK * k, x, y, BLOCK, BLOCK);
       }
     }
   }
@@ -335,47 +392,33 @@ function drawClearing() {
 function drawOverlay(title, subtitle, titleColor, stamped) {
   ctx.globalAlpha = 0.6;
   ctx.fillStyle = pal.desk;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, BOARD_W, BOARD_H);
   ctx.globalAlpha = 1;
 
   const w = 230, h = 110;
-  const x = (canvas.width - w) / 2, y = (canvas.height - h) / 2;
+  const x = (BOARD_W - w) / 2, y = (BOARD_H - h) / 2;
   ctx.fillStyle = pal.paper;
-  ctx.fillRect(x, y, w, h);
+  ctx.fillRect(snap(ctx, x), snap(ctx, y), snap(ctx, x + w) - snap(ctx, x), snap(ctx, y + h) - snap(ctx, y));
   ctx.strokeStyle = pal.ink;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  crispStroke(ctx, x, y, w, h);
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = '600 26px ' + FONT;
   ctx.fillStyle = titleColor;
-  ctx.fillText(title, canvas.width / 2, y + 44);
+  ctx.fillText(title, BOARD_W / 2, y + 44);
   if (stamped) {
     const tw = ctx.measureText(title).width + 20;
     ctx.strokeStyle = titleColor;
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(canvas.width / 2 - tw / 2, y + 26, tw, 36);
+    crispStroke(ctx, BOARD_W / 2 - tw / 2, y + 26, tw, 36, 1.5);
   }
   ctx.font = '13px ' + FONT_CONDENSED;
   ctx.fillStyle = pal['ink-muted'];
-  ctx.fillText(subtitle, canvas.width / 2, y + 84);
-}
-
-function updateStatus() {
-  let text;
-  if (state === 'start') text = 'Press Enter to start';
-  else if (state === 'paused') text = 'Paused';
-  else if (state === 'over') text = `Game over · ${score} points`;
-  else text = `Playing · level ${level}`;
-  if (text !== lastStatus) {
-    statusEl.textContent = text;
-    lastStatus = text;
-  }
+  ctx.fillText(subtitle, BOARD_W / 2, y + 84);
 }
 
 function draw() {
-  ctx.drawImage(gridCanvas, 0, 0);
+  ctx.drawImage(gridCanvas, 0, 0, BOARD_W, BOARD_H);
   drawMatrix(ctx, board, 0, 0, BLOCK);
   if (clearRows.length) drawClearing();
 
@@ -385,7 +428,6 @@ function draw() {
   }
 
   drawNext();
-  updateStatus();
 
   if (state === 'start') drawOverlay('Tetris', 'Press Enter to start', pal.ink, false);
   else if (state === 'paused') drawOverlay('Paused', 'Press P to resume', pal.ink, false);
@@ -448,6 +490,12 @@ document.addEventListener('keydown', e => {
 });
 
 document.addEventListener('themechange', readTheme);
-readTheme();
+// Browser zoom also fires resize: then keep the board's size so the zoom takes
+// effect, and only match the new pixel ratio. A real window resize re-fits it.
+window.addEventListener('resize', () => {
+  if (currentDPR() !== DPR) fitCanvases(false);
+  else if (fitBoardScale() !== BOARD_SCALE) fitCanvases(true);
+});
+fitCanvases();
 updateHud();
 requestAnimationFrame(loop);

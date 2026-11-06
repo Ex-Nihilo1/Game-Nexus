@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Games</title>
+  <title>Game Nexus</title>
   <link rel="stylesheet" href="shared/theme.css">
   <script src="shared/theme.js"></script>
   <style>
@@ -61,15 +61,14 @@
   <div class="page">
     <header class="app-header">
       <div>
-        <h1 class="app-title">Games</h1>
-        <div class="app-status" id="status"></div>
+        <h1 class="app-title">Game Nexus</h1>
       </div>
       <div class="theme-controls"></div>
     </header>
 
     <main>
       <ul class="game-list" id="game-list"></ul>
-      <div class="coming-soon">More games coming. Add one in shared/games.js.</div>
+      <div class="coming-soon">More games coming. Add one in shared/games.js. <span id="version"></span></div>
     </main>
   </div>
 
@@ -95,8 +94,7 @@
         `</a>`;
       list.appendChild(li);
     }
-    document.getElementById('status').textContent =
-      `${GAMES.length} games on the desk · pick one`;
+    document.getElementById('version').textContent = `· Game Nexus ${NEXUS_VERSION}`;
   </script>
 </body>
 </html>
