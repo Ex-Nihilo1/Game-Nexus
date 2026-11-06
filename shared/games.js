@@ -75,6 +75,22 @@ const GAMES = [
       '<rect x="25" y="45" width="30" height="4" style="fill: var(--ink)"/>' +
       '</svg>',
   },
+  {
+    id: 'steelspell',
+    name: 'Steel &amp; Spell',
+    blurb: 'Survive the horde. Split your build between steel and magic, pick one active skill, find synergies.',
+    href: 'games/steelspell/index.html',
+    thumb:
+      '<svg viewBox="0 0 80 80" aria-hidden="true">' +
+      '<line x1="60" y1="60" x2="22" y2="22" style="stroke: var(--violet); stroke-width: 3"/>' +
+      '<circle cx="19" cy="19" r="7" style="fill: var(--highlighter); stroke: var(--ink)"/>' +
+      '<line x1="20" y1="60" x2="58" y2="22" style="stroke: var(--orange-pen); stroke-width: 4"/>' +
+      '<line x1="14" y1="52" x2="28" y2="66" style="stroke: var(--ink); stroke-width: 3"/>' +
+      '<circle cx="40" cy="66" r="4" style="fill: var(--ink-muted); stroke: var(--ink)"/>' +
+      '<circle cx="66" cy="42" r="4" style="fill: var(--ink-muted); stroke: var(--ink)"/>' +
+      '<rect x="62" y="62" width="9" height="9" style="fill: var(--ink-muted); stroke: var(--orange-pen); stroke-width: 2"/>' +
+      '</svg>',
+  },
 ];
 
 // 10px squares on the 80px thumbnail, outlined in ink.
