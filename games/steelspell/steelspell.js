@@ -10,7 +10,8 @@
 // engine) without touching the logic. Times are in seconds, distances in world units.
 //
 // Open with ?dev in the URL for test keys: L level up, G weapon pick, I open a chest,
-// K die (with a spare life, to see the revive), R reset the active skill, T skip a minute.
+// K die (with a spare life, to see the revive), R reset the active skill, T skip a minute,
+// E call an elite, O fill the horde, H immortality. js/sim.js has them and the simulator.
 
 const TAU = Math.PI * 2;
 const DPR = Math.min(2, window.devicePixelRatio || 1);
@@ -321,6 +322,8 @@ let frame = 0;
 let lastTime = 0;
 let lastCdShare = -1;
 let cardActions = [];
+let shownCards = [];
+let simulating = false; // true while js/sim.js plays a run: nothing is drawn or saved
 
 let hero, enemies, shots, zones, orbs, redOrbs, chests, fx, numbers, timers, queue;
 let upgrades, gear, items, activeDef, activeCd, berserkLeft;
@@ -388,6 +391,7 @@ function startRun(activeId, weaponId, runSeed = Date.now()) {
 function endRun() {
   phase = 'over';
   queue = [];
+  if (simulating) return;
   activeBtn.hidden = true;
   pauseBtn.hidden = true;
   const best = loadJson(BEST_KEY);
@@ -440,6 +444,7 @@ function loadJson(key) {
   try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; }
 }
 function saveJson(key, value) {
+  if (simulating) return;
   try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode etc. */ }
 }
 function say(text) {
@@ -1374,6 +1379,8 @@ function statCards() {
     const now = stat(o.key, o.kind);
     const next = Math.min(STATS[o.key].max, now + STATS[o.key].step);
     return {
+      type: 'stat',
+      key: o.key,
       kind: o.kind,
       tag: KINDS[o.kind].name,
       name: STATS[o.key].name,
@@ -1403,6 +1410,8 @@ function weaponCards() {
     const s = synergyPartner(d.id);
     const partner = s && WEAPONS.find(o => s.needs.includes(o.id) && o !== d);
     return {
+      type: 'weapon',
+      id: d.id,
       kind: d.kind,
       tag: KINDS[d.kind].name,
       name: d.name,
@@ -1431,6 +1440,8 @@ function rollItems(chest) {
 
 function itemCard(item) {
   return {
+    type: 'item',
+    id: item.id,
     kind: item.rarity,
     tag: RARITIES[item.rarity].name,
     name: item.name,
@@ -1555,6 +1566,7 @@ function moveEnemies(dt) {
 }
 
 function hurtHero(amount) {
+  if (hero.immortal) return;
   if (hero.ghostLeft > 0 || hero.phaseLeft > 0 || hero.iframes > 0) return;
   const shield = chargedWeapon();
   if (shield && shield.charges > 0) {
@@ -2413,6 +2425,8 @@ function hideOverlay() {
 
 function showCards(title, note, cards) {
   cardActions = cards.map(c => c.pick);
+  shownCards = cards;
+  if (simulating) return;
   showPanel(p => {
     p.appendChild(el('h2', 'panel-title', title));
     p.appendChild(el('p', 'panel-note', note));
@@ -2497,7 +2511,7 @@ function showStart() {
       '<kbd>1</kbd>&ndash;<kbd>4</kbd> pick a card &middot; <kbd>P</kbd> pause<br>' +
       'An orange outline is armor that blunts physical damage, a violet outline is a ward that blunts magic. Pure damage ignores both.<br>' +
       'Red orbs heal. Walking turns them up, and elites drop them along with a chest: pick 1 item of 3. A blue chest is better than a grey one, a yellow one better still.' +
-      (DEV ? '<br>Dev keys: <kbd>L</kbd> level up &middot; <kbd>G</kbd> weapon pick &middot; <kbd>I</kbd> open a chest &middot; <kbd>K</kbd> die and revive &middot; <kbd>R</kbd> reset active &middot; <kbd>T</kbd> skip a minute' : '');
+      (DEV ? '<br>Dev keys: <kbd>L</kbd> level up &middot; <kbd>G</kbd> weapon pick &middot; <kbd>I</kbd> open a chest &middot; <kbd>K</kbd> die and revive &middot; <kbd>R</kbd> reset active &middot; <kbd>T</kbd> skip a minute &middot; <kbd>E</kbd> elite &middot; <kbd>O</kbd> fill the horde &middot; <kbd>H</kbd> immortal' : '');
     p.appendChild(hints);
   });
 }
@@ -2638,18 +2652,6 @@ function loop(time = 0) {
 // ---- Input ----
 
 const MOVE_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
-
-function devKey(code) {
-  if (code === 'KeyL') gainXp(xpNext - xp);
-  else if (code === 'KeyG') enqueueChoice('weapon');
-  else if (code === 'KeyI') enqueueChoice(pickWeighted(CHEST_ROLL));
-  else if (code === 'KeyR') activeCd = 0;
-  else if (code === 'KeyT') elapsed += 60;
-  else if (code === 'KeyK') {
-    hero.lives = Math.max(1, hero.lives);
-    hero.hp = 0;
-  }
-}
 
 document.addEventListener('keydown', e => {
   // Keyboard users pressing a focused button get the button, not the shortcut.

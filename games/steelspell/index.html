@@ -141,6 +141,11 @@
     .report { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0 28px; }
     .report .row { padding: 3px 0; font-size: 13px; font-variant-numeric: tabular-nums; }
 
+    .sim-scroll { overflow-x: auto; margin-top: 10px; }
+    .sim-table { width: 100%; border-collapse: collapse; font: 12px var(--font-condensed); font-variant-numeric: tabular-nums; }
+    .sim-table th, .sim-table td { padding: 3px 6px; border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+    .sim-table th { color: var(--ink-muted); font-weight: 400; }
+
     @media (max-width: 560px) {
       .page { padding: 6px 8px 8px; }
       .app-header { margin-bottom: 6px; padding-bottom: 6px; }
@@ -177,5 +182,6 @@
   </div>
 
   <script src="steelspell.js"></script>
+  <script src="js/sim.js"></script>
 </body>
 </html>
