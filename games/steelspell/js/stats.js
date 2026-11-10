@@ -56,11 +56,14 @@ function weaponStat(w, key) {
 
 function weaponCount(w) { return Math.floor(weaponStat(w, 'count') + w.bonus.count); }
 
-// Count adds shots only up to COUNT.cap. Past it, every one makes the weapon hit harder.
-function shotCount(w) { return 1 + Math.min(COUNT.cap, weaponCount(w)); }
+// Count adds shots only up to a cap. Past it, every one makes the weapon hit harder. A
+// weapon marked `single` (Nuke) never fires more than one.
+function shotCap(w) { return w.cfg.single ? 0 : COUNT.cap; }
+
+function shotCount(w) { return 1 + Math.min(shotCap(w), weaponCount(w)); }
 
 function weaponDamage(w) {
-  const spare = Math.max(0, weaponCount(w) - COUNT.cap);
+  const spare = Math.max(0, weaponCount(w) - shotCap(w));
   return weaponStat(w, 'damage') * (1 + w.bonus.damage) * (1 + spare * COUNT.overflow);
 }
 

@@ -151,7 +151,7 @@ function drawEnemies() {
       ctx.fill();
       ctx.globalAlpha = 1;
     }
-    if (e.slowLeft > 0) {
+    if (e.slowLeft > 0 || e.freezeLeft > 0) {
       ctx.strokeStyle = pal['blue-pen'];
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -302,13 +302,13 @@ function drawSpearhead(w, reach, size) {
 }
 
 // The zone it hurts is drawn like the Aura, with the spear itself on top.
-function drawSpear(w) {
+function drawSpear(w, angle) {
   const size = weaponSize(w);
   const length = w.cfg.length * size;
   const width = w.cfg.width * size;
   ctx.save();
   ctx.translate(hero.x, hero.y);
-  ctx.rotate(w.angle);
+  ctx.rotate(angle);
   ctx.beginPath();
   ctx.rect(0, -width / 2, length, width);
   ctx.globalAlpha = 0.1 + 0.16 * w.thrust;
@@ -346,7 +346,8 @@ function drawRadiantLance(w) {
 function drawHeroEffects() {
   const { x, y, r } = hero;
   const spear = owned('spear');
-  if (spear) drawSpear(spear);
+  if (spear) drawSpear(spear, spear.angle);
+  if (spear && spear.cfg.back) drawSpear(spear, spear.angle + Math.PI);
   const lance = owned('radiantlance');
   if (lance) drawRadiantLance(lance);
   const aura = owned('aura') || owned('fireshield');

@@ -160,6 +160,7 @@ function openChoice(kind) {
   let title;
   let note;
   let skip = false;
+  let reroll = true;
   if (chest) {
     cards = rollItems(chest).map(itemCard);
     if (!cards.length) {
@@ -169,6 +170,13 @@ function openChoice(kind) {
     }
     title = chest.name;
     note = 'Pick one. Every item is one of a kind.';
+  } else if (kind.startsWith('evolve:')) {
+    const w = owned(kind.slice(7));
+    if (!w || w.evo) return false;
+    cards = EVOLUTIONS[w.def.id].map((evo, branch) => evolveCard(w, evo, branch));
+    title = `${w.def.name} evolves`;
+    note = 'It is at its last level. Pick the way it changes for good.';
+    reroll = false;
   } else {
     cards = kind === 'weapon' ? weaponCards() : [];
     if (cards.length) {
@@ -183,7 +191,7 @@ function openChoice(kind) {
     }
     if (!cards.length) return false;
   }
-  choice = { kind, reroll: true, skip };
+  choice = { kind, reroll, skip };
   phase = 'choosing';
   showCards(title, note, cards);
   return true;
@@ -268,7 +276,35 @@ function upgradeCard(o) {
   };
 }
 
-// A level-up offers weapon levels and passives: see LEVEL_CARDS.
+function evolveCard(w, evo, branch) {
+  return {
+    type: 'evolve',
+    id: evo.id,
+    kind: w.def.kind,
+    tag: 'Evolution',
+    name: evo.name,
+    value: '',
+    note: evo.blurb,
+    pick: () => evolveWeapon(w, branch),
+  };
+}
+
+function mergeCard(merge) {
+  const [a, b] = merge.needs.map(owned);
+  return {
+    type: 'merge',
+    id: merge.id,
+    kind: 'hybrid',
+    tag: 'Merge',
+    name: merge.name,
+    value: `${weaponName(a)} + ${weaponName(b)}`,
+    note: `${merge.blurb} Both weapons go, and you pick a new one right away.`,
+    pick: () => mergeWeapons(merge),
+  };
+}
+
+// A level-up offers weapon levels and passives: see LEVEL_CARDS. A merge that is ready is
+// always among the cards, until it is taken.
 function levelCards() {
   const ups = hero.weapons.filter(canLevel).map(weapon => ({ weapon, weight: LEVEL_CARDS.weaponWeight }));
   const stats = statPool();
@@ -276,16 +312,16 @@ function levelCards() {
     ...(LEVEL_CARDS.sureWeapon ? drawWeighted(ups, 1) : []),
     ...(LEVEL_CARDS.sureStat ? drawWeighted(stats, 1) : []),
   ];
+  const merging = readyMerges().slice(0, LEVEL_CARDS.slots - 1).map(mergeCard);
+  const room = LEVEL_CARDS.slots - merging.length;
+  sure.length = Math.min(sure.length, room);
   const rest = [...ups, ...stats].filter(o => !sure.includes(o));
-  const drawn = [...sure, ...drawWeighted(rest, LEVEL_CARDS.slots - sure.length)];
+  const drawn = [...sure, ...drawWeighted(rest, room - sure.length)];
   return [
+    ...merging,
     ...drawn.filter(o => o.weapon).map(upgradeCard),
     ...drawn.filter(o => !o.weapon).map(statCard),
   ];
-}
-
-function synergyPartner(id) {
-  return SYNERGIES.find(s => s.needs.includes(id) && s.needs.some(n => n !== id && owned(n)));
 }
 
 // A weapon that went into a merge is gone from the pool too.
@@ -310,7 +346,7 @@ function weaponCards() {
       name: d.name,
       value: '',
       note: `${d.blurb} Uses: ${d.scales.map(k => STATS[k].name).join(', ')}.`,
-      synergy: s ? `Merges with ${partner.name} into ${s.name}: ${s.blurb}` : '',
+      synergy: s ? `Merges with ${partner.name} into ${s.name} once both are at Lv ${MAX_WEAPON_LEVEL} and evolved.` : '',
       pick: () => addWeapon(d.id),
     };
   });

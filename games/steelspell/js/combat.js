@@ -11,22 +11,32 @@ function armorFactor(e, kind) {
 
 // One hit from a weapon: base damage, then stats, crit, and the enemy's armor. `kind` only
 // says which armor it meets: the upgrades it uses are always those of the weapon itself.
-function hit(e, w, base, kind = w.def.kind) {
+// `dot` marks damage over time: its numbers are shown summed up, a few times a second.
+function hit(e, w, base, kind = w.def.kind, dot = false) {
   if (e.dead) return;
   const crits = critTiers(w);
   let amount = base * weaponDamage(w) * attackMult() * kindBonus(kind);
   if (crits) amount *= 1 + (weaponStat(w, 'critDamage') - 1) * crits;
-  hurtEnemy(e, amount, kind, crits > 0, w);
+  hurtEnemy(e, amount, kind, crits > 0, w, dot);
 }
 
-function hurtEnemy(e, amount, kind, crit, w) {
+function hurtEnemy(e, amount, kind, crit, w, dot = false) {
   const armor = armorFactor(e, kind);
   const factor = armor + (1 - armor) * gearValue('pureShare');
   const dealt = amount * factor;
   e.hp -= dealt;
   e.flash = 0.08;
   if (w) w.dealt += dealt;
-  addNumber(e, dealt, kind, crit, factor);
+  if (dot) {
+    e.dotSum = (e.dotSum || 0) + dealt;
+    if (elapsed >= (e.dotAt || 0)) {
+      addNumber(e, e.dotSum, kind, false, factor);
+      e.dotSum = 0;
+      e.dotAt = elapsed + DOT_NUMBER_EVERY;
+    }
+  } else {
+    addNumber(e, dealt, kind, crit, factor);
+  }
   if (e.hp <= 0 && !e.dead) killEnemy(e);
 }
 
@@ -45,6 +55,11 @@ function killEnemy(e) {
 function slow(e, by, seconds) {
   e.slowBy = e.def.elite ? by / 2 : by;
   e.slowLeft = Math.max(e.slowLeft, seconds);
+}
+
+// Elites cannot be frozen.
+function freeze(e, seconds) {
+  if (!e.def.elite) e.freezeLeft = Math.max(e.freezeLeft || 0, seconds);
 }
 
 // Elites stand their ground.
@@ -74,6 +89,13 @@ function strikeChain(first, w) {
     hit(next, w, amount);
     struck.add(next);
     points.push({ x: next.x, y: next.y });
+    // Overcharge: the bolt may fork to one more enemy nearby.
+    const side = d.fork && rand() < d.fork ? nearestEnemies(next.x, next.y, d.jumpRange, 1, struck)[0] : null;
+    if (side) {
+      hit(side, w, amount);
+      struck.add(side);
+      addFx({ type: 'bolt', points: jagged([next, side]), life: 0.16, pen: d.pen });
+    }
     from = next;
   }
   addFx({ type: 'bolt', points: jagged(points), life: 0.16, pen: d.pen });
@@ -133,4 +155,38 @@ function updateZones(dt) {
     if (z.life <= 0) z.dead = true;
   }
   sweep(zones);
+}
+
+// ---- Enemy shots: the ways weapons take them out of the air ----
+
+function eraseEnemyShots(x, y, r) {
+  for (const s of enemyShots) {
+    const reach = r + s.r;
+    if ((s.x - x) ** 2 + (s.y - y) ** 2 < reach * reach) s.dead = true;
+  }
+}
+
+function eraseShotsOnLine(x0, y0, x1, y1, halfWidth) {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const length2 = dx * dx + dy * dy || 1;
+  for (const s of enemyShots) {
+    const t = Math.max(0, Math.min(1, ((s.x - x0) * dx + (s.y - y0) * dy) / length2));
+    const reach = halfWidth + s.r;
+    if ((s.x - x0 - dx * t) ** 2 + (s.y - y0 - dy * t) ** 2 < reach * reach) s.dead = true;
+  }
+}
+
+// Parry Blade: shots inside the swing fly back the way they came, as the hero's own.
+function parryEnemyShots(w, angle, half, reach) {
+  for (const s of enemyShots) {
+    const dx = s.x - hero.x;
+    const dy = s.y - hero.y;
+    if (s.dead || dx * dx + dy * dy > (reach + s.r) ** 2 || angleGap(Math.atan2(dy, dx), angle) > half) continue;
+    s.dead = true;
+    launch({
+      look: 'ball', pen: w.cfg.pen, x: s.x, y: s.y, a: Math.atan2(-s.vy, -s.vx), speed: Math.hypot(s.vx, s.vy) * 1.5,
+      r: s.r, life: 1.2, onHit: (shot, e) => hit(e, w, w.cfg.damage),
+    });
+  }
 }

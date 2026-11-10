@@ -101,6 +101,8 @@ function moveEnemies(dt) {
       e.pushLeft -= dt;
       e.x += e.pushX * dt;
       e.y += e.pushY * dt;
+    } else if (e.freezeLeft > 0) {
+      e.freezeLeft -= dt;
     } else {
       const pace = e.def.speed * hurry * (e.slowLeft > 0 ? 1 - e.slowBy : 1);
       e.x += dx / d * pace * dt;

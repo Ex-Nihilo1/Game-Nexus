@@ -89,7 +89,16 @@ function collideHero() {
     e.x += dx / d * overlap * (1 - share);
     e.y += dy / d * overlap * (1 - share);
     hurtHero(e.def.damage * fury);
+    prick(e);
   });
+}
+
+// Spiked Shield: whatever touches the hero gets hurt, at most twice a second.
+function prick(e) {
+  const shield = chargedWeapon();
+  if (!shield || !shield.cfg.thorns || (e.prickAt || 0) > elapsed) return;
+  e.prickAt = elapsed + 0.5;
+  hit(e, shield, shield.cfg.thorns);
 }
 
 function moveHero(dt) {

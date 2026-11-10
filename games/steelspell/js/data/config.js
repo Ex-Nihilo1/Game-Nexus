@@ -36,6 +36,7 @@ const MAX_ENEMIES = 320;
 const MAX_ORBS = 160;
 const MAX_FX = 120;
 const MAX_NUMBERS = 40;
+const DOT_NUMBER_EVERY = 0.3; // damage over time shows one summed number per enemy this often
 const MAX_ENEMY_R = 30;
 const STICK_RADIUS = 46;
 

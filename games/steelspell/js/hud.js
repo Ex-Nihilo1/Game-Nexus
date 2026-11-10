@@ -30,7 +30,7 @@ function drawWeaponTiles(H) {
     ctx.lineWidth = 2;
     ctx.strokeRect(x, y, size, size);
     hudText(w.def.tag, x + size / 2, y + size / 2 - (w.level ? 4 : 0), 15, 'ink', 'center');
-    if (w.level) hudText(w.level >= MAX_WEAPON_LEVEL ? 'MAX' : `Lv ${w.level}`, x + size / 2, y + size - 8, 10, 'ink-muted', 'center');
+    if (w.level) hudText(w.evo ? 'EVO' : w.level >= MAX_WEAPON_LEVEL ? 'MAX' : `Lv ${w.level}`, x + size / 2, y + size - 8, 10, w.evo ? 'red-pencil' : 'ink-muted', 'center');
     if (w.charges !== undefined) hudText(String(w.charges), x + size - 6, y + 8, 12, 'red-pencil', 'center');
     if (w.locked && w.cfg.earlyCost > 1) hudText('x2', x + 9, y + 9, 12, 'red-pencil', 'center');
     x += size + 6;
@@ -257,6 +257,7 @@ function addRow(parent, label, value) {
 }
 
 function weaponTitle(w) {
+  if (w.evo) return `${weaponName(w)}, was ${w.def.name}`;
   return w.def.name + (w.level ? ` Lv ${w.level}` : '');
 }
 

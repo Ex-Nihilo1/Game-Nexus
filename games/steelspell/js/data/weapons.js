@@ -88,7 +88,95 @@ const WEAPONS = [
     blurb: 'Crosses the map on a diagonal, right through you, and hits everything on its way. Size makes its path wider.' },
 ];
 
-// Owning both `needs` replaces them with this weapon. A merged weapon has no levels.
+// At MAX_WEAPON_LEVEL a weapon evolves, and the player picks one of its two branches. A
+// branch is a step like a level's; most `set` fields that only the weapon's code looks for.
+// `reads` makes the weapon read one more passive stat. `ward: true` marks a branch that
+// takes enemy shots out of the air.
+const EVOLUTIONS = {
+  fireball: [
+    { id: 'inferno', name: 'Inferno Orb', reads: ['duration'], set: { burn: { life: 3, tick: 0.5, damage: 6 } },
+      blurb: 'Every blast leaves the ground burning for 3 s.' },
+    { id: 'scatter', name: 'Scatter Flame', set: { scatter: 3, scatterSize: 0.6, scatterDamage: 0.5, scatterLife: 0.3 },
+      blurb: 'Every blast throws out 3 small fireballs.' },
+  ],
+  aura: [
+    { id: 'frost', name: 'Frost Aura', damage: 0.2, set: { chill: 0.3 },
+      blurb: 'Enemies inside are 30% slower. Damage +20%.' },
+    { id: 'sanctum', name: 'Sanctum', damage: -0.15, set: { ward: true },
+      blurb: 'Enemy shots fade inside the aura. Damage -15%.' },
+  ],
+  meteor: [
+    { id: 'shower', name: 'Meteor Shower', add: { meteors: 2 }, mul: { radius: 0.75, damage: 0.6, 'crater.damage': 0.6 },
+      blurb: '2 more meteors per cast, each of them smaller.' },
+    { id: 'cataclysm', name: 'Cataclysm', damage: 0.6, mul: { radius: 1.6 }, set: { meteors: 1, 'crater.slow': 0.4 },
+      blurb: 'One meteor, 60% wider and stronger, and its crater slows.' },
+  ],
+  chain: [
+    { id: 'web', name: 'Storm Web', add: { jumps: 4 }, set: { falloff: 1 },
+      blurb: '+4 jumps, and jumps lose no damage.' },
+    { id: 'overcharge', name: 'Overcharge', set: { fork: 0.25 },
+      blurb: 'Every jump has a 25% chance to fork to one more enemy.' },
+  ],
+  icearrow: [
+    { id: 'glacier', name: 'Glacier Lance', set: { freeze: 0.5 },
+      blurb: 'Freezes what it hits for 0.5 s. Elites are only slowed.' },
+    { id: 'shatter', name: 'Shatter', set: { shards: 3, shardDamage: 0.4 },
+      blurb: 'What it kills bursts into 3 piercing ice shards.' },
+  ],
+  phase: [
+    { id: 'blink', name: 'Blink Strike', set: { burst: 120 },
+      blurb: 'The phase ends with a blast.' },
+    { id: 'shroud', name: 'Shroud', mul: { duration: 1.5 }, set: { ward: true },
+      blurb: 'Lasts 50% longer and fades enemy shots near you.' },
+  ],
+  spear: [
+    { id: 'pike', name: 'Pike Wall', set: { back: true },
+      blurb: 'A second spear points behind you.' },
+    { id: 'javelin', name: 'Javelin', set: { javelin: 4, javelinDamage: 2.5, javelinSpeed: 620, javelinLife: 1.1 },
+      blurb: 'Every 4th strike throws a piercing javelin across the screen.' },
+  ],
+  boomerang: [
+    { id: 'glaive', name: 'Glaive', damage: 0.3, set: { bounces: 5, bounceRange: 260 },
+      blurb: 'Instead of coming back it bounces between 5 enemies. Damage +30%.' },
+    { id: 'orbit', name: 'Orbit Blades', reads: ['duration'], set: { orbit: 3, orbitRadius: 85, orbitTurn: 5 },
+      blurb: 'Circles around you for 3 s before it comes back.' },
+  ],
+  pistol: [
+    { id: 'revolver', name: 'Revolver', set: { sixth: 4 },
+      blurb: 'Every 6th shot deals 4x damage and goes through everything.' },
+    { id: 'dual', name: 'Dual Wield', add: { targets: 1 }, set: { ward: true },
+      blurb: '+1 target, and bullets knock enemy shots out of the air.' },
+  ],
+  sword: [
+    { id: 'great', name: 'Greatsword', size: 0.4, set: { knock: 60, knockEvery: 4 },
+      blurb: 'Size +40%, and a swing knocks enemies back: the same enemy once in 4 s.' },
+    { id: 'parry', name: 'Parry Blade', set: { parry: true },
+      blurb: 'A swing sends enemy shots back where they came from.' },
+  ],
+  shield: [
+    { id: 'bulwark', name: 'Bulwark', add: { charges: 2 },
+      blurb: '+2 charges.' },
+    { id: 'spiked', name: 'Spiked Shield', mul: { damage: 1.5 }, set: { thorns: 15 },
+      blurb: 'The blast is 50% stronger, and enemies that touch you get hurt.' },
+  ],
+  rocket: [
+    { id: 'barrage', name: 'Barrage', count: 2, damage: -0.2,
+      blurb: '+2 rockets, each 20% weaker.' },
+    { id: 'nuke', name: 'Nuke', reads: ['duration'], damage: 0.3, mul: { radius: 1.8 },
+      set: { single: true, fallout: { life: 4, tick: 0.5, damage: 12 } },
+      blurb: 'One rocket with a blast 80% wider that leaves fallout. Count makes it hit harder instead.' },
+  ],
+  drone: [
+    { id: 'squadron', name: 'Squadron', add: { drones: 2 },
+      blurb: '+2 drones: one on every diagonal.' },
+    { id: 'guardian', name: 'Guardian', reads: ['duration'], set: { guard: 4, guardRadius: 95, guardTurn: 3 },
+      blurb: 'Circles around you for 4 s at a time and catches enemy shots.' },
+  ],
+};
+
+// Two weapons that are both at the last level and evolved can merge into one of these: a
+// card offers it, both `needs` go, and a new weapon can be picked in the freed slot. A merged
+// weapon arrives at full strength and has no levels.
 const SYNERGIES = [
   { id: 'electrogun', name: 'ElectroGun', tag: 'EG', kind: 'hybrid', pen: 'green-ink', needs: ['pistol', 'chain'],
     scales: ['damage', 'critChance', 'haste'],
