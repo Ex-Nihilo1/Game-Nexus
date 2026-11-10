@@ -1,0 +1,85 @@
+// Tuning: constants, the hero, damage kinds, stats and active skills.
+
+const TAU = Math.PI * 2;
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+const DEV = new URLSearchParams(location.search).has('dev');
+
+const VIEW_SHORT = 560; // world units along the screen's short side...
+const MIN_SCALE = 0.8; // ...unless that would make everything too small on a phone
+const WEAPON_LEVELS = [10, 20, 40, 60]; // new weapons at these levels; the first comes before the run
+const XP_BASE = 5;
+const XP_PER_LEVEL = 2.7;
+const HP_PER_MINUTE = 0.12; // enemy health grows this much per minute of the run...
+const HP_ACCEL = 0.03; // ...and this much per minute squared, to keep up with five weapons...
+const HP_WALL = { from: 13, doubling: 2.3 }; // ...and from this minute on also doubles every so many minutes, so every run ends
+const DAMAGE_PER_MINUTE = 0.12;
+const SPEED_PER_MINUTE = 0.03;
+const AIM_RANGE = 460;
+const ORB_PULL_SPEED = 340;
+const WILD_ORB = { every: 2, share: 0.03 }; // orbs also appear on the map, each worth this share of the level, so a hero who cannot kill still grows
+const RED_ORB = { heal: 0.15, every: 1200, eliteDrop: 3, max: 10 }; // `heal` is a share of max health, `every` a distance walked
+const COOLDOWN_CAP = 0.8; // no weapon's cooldown can be cut by more than this
+const BODY_SHOVE = 0.25; // share of an overlap the hero gives way on: small enemies
+const ELITE_SHOVE = 0.8; // and elites, who mostly push the hero around
+const SEPARATION = 0.5;
+const MAX_PUSHES = 5;
+const RECYCLE_MARGIN = 260; // enemies and orbs this far off screen come back ahead of the hero
+const MAX_ENEMIES = 320;
+const MAX_ORBS = 160;
+const MAX_FX = 120;
+const MAX_NUMBERS = 40;
+const MAX_ENEMY_R = 30;
+const STICK_RADIUS = 46;
+
+const BEST_KEY = 'games.steelspell.best';
+const LAST_KEY = 'games.steelspell.last';
+
+// `attack` is the base attack: at 100 every weapon deals the damage listed in its table.
+// `lives` are the spare lives a run starts with; items can add more.
+const HERO = { hp: 300, attack: 100, speed: 150, r: 11, magnet: 72, iframes: 0.5, lives: 0 };
+
+// Spending a spare life: full health and a blast of pure damage, `share` of max health.
+const REVIVE = { share: 1, radius: 320, iframes: 2 };
+
+const KINDS = {
+  phys: { name: 'Physical', pen: 'orange-pen' },
+  magic: { name: 'Magic', pen: 'violet' },
+  hybrid: { name: 'Hybrid', pen: 'green-ink' },
+  pure: { name: 'Pure', pen: 'ink' }, // ignores armor and ward
+  hero: { name: 'Hero', pen: 'green-ink' },
+};
+
+// Character stats. Each level-up adds one `step`. A `split` stat is upgraded apart for
+// physical and magic weapons; the others belong to the hero. A hybrid weapon reads both
+// sets of upgrades together, so a merge never throws a build away. `off` is what a weapon
+// gets if it does not list the stat in `scales` (the base value unless given).
+const STATS = {
+  damage: { name: 'Damage', split: true, base: 1, step: 0.15, max: 8 },
+  cooldown: { name: 'Cooldown', split: true, base: 0, step: 0.05, max: 0.6 },
+  size: { name: 'Size', split: true, base: 1, step: 0.08, max: 3 },
+  count: { name: 'Count', split: true, base: 0, step: 0.5, max: 5 }, // only whole ones add shots; items give whole ones
+  critChance: { name: 'Crit chance', split: true, base: 0.05, step: 0.04, max: 1, off: 0 },
+  critDamage: { name: 'Crit damage', split: true, base: 1.5, step: 0.2, max: 6 },
+  attack: { name: 'Attack', split: false, base: 1, step: 0.05, max: 6, note: 'All damage' },
+  speed: { name: 'Speed', split: false, base: 1, step: 0.06, max: 2, note: 'Move speed' },
+  xp: { name: 'XP', split: false, base: 1, step: 0.1, max: 4, note: 'Value of every orb' },
+};
+
+// Active skills: one is picked before the run and sits on the Space key.
+const ACTIVES = [
+  { id: 'flash', name: 'Flash', group: 'Mobility', cooldown: 40, distance: 190,
+    blurb: 'Blink a short way in the direction you are walking.' },
+  { id: 'ghost', name: 'Ghost', group: 'Mobility', cooldown: 120, duration: 5, speedBoost: 2,
+    blurb: 'For 5 s nothing can hurt you, you walk straight through enemies and move twice as fast.' },
+  { id: 'berserk', name: 'Berserk', group: 'Damage', cooldown: 60, duration: 30,
+    buff: { damage: 1.3, size: 1.25, cooldown: 0.2, count: 1 },
+    blurb: 'For 30 s: damage +30%, size +25%, cooldown -20%, count +1, on every weapon that uses them.' },
+  { id: 'ignite', name: 'Ignite', group: 'Damage', cooldown: 120, duration: 8, radius: 270, tick: 0.5, share: 0.7,
+    blurb: 'Sets the ground around you on fire for 8 s. Whatever burns the whole time loses 70% of its max health, as pure damage.' },
+  { id: 'stash', name: 'Stash', group: 'Economy', cooldown: 240, distance: 110,
+    blurb: 'Drops a chest nearby: pick 1 of 3 items, any rarity.' },
+  { id: 'inspiration', name: 'Inspiration', group: 'Economy', cooldown: 100, share: 0.8,
+    blurb: 'Instantly gain 80% of the XP this level needs.' },
+];
+const ACTIVE_GROUPS = ['Mobility', 'Damage', 'Economy'];
+const BERSERK = ACTIVES.find(a => a.id === 'berserk');
