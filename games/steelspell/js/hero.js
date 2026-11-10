@@ -42,15 +42,16 @@ function useActive() {
   dirty = true;
 }
 
-function hurtHero(amount) {
+// `kind` is 'phys' or 'magic': it only tells what hit, armor cuts both alike.
+function hurtHero(amount, kind = 'phys') {
   if (hero.immortal) return;
   if (hero.ghostLeft > 0 || hero.phaseLeft > 0 || hero.iframes > 0) return;
   const shield = chargedWeapon();
   if (shield && shield.charges > 0) {
-    if (shield.charges === shield.def.charges) setCooldown(shield, cooldownOf(shield));
+    if (shield.charges === shield.cfg.charges) setCooldown(shield, cooldownOf(shield));
     shield.charges--;
     hero.iframes = HERO.iframes;
-    explode(hero.x, hero.y, auraRadius(shield), shield, shield.def.damage);
+    explode(hero.x, hero.y, auraRadius(shield), shield, shield.cfg.damage);
     return;
   }
   const dash = owned('phase');
@@ -58,7 +59,7 @@ function hurtHero(amount) {
     startPhase(dash, true);
     return;
   }
-  hero.hp -= amount;
+  hero.hp -= amount * (1 - armorCut());
   hero.iframes = HERO.iframes;
 }
 
@@ -114,7 +115,7 @@ function moveHero(dt) {
   let pace = HERO.speed * stat('speed');
   if (hero.phaseLeft > 0) {
     const dash = owned('phase');
-    pace *= 1 + (dash.def.moveBoost - 1) * weaponStat(dash, 'speed');
+    pace *= 1 + (dash.cfg.moveBoost - 1) * weaponStat(dash, 'speed');
   }
   if (hero.ghostLeft > 0) pace *= activeDef.speedBoost;
   hero.x += mx * pace * dt;
@@ -122,5 +123,5 @@ function moveHero(dt) {
   walkFor(Math.hypot(mx, my) * pace * dt);
   hero.iframes = Math.max(0, hero.iframes - dt);
   hero.ghostLeft = Math.max(0, hero.ghostLeft - dt);
-  hero.hp = Math.min(hero.maxHp, hero.hp + hero.maxHp * gearValue('regen') * dt);
+  hero.hp = Math.min(hero.maxHp, hero.hp + (stat('recovery') + hero.maxHp * gearValue('regen')) * dt);
 }

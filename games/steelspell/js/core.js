@@ -29,6 +29,7 @@ let lastTime = 0;
 let lastCdShare = -1;
 let cardActions = [];
 let shownCards = [];
+let metaBonus = {}; // what Camp upgrades add to stats this run (js/meta.js)
 let simulating = false; // true while js/sim.js plays a run: nothing is drawn or saved
 
 let hero, enemies, shots, zones, orbs, redOrbs, chests, fx, numbers, timers, queue;
@@ -56,7 +57,7 @@ function resetWorld() {
   numbers = [];
   timers = [];
   queue = [];
-  upgrades = { phys: zeroPicks(), magic: zeroPicks(), hero: zeroPicks() };
+  upgrades = zeroPicks();
   gear = {};
   items = [];
   activeDef = ACTIVES[0];

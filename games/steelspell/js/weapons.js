@@ -1,11 +1,15 @@
 // What each weapon does.
 
 function owned(id) { return hero.weapons.find(w => w.def.id === id); }
-function chargedWeapon() { return hero.weapons.find(w => w.def.charges); }
+function chargedWeapon() { return hero.weapons.find(w => w.cfg.charges); }
 
 function newWeapon(id) {
   const def = WEAPON_DEFS.find(d => d.id === id);
-  const w = { def, timer: 0.3, full: 1, dealt: 0, pulse: 0.3 };
+  // `cfg` holds the weapon's own numbers, `bonus` what its levels add to the stats it reads.
+  const w = {
+    def, cfg: def, level: 1, evo: '', bonus: { damage: 0, size: 0, haste: 0, duration: 0, count: 0 },
+    timer: 0.3, full: 1, dealt: 0, pulse: 0.3,
+  };
   if (def.charges) {
     w.charges = 1;
     setCooldown(w, cooldownOf(w));
@@ -72,7 +76,7 @@ function moveBoomerang(s, dt) {
 }
 
 function throwBoomerangs(w, onHit) {
-  const d = w.def;
+  const d = w.cfg;
   const target = nearestEnemies(hero.x, hero.y, AIM_RANGE, 1)[0];
   if (!target) return false;
   const n = shotCount(w);
@@ -80,7 +84,7 @@ function throwBoomerangs(w, onHit) {
   for (let i = 0; i < n; i++) {
     launch({
       look: 'boomerang', pen: d.pen, a: aim + (i - (n - 1) / 2) * d.spread,
-      speed: d.speed, r: d.r * weaponStat(w, 'size'), life: Infinity, pierce: Infinity,
+      speed: d.speed, r: d.r * weaponSize(w), life: Infinity, pierce: Infinity,
       range: d.range, returnBoost: d.returnBoost, flown: 0, back: false, spin: 0, move: moveBoomerang, onHit,
     });
   }
@@ -88,16 +92,16 @@ function throwBoomerangs(w, onHit) {
 }
 
 function swing(w, angle, reach) {
-  const half = w.def.arc / 2;
+  const half = w.cfg.arc / 2;
   eachEnemyNear(hero.x, hero.y, reach, e => {
-    if (angleGap(aimAt(e), angle) <= half) hit(e, w, w.def.damage);
+    if (angleGap(aimAt(e), angle) <= half) hit(e, w, w.cfg.damage);
   });
-  addFx({ type: 'swing', a: angle, span: w.def.arc, r: reach, life: 0.16, pen: w.def.pen });
+  addFx({ type: 'swing', a: angle, span: w.cfg.arc, r: reach, life: 0.16, pen: w.cfg.pen });
 }
 
 function fallMeteor(w, x, y) {
-  const d = w.def;
-  const radius = d.radius * weaponStat(w, 'size');
+  const d = w.cfg;
+  const radius = d.radius * weaponSize(w);
   addFx({ type: 'telegraph', x, y, r: radius, life: d.delay, pen: d.pen });
   later(d.delay, () => {
     explode(x, y, radius, w, d.damage);
@@ -132,7 +136,7 @@ function launchRocket(o, blast) {
 }
 
 function fireRockets(w, blast) {
-  const d = w.def;
+  const d = w.cfg;
   const n = shotCount(w);
   const targets = toughestEnemies(hero.x, hero.y, d.range, n);
   if (!targets.length) return false;
@@ -148,7 +152,7 @@ function fireRockets(w, blast) {
 
 // The small rockets leave a blast in all directions, each after an enemy of its own.
 function burstRocket(w, x, y, size) {
-  const d = w.def;
+  const d = w.cfg;
   const targets = nearestEnemies(x, y, d.miniRange, d.minis);
   const blast = s => explode(s.x, s.y, d.miniRadius * size, w, d.miniDamage);
   for (let i = 0; i < d.minis; i++) {
@@ -175,12 +179,12 @@ function moveDrone(s, dt) {
 
 // Each pass takes the next of the four diagonals.
 function launchDrone(w, damage, extra) {
-  const d = w.def;
+  const d = w.cfg;
   if (!nearestEnemies(hero.x, hero.y, d.span, 1).length) return false;
   w.passes = (w.passes || 0) + 1;
   const a = TAU / 8 + w.passes * TAU / 4;
   launch(Object.assign({
-    look: 'drone', pen: d.pen, a, speed: d.speed, r: d.r * weaponStat(w, 'size'), life: Infinity, pierce: Infinity,
+    look: 'drone', pen: d.pen, a, speed: d.speed, r: d.r * weaponSize(w), life: Infinity, pierce: Infinity,
     x: hero.x - Math.cos(a) * d.span, y: hero.y - Math.sin(a) * d.span,
     offset: -d.span, span: d.span, spin: 0, move: moveDrone,
     onHit: (s, e) => hit(e, w, damage),
@@ -191,11 +195,11 @@ function launchDrone(w, damage, extra) {
 // Each returns false when there is nothing to fire at, so the weapon stays ready.
 const FIRE = {
   fireball(w) {
-    const d = w.def;
+    const d = w.cfg;
     const n = shotCount(w);
     const targets = nearestEnemies(hero.x, hero.y, AIM_RANGE, n);
     if (!targets.length) return false;
-    const radius = d.radius * weaponStat(w, 'size');
+    const radius = d.radius * weaponSize(w);
     const blast = s => explode(s.x, s.y, radius, w, d.damage);
     for (let i = 0; i < n; i++) {
       const fan = i < targets.length ? 0 : (i - targets.length + 1) * 0.3;
@@ -208,7 +212,7 @@ const FIRE = {
   },
 
   meteor(w) {
-    const d = w.def;
+    const d = w.cfg;
     const inRange = nearestEnemies(hero.x, hero.y, d.range, MAX_ENEMIES);
     if (!inRange.length) return false;
     const { x, y } = pickOne(inRange);
@@ -217,14 +221,14 @@ const FIRE = {
   },
 
   rocket(w) {
-    const d = w.def;
-    const radius = d.radius * weaponStat(w, 'size');
+    const d = w.cfg;
+    const radius = d.radius * weaponSize(w);
     return fireRockets(w, s => explode(s.x, s.y, radius, w, d.damage));
   },
 
   clusterrocket(w) {
-    const d = w.def;
-    const size = weaponStat(w, 'size');
+    const d = w.cfg;
+    const size = weaponSize(w);
     return fireRockets(w, s => {
       explode(s.x, s.y, d.radius * size, w, d.damage);
       burstRocket(w, s.x, s.y, size);
@@ -232,33 +236,33 @@ const FIRE = {
   },
 
   drone(w) {
-    return launchDrone(w, w.def.damage);
+    return launchDrone(w, w.cfg.damage);
   },
 
   meteordrone(w) {
-    const d = w.def;
+    const d = w.cfg;
     return launchDrone(w, d.passDamage, { nextDrop: -d.span, onDrop: s => fallMeteor(w, s.x, s.y) });
   },
 
   chain(w) {
-    const first = nearestEnemies(hero.x, hero.y, w.def.range, 1)[0];
+    const first = nearestEnemies(hero.x, hero.y, w.cfg.range, 1)[0];
     if (!first) return false;
     strikeChain(first, w);
     return true;
   },
 
   electrogun(w) {
-    const first = nearestEnemies(hero.x, hero.y, w.def.range, 1)[0];
+    const first = nearestEnemies(hero.x, hero.y, w.cfg.range, 1)[0];
     if (!first) return false;
     strikeChain(first, w);
     return true;
   },
 
   icearrow(w) {
-    const d = w.def;
+    const d = w.cfg;
     const target = nearestEnemies(hero.x, hero.y, AIM_RANGE, 1)[0];
     if (!target) return false;
-    const size = weaponStat(w, 'size');
+    const size = weaponSize(w);
     launch({
       look: 'arrow', pen: d.pen, a: aimAt(target), speed: d.speed, r: d.width * (1 + (size - 1) * d.widthGrowth),
       life: d.life, pierce: Infinity, len: d.length * size,
@@ -271,11 +275,11 @@ const FIRE = {
   },
 
   boomerang(w) {
-    return throwBoomerangs(w, (s, e) => hit(e, w, w.def.damage));
+    return throwBoomerangs(w, (s, e) => hit(e, w, w.cfg.damage));
   },
 
   iceboomerang(w) {
-    const d = w.def;
+    const d = w.cfg;
     return throwBoomerangs(w, (s, e) => {
       hit(e, w, d.damage, s.back ? 'magic' : 'phys');
       slow(e, d.slow, d.slowTime);
@@ -283,7 +287,7 @@ const FIRE = {
   },
 
   pistol(w) {
-    const d = w.def;
+    const d = w.cfg;
     const target = nearestEnemies(hero.x, hero.y, d.range, 1)[0];
     if (!target) return false;
     addFx({ type: 'tracer', x: target.x, y: target.y, x0: hero.x, y0: hero.y, life: 0.08, pen: d.pen });
@@ -292,8 +296,8 @@ const FIRE = {
   },
 
   sword(w) {
-    const d = w.def;
-    const reach = d.reach * weaponStat(w, 'size');
+    const d = w.cfg;
+    const reach = d.reach * weaponSize(w);
     const target = nearestEnemies(hero.x, hero.y, reach * 1.3, 1)[0];
     if (!target) return false;
     const aim = aimAt(target);
@@ -305,17 +309,17 @@ const FIRE = {
 
 // ---- Weapons: always-on ones ----
 
-function auraRadius(w) { return w.def.radius * weaponStat(w, 'size'); }
+function auraRadius(w) { return w.cfg.radius * weaponSize(w); }
 
 function pulseAura(w, dt, damage) {
   w.pulse -= dt;
   if (w.pulse > 0) return;
-  w.pulse += w.def.tick;
+  w.pulse += w.cfg.tick;
   eachEnemyNear(hero.x, hero.y, auraRadius(w), e => hit(e, w, damage));
 }
 
 function rechargeShield(w, dt) {
-  if (w.charges >= w.def.charges) return;
+  if (w.charges >= w.cfg.charges) return;
   w.timer -= dt;
   if (w.timer > 0) return;
   w.charges++;
@@ -323,7 +327,7 @@ function rechargeShield(w, dt) {
 }
 
 function startPhase(w, early) {
-  hero.phaseLeft = w.def.duration;
+  hero.phaseLeft = w.cfg.duration;
   w.pulse = 0;
   setCooldown(w, cooldownOf(w) * (early ? 2 : 1));
   w.locked = early;
@@ -332,7 +336,7 @@ function startPhase(w, early) {
 // A spear or a lance follows the way the hero walks and stays put when the hero stands still.
 // `touching` finds what it reaches. Only the first touch knocks a target back.
 function strikeLance(w, dt, touching) {
-  const d = w.def;
+  const d = w.cfg;
   w.angle = turnToward(w.angle, Math.atan2(hero.faceY, hero.faceX), d.turn * dt);
   w.thrust = Math.max(0, w.thrust - dt * 7);
   w.pulse -= dt;
@@ -349,8 +353,8 @@ function strikeLance(w, dt, touching) {
 
 // The oval sits ahead of the hero, who stays inside it near the back end.
 function lanceOval(w) {
-  const d = w.def;
-  const size = weaponStat(w, 'size');
+  const d = w.cfg;
+  const size = weaponSize(w);
   return {
     x: hero.x + Math.cos(w.angle) * d.shift * size,
     y: hero.y + Math.sin(w.angle) * d.shift * size,
@@ -361,7 +365,7 @@ function lanceOval(w) {
 
 const TICK = {
   aura(w, dt) {
-    pulseAura(w, dt, w.def.damage);
+    pulseAura(w, dt, w.cfg.damage);
   },
 
   shield(w, dt) {
@@ -370,12 +374,12 @@ const TICK = {
 
   fireshield(w, dt) {
     rechargeShield(w, dt);
-    pulseAura(w, dt, w.def.auraDamage);
+    pulseAura(w, dt, w.cfg.auraDamage);
   },
 
   spear(w, dt) {
-    const size = weaponStat(w, 'size');
-    strikeLance(w, dt, fn => eachEnemyOnLance(hero.x, hero.y, w.angle, w.def.length * size, w.def.width * size / 2, fn));
+    const size = weaponSize(w);
+    strikeLance(w, dt, fn => eachEnemyOnLance(hero.x, hero.y, w.angle, w.cfg.length * size, w.cfg.width * size / 2, fn));
   },
 
   radiantlance(w, dt) {
@@ -390,8 +394,8 @@ const TICK = {
       hero.phaseLeft -= dt;
       w.pulse -= dt;
       if (w.pulse <= 0) {
-        w.pulse += w.def.tick;
-        eachEnemyNear(hero.x, hero.y, w.def.radius, e => hit(e, w, w.def.damage));
+        w.pulse += w.cfg.tick;
+        eachEnemyNear(hero.x, hero.y, w.cfg.radius, e => hit(e, w, w.cfg.damage));
       }
       return;
     }

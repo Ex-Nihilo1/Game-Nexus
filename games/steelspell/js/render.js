@@ -303,9 +303,9 @@ function drawSpearhead(w, reach, size) {
 
 // The zone it hurts is drawn like the Aura, with the spear itself on top.
 function drawSpear(w) {
-  const size = weaponStat(w, 'size');
-  const length = w.def.length * size;
-  const width = w.def.width * size;
+  const size = weaponSize(w);
+  const length = w.cfg.length * size;
+  const width = w.cfg.width * size;
   ctx.save();
   ctx.translate(hero.x, hero.y);
   ctx.rotate(w.angle);
@@ -324,7 +324,7 @@ function drawSpear(w) {
 }
 
 function drawRadiantLance(w) {
-  const size = weaponStat(w, 'size');
+  const size = weaponSize(w);
   const { x, y, long, wide } = lanceOval(w);
   ctx.beginPath();
   ctx.ellipse(x, y, long, wide, w.angle, 0, TAU);
@@ -339,7 +339,7 @@ function drawRadiantLance(w) {
   ctx.save();
   ctx.translate(hero.x, hero.y);
   ctx.rotate(w.angle);
-  drawSpearhead(w, w.def.length * size, size);
+  drawSpearhead(w, w.cfg.length * size, size);
   ctx.restore();
 }
 
@@ -365,7 +365,7 @@ function drawHeroEffects() {
   const dash = owned('phase');
   if (dash && hero.phaseLeft > 0) {
     ctx.beginPath();
-    ctx.arc(x, y, dash.def.radius, 0, TAU);
+    ctx.arc(x, y, dash.cfg.radius, 0, TAU);
     ctx.globalAlpha = 0.14;
     ctx.fillStyle = pal[dash.def.pen];
     ctx.fill();

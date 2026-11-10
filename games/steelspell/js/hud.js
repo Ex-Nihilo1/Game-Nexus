@@ -20,8 +20,8 @@ function drawWeaponTiles(H) {
   for (const w of hero.weapons) {
     ctx.fillStyle = pal.paper;
     ctx.fillRect(x, y, size, size);
-    const fullyCharged = w.charges !== undefined && w.charges >= w.def.charges;
-    if (w.def.cooldown && w.timer > 0 && !fullyCharged) {
+    const fullyCharged = w.charges !== undefined && w.charges >= w.cfg.charges;
+    if (w.cfg.cooldown && w.timer > 0 && !fullyCharged) {
       const share = Math.min(1, w.timer / w.full);
       ctx.fillStyle = pal.rule;
       ctx.fillRect(x, y + size * (1 - share), size, size * share);
@@ -260,34 +260,34 @@ function addItemReport(p) {
   p.appendChild(box);
 }
 
+// Past a soft cap a stat shows what was picked as well as what works.
 function addStatReport(p) {
   p.appendChild(el('h3', 'section-title', 'Stats'));
   const box = el('div', 'report');
-  const trees = ['phys', 'magic'];
-  if (hero.weapons.some(w => w.def.kind === 'hybrid')) trees.push('hybrid');
-  for (const kind of trees) {
-    const column = el('div');
-    column.appendChild(el('span', `stamp ${kind}`, KINDS[kind].name));
-    for (const key of Object.keys(STATS)) {
-      if (STATS[key].split) addRow(column, STATS[key].name, formatStat(key, stat(key, kind)));
-    }
-    box.appendChild(column);
-  }
-  const column = el('div');
-  column.appendChild(el('span', 'stamp hero', KINDS.hero.name));
-  addRow(column, 'Health', String(hero.maxHp));
-  if (gearValue('regen')) addRow(column, 'Health regen', `${Math.round(gearValue('regen') * 100)}% per s`);
-  addRow(column, 'Base attack', String(Math.round(hero.baseAttack)));
+  const arms = el('div');
+  arms.appendChild(el('span', 'stamp hero', 'Weapons'));
+  const self = el('div');
+  self.appendChild(el('span', 'stamp hero', KINDS.hero.name));
+  addRow(self, 'Health', String(hero.maxHp));
+  if (levelHealth()) addRow(self, 'From levels', `+${levelHealth()} HP`);
+  if (gearValue('regen')) addRow(self, 'Health regen', `${Math.round(gearValue('regen') * 100)}% per s`);
+  addRow(arms, 'Base attack', String(Math.round(hero.baseAttack)));
   for (const key of Object.keys(STATS)) {
-    if (!STATS[key].split) addRow(column, STATS[key].name, formatStat(key, key === 'attack' ? attackValue() : stat(key, 'hero')));
+    const def = STATS[key];
+    const raw = def.base + rawBonus(key);
+    const capped = Math.abs(raw - stat(key)) > 1e-9;
+    const text = formatStat(key, stat(key)) + (capped ? ` (${formatStat(key, raw)} picked)` : '');
+    addRow(def.note ? self : arms, def.name, text);
   }
-  addRow(column, 'Pickup radius', String(Math.round(magnetRadius())));
-  if (gearValue('physDamage')) addRow(column, 'All physical damage', `+${Math.round(gearValue('physDamage') * 100)}%`);
-  if (gearValue('magicDamage')) addRow(column, 'All magic damage', `+${Math.round(gearValue('magicDamage') * 100)}%`);
-  if (gearValue('pureShare')) addRow(column, 'Damage made pure', `${Math.round(gearValue('pureShare') * 100)}%`);
-  if (gearValue('activeCooldown')) addRow(column, 'Active cooldown', `-${Math.round(gearValue('activeCooldown') * 100)}%`);
-  if (hero.lives) addRow(column, 'Spare lives', String(hero.lives));
-  box.appendChild(column);
+  if (stat('armor')) addRow(self, 'Hits hurt', `${Math.round(armorCut() * 100)}% less`);
+  addRow(self, 'Pickup radius', String(Math.round(magnetRadius())));
+  if (gearValue('attackPerLevel')) addRow(arms, 'From levels', `+${Math.round(gearValue('attackPerLevel') * level * 100)}% damage`);
+  if (gearValue('physDamage')) addRow(arms, 'All physical damage', `+${Math.round(gearValue('physDamage') * 100)}%`);
+  if (gearValue('magicDamage')) addRow(arms, 'All magic damage', `+${Math.round(gearValue('magicDamage') * 100)}%`);
+  if (gearValue('pureShare')) addRow(arms, 'Damage made pure', `${Math.round(gearValue('pureShare') * 100)}%`);
+  if (gearValue('activeCooldown')) addRow(self, 'Active cooldown', `-${Math.round(gearValue('activeCooldown') * 100)}%`);
+  if (hero.lives) addRow(self, 'Spare lives', String(hero.lives));
+  box.append(arms, self);
   p.appendChild(box);
 }
 

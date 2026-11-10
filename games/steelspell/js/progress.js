@@ -2,11 +2,12 @@
 
 // ---- Levels, orbs and chests ----
 
-function xpNeeded(lv) { return Math.round(XP_BASE + XP_PER_LEVEL * lv); }
+function xpNeeded(lv) { return Math.round(XP_BASE + XP_PER_LEVEL * lv + XP_CURVE * lv * lv); }
 
 function addLevel() {
   level++;
   xpNext = xpNeeded(level);
+  refreshHero(); // every level adds a little health
   queue.push(WEAPON_LEVELS.includes(level) ? 'weapon' : 'stat');
 }
 
@@ -177,48 +178,51 @@ function chooseCard(i) {
   nextChoice();
 }
 
-// One physical and one magic card when the kit has both, so the split is always a real
-// choice. Stats that no owned weapon reads are never offered.
-function statCards() {
-  const groups = { phys: [], magic: [], hero: [] };
+// Stats that no owned weapon reads are never offered; the hero's own always are.
+function statPool() {
   const defs = hero.weapons.map(w => w.def);
+  const pool = [];
   for (const key of Object.keys(STATS)) {
     const def = STATS[key];
-    if (def.split) {
-      for (const kind of ['phys', 'magic']) {
-        const users = defs.filter(d => (d.kind === kind || d.kind === 'hybrid') && d.scales.includes(key)).map(d => d.name);
-        if (users.length && stat(key, kind) < def.max) groups[kind].push({ kind, key, users });
-      }
-    } else if (stat(key, 'hero') < def.max) {
-      const users = defs.filter(d => d.scales.includes(key)).map(d => d.name);
-      groups.hero.push({ kind: 'hero', key, users: [def.note, ...users] });
-    }
+    const users = defs.filter(d => d.scales.includes(key)).map(d => d.name);
+    if (def.note || users.length) pool.push({ key, users: def.note ? [def.note, ...users] : users, weight: def.weight || 1 });
   }
-  const chosen = [];
-  const take = list => {
-    const rest = list.filter(o => !chosen.includes(o));
-    if (rest.length) chosen.push(pickOne(rest));
+  return pool;
+}
+
+// Takes `n` different entries, each by its `weight`.
+function drawWeighted(pool, n) {
+  const rest = [...pool];
+  const out = [];
+  while (out.length < n && rest.length) {
+    let roll = rand() * rest.reduce((sum, o) => sum + o.weight, 0);
+    let i = 0;
+    while (i < rest.length - 1 && (roll -= rest[i].weight) >= 0) i++;
+    out.push(rest.splice(i, 1)[0]);
+  }
+  return out;
+}
+
+function statCard(o) {
+  const now = stat(o.key);
+  const remark = statRemark(o.key);
+  return {
+    type: 'stat',
+    key: o.key,
+    kind: 'hero',
+    tag: STATS[o.key].note ? KINDS.hero.name : 'Weapons',
+    name: STATS[o.key].name,
+    value: gainText(o.key),
+    note: `${formatStat(o.key, now)} to ${formatStat(o.key, now + statGain(o.key))} · ${o.users.join(', ')}` + (remark ? ` · ${remark}` : ''),
+    pick: () => {
+      upgrades[o.key]++;
+      refreshHero();
+    },
   };
-  take(groups.phys);
-  take(groups.magic);
-  if (chosen.length === 1) take(groups.phys.length ? groups.phys : groups.magic);
-  take(groups.hero);
-  const all = [...groups.phys, ...groups.magic, ...groups.hero];
-  while (chosen.length < 3 && chosen.length < all.length) take(all);
-  return chosen.map(o => {
-    const now = stat(o.key, o.kind);
-    const next = Math.min(STATS[o.key].max, now + STATS[o.key].step);
-    return {
-      type: 'stat',
-      key: o.key,
-      kind: o.kind,
-      tag: KINDS[o.kind].name,
-      name: STATS[o.key].name,
-      value: stepText(o.key),
-      note: `${formatStat(o.key, now)} to ${formatStat(o.key, next)} · ${o.users.join(', ')}`,
-      pick: () => { upgrades[o.kind][o.key]++; },
-    };
-  });
+}
+
+function statCards() {
+  return drawWeighted(statPool(), 3).map(statCard);
 }
 
 function synergyPartner(id) {

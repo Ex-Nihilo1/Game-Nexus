@@ -13,10 +13,10 @@ function armorFactor(e, kind) {
 // says which armor it meets: the upgrades it uses are always those of the weapon itself.
 function hit(e, w, base, kind = w.def.kind) {
   if (e.dead) return;
-  const crit = rand() < weaponStat(w, 'critChance');
-  let amount = base * weaponStat(w, 'damage') * attackMult() * kindBonus(kind);
-  if (crit) amount *= weaponStat(w, 'critDamage');
-  hurtEnemy(e, amount, kind, crit, w);
+  const crits = critTiers(w);
+  let amount = base * weaponDamage(w) * attackMult() * kindBonus(kind);
+  if (crits) amount *= 1 + (weaponStat(w, 'critDamage') - 1) * crits;
+  hurtEnemy(e, amount, kind, crits > 0, w);
 }
 
 function hurtEnemy(e, amount, kind, crit, w) {
@@ -61,7 +61,7 @@ function explode(x, y, r, w, base) {
 }
 
 function strikeChain(first, w) {
-  const d = w.def;
+  const d = w.cfg;
   const struck = new Set([first]);
   const points = [{ x: hero.x, y: hero.y }, { x: first.x, y: first.y }];
   let from = first;
