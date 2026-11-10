@@ -29,9 +29,10 @@ function drawWeaponTiles(H) {
     ctx.strokeStyle = pal[KINDS[w.def.kind].pen];
     ctx.lineWidth = 2;
     ctx.strokeRect(x, y, size, size);
-    hudText(w.def.tag, x + size / 2, y + size / 2, 15, 'ink', 'center');
-    if (w.charges !== undefined) hudText(String(w.charges), x + size - 7, y + size - 8, 12, 'red-pencil', 'center');
-    if (w.locked) hudText('x2', x + size - 9, y + 9, 12, 'red-pencil', 'center');
+    hudText(w.def.tag, x + size / 2, y + size / 2 - (w.level ? 4 : 0), 15, 'ink', 'center');
+    if (w.level) hudText(w.level >= MAX_WEAPON_LEVEL ? 'MAX' : `Lv ${w.level}`, x + size / 2, y + size - 8, 10, 'ink-muted', 'center');
+    if (w.charges !== undefined) hudText(String(w.charges), x + size - 6, y + 8, 12, 'red-pencil', 'center');
+    if (w.locked && w.cfg.earlyCost > 1) hudText('x2', x + 9, y + 9, 12, 'red-pencil', 'center');
     x += size + 6;
   }
   // Items as small chips in their rarity's color; the pause screen has the names.
@@ -63,7 +64,8 @@ function drawHud() {
 
   hudText(`Level ${level}`, 10, 25, 17, 'ink');
   hudText(`Health ${Math.ceil(Math.max(0, hero.hp))} / ${hero.maxHp}`, 10, 44, 13, 'ink-muted');
-  let line = 61;
+  hudText(`Rerolls ${rerolls}`, 10, 60, 13, 'ink-muted');
+  let line = 77;
   if (hero.lives > 0) {
     hudText(`Spare lives ${hero.lives}`, 10, line, 13, 'green-ink');
     line += 16;
@@ -147,6 +149,22 @@ function showCards(title, note, cards) {
       grid.appendChild(b);
     });
     p.appendChild(grid);
+    if (!choice || !(choice.reroll || choice.skip)) return;
+    const actions = el('div', 'panel-actions');
+    if (choice.reroll) {
+      const again = el('button', '', `Reroll (${rerolls})`);
+      again.disabled = rerolls <= 0;
+      again.appendChild(el('kbd', '', 'R'));
+      again.addEventListener('click', rerollChoice);
+      actions.appendChild(again);
+    }
+    if (choice.skip) {
+      const pass = el('button', '', `Skip: heal ${Math.round(SKIP_HEAL * 100)}%`);
+      pass.appendChild(el('kbd', '', 'X'));
+      pass.addEventListener('click', skipChoice);
+      actions.appendChild(pass);
+    }
+    p.appendChild(actions);
   });
 }
 
@@ -212,10 +230,10 @@ function showStart() {
     const hints = el('p', 'hints');
     hints.innerHTML =
       '<kbd>WASD</kbd> or arrows, or drag on the field, to walk &middot; <kbd>Space</kbd> active skill &middot; ' +
-      '<kbd>1</kbd>&ndash;<kbd>4</kbd> pick a card &middot; <kbd>P</kbd> pause<br>' +
+      '<kbd>1</kbd>&ndash;<kbd>4</kbd> pick a card &middot; <kbd>R</kbd> reroll the cards &middot; <kbd>X</kbd> skip a level-up &middot; <kbd>P</kbd> pause<br>' +
       'An orange outline is armor that blunts physical damage, a violet outline is a ward that blunts magic. Pure damage ignores both.<br>' +
       'Red orbs heal. Walking turns them up, and elites drop them along with a chest: pick 1 item of 3. A blue chest is better than a grey one, a yellow one better still.' +
-      (DEV ? '<br>Dev keys: <kbd>L</kbd> level up &middot; <kbd>G</kbd> weapon pick &middot; <kbd>I</kbd> open a chest &middot; <kbd>K</kbd> die and revive &middot; <kbd>R</kbd> reset active &middot; <kbd>T</kbd> skip a minute &middot; <kbd>E</kbd> elite &middot; <kbd>O</kbd> fill the horde &middot; <kbd>H</kbd> immortal' : '');
+      (DEV ? '<br>Dev keys: <kbd>L</kbd> level up &middot; <kbd>G</kbd> weapon pick &middot; <kbd>I</kbd> open a chest &middot; <kbd>K</kbd> die and revive &middot; <kbd>R</kbd> reset active &middot; <kbd>T</kbd> skip a minute &middot; <kbd>E</kbd> elite &middot; <kbd>O</kbd> fill the horde &middot; <kbd>H</kbd> immortal &middot; <kbd>M</kbd> max a weapon' : '');
     p.appendChild(hints);
   });
 }
@@ -238,11 +256,15 @@ function addRow(parent, label, value) {
   parent.appendChild(row);
 }
 
+function weaponTitle(w) {
+  return w.def.name + (w.level ? ` Lv ${w.level}` : '');
+}
+
 function addKitReport(p) {
   p.appendChild(el('h3', 'section-title', 'Damage dealt'));
   const box = el('div', 'report');
   [...hero.weapons].sort((a, b) => b.dealt - a.dealt).forEach(w => {
-    addRow(box, `${w.def.name} (${KINDS[w.def.kind].name})`, Math.round(w.dealt).toLocaleString('en-US'));
+    addRow(box, `${weaponTitle(w)} (${KINDS[w.def.kind].name})`, Math.round(w.dealt).toLocaleString('en-US'));
   });
   p.appendChild(box);
 }

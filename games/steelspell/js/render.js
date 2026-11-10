@@ -365,7 +365,7 @@ function drawHeroEffects() {
   const dash = owned('phase');
   if (dash && hero.phaseLeft > 0) {
     ctx.beginPath();
-    ctx.arc(x, y, dash.cfg.radius, 0, TAU);
+    ctx.arc(x, y, auraRadius(dash), 0, TAU);
     ctx.globalAlpha = 0.14;
     ctx.fillStyle = pal[dash.def.pen];
     ctx.fill();

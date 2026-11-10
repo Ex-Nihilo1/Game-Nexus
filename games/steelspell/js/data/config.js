@@ -7,6 +7,12 @@ const DEV = new URLSearchParams(location.search).has('dev');
 const VIEW_SHORT = 560; // world units along the screen's short side...
 const MIN_SCALE = 0.8; // ...unless that would make everything too small on a phone
 const WEAPON_LEVELS = [10, 20, 40, 60]; // new weapons at these levels; the first comes before the run
+const MAX_WEAPON_LEVEL = 8; // a weapon grows through level-up cards up to here
+// A level-up: how many cards, how much likelier a weapon level comes up than a passive, and
+// whether one of each is always there while there is one to offer.
+const LEVEL_CARDS = { slots: 3, weaponWeight: 2, sureWeapon: true, sureStat: true };
+const REROLLS = { start: 2, everyLevels: 12 }; // rerolls a run begins with, and how often a level adds one
+const SKIP_HEAL = 0.1; // share of max health for skipping a level-up
 const XP_BASE = 5;
 const XP_PER_LEVEL = 2.7;
 const XP_CURVE = 0.03; // ...and this much per level squared: late levels cost more and more

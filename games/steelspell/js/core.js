@@ -33,7 +33,7 @@ let metaBonus = {}; // what Camp upgrades add to stats this run (js/meta.js)
 let simulating = false; // true while js/sim.js plays a run: nothing is drawn or saved
 
 let hero, enemies, shots, zones, orbs, redOrbs, chests, fx, numbers, timers, queue;
-let upgrades, gear, items, activeDef, activeCd, berserkLeft;
+let upgrades, gear, items, activeDef, activeCd, berserkLeft, rerolls, choice;
 let level, xp, xpNext, elapsed, kills, spawnBudget, nextElite, nextRing, wildOrbTimer, walked, toast, toastLeft;
 
 function zeroPicks() {
@@ -63,6 +63,8 @@ function resetWorld() {
   activeDef = ACTIVES[0];
   activeCd = 0;
   berserkLeft = 0;
+  rerolls = REROLLS.start + (metaBonus.rerolls || 0);
+  choice = null;
   level = 1;
   xp = 0;
   xpNext = xpNeeded(1);

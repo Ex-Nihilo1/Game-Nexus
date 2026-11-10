@@ -45,7 +45,7 @@ function softTier(key) {
 // What a weapon really gets: stats it does not list stay neutral, whatever the hero has.
 function weaponStat(w, key) {
   const def = STATS[key];
-  if (!w.def.scales.includes(key)) return def.off !== undefined ? def.off : def.base;
+  if (!w.cfg.scales.includes(key)) return def.off !== undefined ? def.off : def.base;
   const value = stat(key);
   const buff = berserkLeft > 0 ? BERSERK.buff[key] : undefined;
   if (buff === undefined) return value;
@@ -155,7 +155,7 @@ function statRemark(key) {
       ? `Past +${COUNT.cap}: +${Math.round(COUNT.overflow * 100)}% damage instead of a shot`
       : '';
   }
-  if (key === 'armor') return `Hits hurt ${Math.round(armorCut() * 100)}% less now`;
+  if (key === 'armor') return `Hits will hurt ${Math.round((1 - 100 / (100 + stat('armor') + STATS.armor.step)) * 100)}% less`;
   if (key === 'critChance' && stat(key) >= 1) return 'Past 100% a crit can land twice';
   const { from, rate } = softTier(key);
   if (rate >= 1) return '';

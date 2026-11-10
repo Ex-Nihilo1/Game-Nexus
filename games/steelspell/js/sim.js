@@ -518,6 +518,13 @@ function devKey(code) {
   else if (code === 'KeyO') {
     // Stress test: fill the horde up to its cap.
     while (enemies.length < MAX_ENEMIES) addEnemy(pickOne(['mite', 'runner', 'ironclad', 'warded']));
+  } else if (code === 'KeyM') {
+    const w = hero.weapons.find(canLevel);
+    if (w) {
+      while (canLevel(w)) levelUpWeapon(w);
+      say(`${w.def.name} is at its last level`);
+      if (queue.length) nextChoice();
+    }
   } else if (code === 'KeyH') {
     hero.immortal = !hero.immortal;
     say(hero.immortal ? 'Immortal' : 'Mortal again');

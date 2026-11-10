@@ -1,66 +1,94 @@
-// Tuning: weapons and the merges of two weapons.
+// Tuning: weapons, their levels, and the merges of two weapons.
 
-// `scales` lists the stats a weapon reads: this list is what makes a build meta.
+// A weapon arrives at level 1 and grows to MAX_WEAPON_LEVEL through cards. LEVEL_PLAN lists
+// what levels 2, 3, ... add: 'a' and 'b' stand for the weapon's two own upgrades (`ups`), and
+// a weapon can replace any other level with a field such as `lv4`.
+//
+// A step can add to what the weapon gets from stats: damage, size, haste, duration (shares)
+// and count. These work even if the weapon does not list the stat in `scales`, and no soft
+// cap touches them. It can also change the weapon's own numbers: `add`, `mul` and `set` take
+// { field: value }, where a field may be nested ('crater.life'). `text` is what the card says;
+// plain stat steps write their own.
+const LEVEL_PLAN = [{ damage: 0.2 }, 'a', { size: 0.2 }, { damage: 0.25 }, 'b', { haste: 0.2 }, { damage: 0.3 }];
+
+// `scales` lists the passive stats a weapon reads: this list is what makes a build.
 // Weapons marked `defense` cannot be the first pick, as they barely attack.
-// For later: a `duration` mechanic, for weapons such as a flamethrower, a hurricane, a laser.
 const WEAPONS = [
   { id: 'fireball', name: 'Fireball', tag: 'Fb', kind: 'magic', pen: 'red-pencil',
     scales: ['damage', 'haste', 'size', 'count', 'critChance', 'critDamage'],
     cooldown: 1.5, damage: 20, radius: 42, speed: 320, life: 1.8,
+    ups: [{ count: 1, text: '+1 fireball' }, { mul: { radius: 1.25 }, text: 'Blast radius +25%' }],
     blurb: 'Flies at the nearest enemy and explodes. Count adds fireballs.' },
   { id: 'aura', name: 'Aura', tag: 'Au', kind: 'magic', pen: 'violet',
     scales: ['damage', 'size'],
     tick: 0.5, damage: 6, radius: 90,
+    ups: [{ set: { tick: 0.4 }, text: 'Pulses every 0.4 s instead of 0.5' }, { mul: { radius: 1.2 }, text: 'Radius +20%' }],
+    lv7: { damage: 0.25 },
     blurb: 'Hurts everything close to you, all the time.' },
   { id: 'meteor', name: 'Meteor', tag: 'Me', kind: 'magic', pen: 'red-pencil',
     scales: ['haste', 'damage', 'size'],
-    cooldown: 6, damage: 90, radius: 88, delay: 0.7, range: 420,
+    cooldown: 6, damage: 90, radius: 88, delay: 0.7, range: 420, meteors: 1,
     crater: { life: 5, tick: 0.5, damage: 10, share: 0.8 },
+    ups: [{ add: { 'crater.life': 2 }, text: 'The crater burns 2 s longer' }, { add: { meteors: 1 }, text: '+1 meteor per cast' }],
     blurb: 'Long cooldown, huge hit. Leaves a crater that keeps burning.' },
   { id: 'chain', name: 'Chain Lightning', tag: 'Ch', kind: 'magic', pen: 'highlighter',
     scales: ['damage', 'critChance', 'haste'],
     cooldown: 2, damage: 24, range: 340, jumps: 4, jumpRange: 130, falloff: 0.85,
+    ups: [{ add: { jumps: 1 }, text: '+1 jump' }, { add: { jumps: 1 }, set: { falloff: 0.9 }, text: '+1 jump, and jumps lose less damage' }],
+    lv4: { mul: { range: 1.2, jumpRange: 1.2 }, text: 'Reach +20%' },
     blurb: 'Strikes an enemy, then jumps to the ones next to it.' },
   { id: 'icearrow', name: 'Ice Arrow', tag: 'Ic', kind: 'magic', pen: 'blue-pen',
     scales: ['haste', 'damage', 'size'],
     cooldown: 2.4, damage: 38, speed: 440, life: 1.3, width: 11, widthGrowth: 3, length: 26, slow: 0.45, slowTime: 2.5,
+    arrows: 1, fan: 0.22,
+    ups: [{ add: { slow: 0.1 }, text: 'Slows 10% more' }, { add: { arrows: 1 }, text: '+1 arrow, in a fan' }],
     blurb: 'Pierces the whole line and slows everything it touches. Size makes it much wider.' },
   { id: 'phase', name: 'Phase Dash', tag: 'Ph', kind: 'magic', pen: 'violet', defense: true,
     scales: ['haste', 'speed', 'damage'],
-    cooldown: 14, duration: 1.6, damage: 10, tick: 0.25, radius: 72, moveBoost: 1.6,
+    cooldown: 14, duration: 1.6, damage: 10, tick: 0.25, radius: 72, moveBoost: 1.6, earlyCost: 2,
+    ups: [{ add: { duration: 0.4 }, text: 'Lasts 0.4 s longer' }, { set: { earlyCost: 1 }, text: 'An early start no longer doubles the cooldown' }],
     blurb: 'On cooldown you turn into a damaging ghost. A hit triggers it early and blocks that hit, but then the cooldown is doubled.' },
 
   { id: 'spear', name: 'Spear', tag: 'Sp', kind: 'phys', pen: 'orange-pen',
     scales: ['speed', 'damage', 'size', 'critChance', 'critDamage'],
     tick: 0.35, damage: 18, length: 130, width: 30, turn: 10, push: 70, pushTime: 0.16,
+    ups: [{ mul: { push: 1.4 }, text: 'Knocks back 40% further' }, { mul: { width: 1.3 }, text: 'Width +30%' }],
+    lv7: { mul: { tick: 0.85 }, text: 'Strikes 18% more often' },
     blurb: 'An aura in the shape of a spear, always pointing where you walk. Its first touch knocks a target back. Speed makes it strike more often.' },
   { id: 'boomerang', name: 'Boomerang', tag: 'Bo', kind: 'phys', pen: 'orange-pen',
     scales: ['haste', 'damage', 'size', 'count'],
     cooldown: 2.4, damage: 16, speed: 340, range: 230, r: 14, spread: 0.45, returnBoost: 1.25,
+    ups: [{ count: 1, text: '+1 boomerang' }, { mul: { range: 1.25 }, text: 'Flies 25% further' }],
     blurb: 'Cuts through enemies on the way out and again on the way back.' },
   { id: 'pistol', name: 'Pistol', tag: 'Pi', kind: 'phys', pen: 'ink',
     scales: ['damage', 'critChance', 'haste'],
-    cooldown: 0.55, damage: 30, range: 420,
+    cooldown: 0.55, damage: 30, range: 420, pierce: 0, targets: 1,
+    ups: [{ add: { pierce: 1 }, text: 'A shot goes through to 1 more enemy' }, { add: { targets: 1 }, text: '+1 target per shot' }],
+    lv4: { damage: 0.2 },
     blurb: 'One shot, one target, the nearest. No crowd control at all.' },
   { id: 'sword', name: 'Sword', tag: 'Sw', kind: 'phys', pen: 'orange-pen',
     scales: ['damage', 'haste', 'size', 'count', 'critChance', 'critDamage'],
     cooldown: 1.4, damage: 28, reach: 92, arc: 2.4, swingGap: 0.14,
+    ups: [{ count: 1, text: '+1 swing' }, { mul: { arc: 1.3 }, text: 'Arc +30%' }],
     blurb: 'Swings right next to you. Count adds swings, every second one behind you.' },
   { id: 'shield', name: 'Shield', tag: 'Sh', kind: 'phys', pen: 'orange-pen', defense: true,
     scales: ['haste', 'damage'],
     cooldown: 16, charges: 2, damage: 30, radius: 84,
+    ups: [{ add: { charges: 1 }, text: '+1 charge' }, { mul: { radius: 1.3 }, text: 'Blast radius +30%' }],
     blurb: 'Stores up to 2 charges. A charge blocks one hit and blasts everything nearby.' },
   { id: 'rocket', name: 'Rocket', tag: 'Ro', kind: 'phys', pen: 'orange-pen',
     scales: ['damage', 'haste', 'size', 'count', 'critChance', 'critDamage'],
     cooldown: 7, damage: 50, radius: 90, range: 520, speed: 220, accel: 700, turn: 8, life: 1.6, spread: 0.35,
+    ups: [{ count: 1, text: '+1 rocket' }, { mul: { radius: 1.25 }, text: 'Blast radius +25%' }],
     blurb: 'Long cooldown, big blast. Flies over the horde at the toughest enemy around. Count adds rockets.' },
   { id: 'drone', name: 'Drone', tag: 'Dr', kind: 'phys', pen: 'orange-pen',
     scales: ['damage', 'haste', 'size'],
-    cooldown: 3.5, damage: 34, speed: 630, span: 620, r: 20,
+    cooldown: 3.5, damage: 34, speed: 630, span: 620, r: 20, drones: 1,
+    ups: [{ mul: { span: 1.3 }, text: 'Its path is 30% longer' }, { add: { drones: 1 }, text: '+1 drone, on another diagonal' }],
     blurb: 'Crosses the map on a diagonal, right through you, and hits everything on its way. Size makes its path wider.' },
 ];
 
-// Owning both `needs` replaces them with this weapon, which is a weapon like any other.
+// Owning both `needs` replaces them with this weapon. A merged weapon has no levels.
 const SYNERGIES = [
   { id: 'electrogun', name: 'ElectroGun', tag: 'EG', kind: 'hybrid', pen: 'green-ink', needs: ['pistol', 'chain'],
     scales: ['damage', 'critChance', 'haste'],
@@ -81,7 +109,7 @@ const SYNERGIES = [
     blurb: 'Right after its blast the rocket bursts into 5 small rockets, each after an enemy of its own. Count adds rockets.' },
   { id: 'meteordrone', name: 'Meteor Drone', tag: 'MD', kind: 'hybrid', pen: 'red-pencil', needs: ['drone', 'meteor'],
     scales: ['damage', 'haste', 'size'],
-    cooldown: 6, damage: 90, passDamage: 34, speed: 490, span: 330, r: 22, radius: 88, delay: 0.7,
+    cooldown: 6, damage: 90, passDamage: 34, speed: 490, span: 330, r: 22, radius: 88, delay: 0.7, drones: 1,
     crater: { life: 5, tick: 0.5, damage: 10, share: 0.8 },
     blurb: 'The drone calls down 3 meteors on its way: where it starts, on you in the middle, and where it ends.' },
   { id: 'radiantlance', name: 'Radiant Lance', tag: 'RL', kind: 'hybrid', pen: 'blue-pen', needs: ['spear', 'aura'],

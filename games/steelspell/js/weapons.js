@@ -3,13 +3,71 @@
 function owned(id) { return hero.weapons.find(w => w.def.id === id); }
 function chargedWeapon() { return hero.weapons.find(w => w.cfg.charges); }
 
+// ---- Levels ----
+
+// Changes one number of a weapon. `path` may reach into a nested table ('crater.life').
+function patchCfg(cfg, path, change) {
+  const keys = path.split('.');
+  let node = cfg;
+  for (const key of keys.slice(0, -1)) node = node[key] = Object.assign({}, node[key]);
+  const last = keys[keys.length - 1];
+  node[last] = change(node[last]);
+}
+
+function applyStep(w, step) {
+  for (const key of Object.keys(w.bonus)) w.bonus[key] += step[key] || 0;
+  for (const [path, value] of Object.entries(step.add || {})) patchCfg(w.cfg, path, old => (old || 0) + value);
+  for (const [path, value] of Object.entries(step.mul || {})) patchCfg(w.cfg, path, old => old * value);
+  for (const [path, value] of Object.entries(step.set || {})) patchCfg(w.cfg, path, () => value);
+  if (step.reads) w.cfg.scales = [...new Set([...w.cfg.scales, ...step.reads])];
+}
+
+// The step that takes a weapon to level `lv`.
+function levelStep(def, lv) {
+  const slot = LEVEL_PLAN[lv - 2];
+  if (slot === 'a') return def.ups[0];
+  if (slot === 'b') return def.ups[1];
+  return def[`lv${lv}`] || slot;
+}
+
+// `cfg` is the weapon's own numbers and `bonus` what it adds to the stats it reads: both are
+// built again from the tables whenever the level changes.
+function rebuildWeapon(w) {
+  w.cfg = Object.assign({}, w.def);
+  for (const key of Object.keys(w.bonus)) w.bonus[key] = 0;
+  for (let lv = 2; lv <= w.level; lv++) applyStep(w, levelStep(w.def, lv));
+}
+
+function canLevel(w) { return !w.def.needs && w.level < MAX_WEAPON_LEVEL; }
+
+function setWeaponLevel(w, lv) {
+  w.level = Math.min(MAX_WEAPON_LEVEL, lv);
+  rebuildWeapon(w);
+}
+
+function levelUpWeapon(w) {
+  setWeaponLevel(w, w.level + 1);
+}
+
+function signedShare(share) { return `${share > 0 ? '+' : ''}${Math.round(share * 100)}%`; }
+
+// What a step does, as the card says it.
+function stepText(step) {
+  const parts = step.text ? [step.text] : [];
+  for (const key of ['damage', 'size', 'haste', 'duration']) {
+    if (step[key]) parts.push(`${STATS[key].name} ${signedShare(step[key])}`);
+  }
+  if (step.count && !step.text) parts.push(`+${step.count} count`);
+  return parts.join(', ');
+}
+
 function newWeapon(id) {
   const def = WEAPON_DEFS.find(d => d.id === id);
-  // `cfg` holds the weapon's own numbers, `bonus` what its levels add to the stats it reads.
   const w = {
-    def, cfg: def, level: 1, evo: '', bonus: { damage: 0, size: 0, haste: 0, duration: 0, count: 0 },
+    def, cfg: def, level: def.needs ? 0 : 1, evo: '', bonus: { damage: 0, size: 0, haste: 0, duration: 0, count: 0 },
     timer: 0.3, full: 1, dealt: 0, pulse: 0.3,
   };
+  rebuildWeapon(w);
   if (def.charges) {
     w.charges = 1;
     setCooldown(w, cooldownOf(w));
@@ -181,15 +239,37 @@ function moveDrone(s, dt) {
 function launchDrone(w, damage, extra) {
   const d = w.cfg;
   if (!nearestEnemies(hero.x, hero.y, d.span, 1).length) return false;
-  w.passes = (w.passes || 0) + 1;
-  const a = TAU / 8 + w.passes * TAU / 4;
-  launch(Object.assign({
-    look: 'drone', pen: d.pen, a, speed: d.speed, r: d.r * weaponSize(w), life: Infinity, pierce: Infinity,
-    x: hero.x - Math.cos(a) * d.span, y: hero.y - Math.sin(a) * d.span,
-    offset: -d.span, span: d.span, spin: 0, move: moveDrone,
-    onHit: (s, e) => hit(e, w, damage),
-  }, extra));
+  for (let i = 0; i < d.drones; i++) {
+    w.passes = (w.passes || 0) + 1;
+    const a = TAU / 8 + w.passes * TAU / 4;
+    launch(Object.assign({
+      look: 'drone', pen: d.pen, a, speed: d.speed, r: d.r * weaponSize(w), life: Infinity, pierce: Infinity,
+      x: hero.x - Math.cos(a) * d.span, y: hero.y - Math.sin(a) * d.span,
+      offset: -d.span, span: d.span, spin: 0, move: moveDrone,
+      onHit: (s, e) => hit(e, w, damage),
+    }, extra));
+  }
   return true;
+}
+
+// A bullet hits its target at once and, with `pierce`, the next enemies on the same line.
+function shootLine(w, target) {
+  const d = w.cfg;
+  const a = aimAt(target);
+  let last = target;
+  hit(target, w, d.damage);
+  if (d.pierce > 0) {
+    const along = e => (e.x - hero.x) * Math.cos(a) + (e.y - hero.y) * Math.sin(a);
+    const behind = [];
+    eachEnemyOnLance(hero.x, hero.y, a, d.range, 8, e => {
+      if (e !== target && along(e) > along(target)) behind.push(e);
+    });
+    behind.sort((p, q) => along(p) - along(q)).slice(0, d.pierce).forEach(e => {
+      hit(e, w, d.damage);
+      last = e;
+    });
+  }
+  addFx({ type: 'tracer', x: last.x, y: last.y, x0: hero.x, y0: hero.y, life: 0.08, pen: d.pen });
 }
 
 // Each returns false when there is nothing to fire at, so the weapon stays ready.
@@ -215,8 +295,10 @@ const FIRE = {
     const d = w.cfg;
     const inRange = nearestEnemies(hero.x, hero.y, d.range, MAX_ENEMIES);
     if (!inRange.length) return false;
-    const { x, y } = pickOne(inRange);
-    fallMeteor(w, x, y);
+    for (let i = 0; i < d.meteors; i++) {
+      const { x, y } = pickOne(inRange);
+      later(i * 0.15, () => fallMeteor(w, x, y));
+    }
     return true;
   },
 
@@ -263,14 +345,16 @@ const FIRE = {
     const target = nearestEnemies(hero.x, hero.y, AIM_RANGE, 1)[0];
     if (!target) return false;
     const size = weaponSize(w);
-    launch({
-      look: 'arrow', pen: d.pen, a: aimAt(target), speed: d.speed, r: d.width * (1 + (size - 1) * d.widthGrowth),
-      life: d.life, pierce: Infinity, len: d.length * size,
-      onHit: (s, e) => {
-        hit(e, w, d.damage);
-        slow(e, d.slow, d.slowTime);
-      },
-    });
+    for (let i = 0; i < d.arrows; i++) {
+      launch({
+        look: 'arrow', pen: d.pen, a: aimAt(target) + (i - (d.arrows - 1) / 2) * d.fan, speed: d.speed,
+        r: d.width * (1 + (size - 1) * d.widthGrowth), life: d.life, pierce: Infinity, len: d.length * size,
+        onHit: (s, e) => {
+          hit(e, w, d.damage);
+          slow(e, d.slow, d.slowTime);
+        },
+      });
+    }
     return true;
   },
 
@@ -288,10 +372,9 @@ const FIRE = {
 
   pistol(w) {
     const d = w.cfg;
-    const target = nearestEnemies(hero.x, hero.y, d.range, 1)[0];
-    if (!target) return false;
-    addFx({ type: 'tracer', x: target.x, y: target.y, x0: hero.x, y0: hero.y, life: 0.08, pen: d.pen });
-    hit(target, w, d.damage);
+    const targets = nearestEnemies(hero.x, hero.y, d.range, d.targets);
+    if (!targets.length) return false;
+    for (const target of targets) shootLine(w, target);
     return true;
   },
 
@@ -309,6 +392,7 @@ const FIRE = {
 
 // ---- Weapons: always-on ones ----
 
+// The reach of everything that is a circle around the hero: auras, shield blasts, the phase.
 function auraRadius(w) { return w.cfg.radius * weaponSize(w); }
 
 function pulseAura(w, dt, damage) {
@@ -329,7 +413,7 @@ function rechargeShield(w, dt) {
 function startPhase(w, early) {
   hero.phaseLeft = w.cfg.duration;
   w.pulse = 0;
-  setCooldown(w, cooldownOf(w) * (early ? 2 : 1));
+  setCooldown(w, cooldownOf(w) * (early ? w.cfg.earlyCost : 1));
   w.locked = early;
 }
 
@@ -395,7 +479,7 @@ const TICK = {
       w.pulse -= dt;
       if (w.pulse <= 0) {
         w.pulse += w.cfg.tick;
-        eachEnemyNear(hero.x, hero.y, w.cfg.radius, e => hit(e, w, w.cfg.damage));
+        eachEnemyNear(hero.x, hero.y, auraRadius(w), e => hit(e, w, w.cfg.damage));
       }
       return;
     }

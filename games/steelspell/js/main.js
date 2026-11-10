@@ -11,7 +11,7 @@
 //
 // Open with ?dev in the URL for test keys: L level up, G weapon pick, I open a chest,
 // K die (with a spare life, to see the revive), R reset the active skill, T skip a minute,
-// E call an elite, O fill the horde, H immortality. js/sim.js has them and the simulator.
+// E call an elite, O fill the horde, H immortality, M max out a weapon. js/sim.js has them and the simulator.
 
 function update(dt) {
   elapsed += dt;
@@ -80,7 +80,9 @@ document.addEventListener('keydown', e => {
       togglePause();
       break;
     default:
-      if (DEV && phase === 'playing') devKey(e.code);
+      if (phase === 'choosing' && e.code === 'KeyR') rerollChoice();
+      else if (phase === 'choosing' && e.code === 'KeyX') skipChoice();
+      else if (DEV && phase === 'playing') devKey(e.code);
   }
 });
 document.addEventListener('keyup', e => keys.delete(e.code));

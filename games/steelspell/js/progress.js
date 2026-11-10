@@ -8,6 +8,7 @@ function addLevel() {
   level++;
   xpNext = xpNeeded(level);
   refreshHero(); // every level adds a little health
+  if (level % REROLLS.everyLevels === 0) rerolls++;
   queue.push(WEAPON_LEVELS.includes(level) ? 'weapon' : 'stat');
 }
 
@@ -136,7 +137,7 @@ function updateChests() {
 
 // ---- Choices: level-ups, new weapons, chests ----
 
-// `kind` is 'stat', 'weapon', or one of the CHESTS.
+// `kind` is 'stat' (a level-up), 'weapon' (a new one), or one of the CHESTS.
 function enqueueChoice(kind) {
   queue.push(kind);
   if (phase === 'playing') nextChoice();
@@ -144,31 +145,48 @@ function enqueueChoice(kind) {
 
 function nextChoice() {
   while (queue.length) {
-    const kind = queue.shift();
-    const chest = CHESTS[kind];
-    if (chest) {
-      const found = rollItems(chest);
-      if (found.length) {
-        phase = 'choosing';
-        showCards(chest.name, 'Pick one. Every item is one of a kind.', found.map(itemCard));
-        return;
-      }
-      addLevel(); // nothing left to find
-      say('Every item found: +1 level');
-      continue;
-    }
-    let cards = kind === 'weapon' ? weaponCards() : [];
-    const isWeapon = cards.length > 0;
-    if (!isWeapon) cards = statCards();
-    if (!cards.length) continue;
-    phase = 'choosing';
-    if (isWeapon) showCards(`Level ${level}: new weapon`, 'Pick one to add to your kit.', cards);
-    else showCards(`Level ${level}`, 'Pick one upgrade.', cards);
-    return;
+    if (openChoice(queue.shift())) return;
   }
+  choice = null;
   phase = 'playing';
   hideOverlay();
   dirty = true;
+}
+
+// Shows the cards of one choice. False when there is nothing to choose from.
+function openChoice(kind) {
+  const chest = CHESTS[kind];
+  let cards;
+  let title;
+  let note;
+  let skip = false;
+  if (chest) {
+    cards = rollItems(chest).map(itemCard);
+    if (!cards.length) {
+      addLevel(); // nothing left to find
+      say('Every item found: +1 level');
+      return false;
+    }
+    title = chest.name;
+    note = 'Pick one. Every item is one of a kind.';
+  } else {
+    cards = kind === 'weapon' ? weaponCards() : [];
+    if (cards.length) {
+      title = `Level ${level}: new weapon`;
+      note = 'Pick one to add to your kit.';
+    } else {
+      kind = 'stat';
+      cards = levelCards();
+      title = `Level ${level}`;
+      note = 'Pick one upgrade.';
+      skip = true;
+    }
+    if (!cards.length) return false;
+  }
+  choice = { kind, reroll: true, skip };
+  phase = 'choosing';
+  showCards(title, note, cards);
+  return true;
 }
 
 function chooseCard(i) {
@@ -178,9 +196,23 @@ function chooseCard(i) {
   nextChoice();
 }
 
+// Throws the cards away for new ones of the same kind.
+function rerollChoice() {
+  if (phase !== 'choosing' || !choice.reroll || rerolls <= 0) return;
+  rerolls--;
+  openChoice(choice.kind);
+}
+
+// Passing on a level-up heals a little instead.
+function skipChoice() {
+  if (phase !== 'choosing' || !choice.skip) return;
+  heal(hero.maxHp * SKIP_HEAL);
+  nextChoice();
+}
+
 // Stats that no owned weapon reads are never offered; the hero's own always are.
 function statPool() {
-  const defs = hero.weapons.map(w => w.def);
+  const defs = hero.weapons.map(w => w.cfg);
   const pool = [];
   for (const key of Object.keys(STATS)) {
     const def = STATS[key];
@@ -221,8 +253,35 @@ function statCard(o) {
   };
 }
 
-function statCards() {
-  return drawWeighted(statPool(), 3).map(statCard);
+function upgradeCard(o) {
+  const w = o.weapon;
+  const step = levelStep(w.def, w.level + 1);
+  return {
+    type: 'upgrade',
+    id: w.def.id,
+    kind: w.def.kind,
+    tag: KINDS[w.def.kind].name,
+    name: w.def.name,
+    value: `Lv ${w.level} → ${w.level + 1}`,
+    note: stepText(step) + (w.level + 1 === MAX_WEAPON_LEVEL ? ' · The last level' : ''),
+    pick: () => levelUpWeapon(w),
+  };
+}
+
+// A level-up offers weapon levels and passives: see LEVEL_CARDS.
+function levelCards() {
+  const ups = hero.weapons.filter(canLevel).map(weapon => ({ weapon, weight: LEVEL_CARDS.weaponWeight }));
+  const stats = statPool();
+  const sure = [
+    ...(LEVEL_CARDS.sureWeapon ? drawWeighted(ups, 1) : []),
+    ...(LEVEL_CARDS.sureStat ? drawWeighted(stats, 1) : []),
+  ];
+  const rest = [...ups, ...stats].filter(o => !sure.includes(o));
+  const drawn = [...sure, ...drawWeighted(rest, LEVEL_CARDS.slots - sure.length)];
+  return [
+    ...drawn.filter(o => o.weapon).map(upgradeCard),
+    ...drawn.filter(o => !o.weapon).map(statCard),
+  ];
 }
 
 function synergyPartner(id) {
