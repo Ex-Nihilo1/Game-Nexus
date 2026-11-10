@@ -147,6 +147,14 @@ function drawEnemies() {
       ctx.arc(e.x, e.y, e.r + 3, 0, TAU);
       ctx.stroke();
     }
+    if (e.def.mark) {
+      // Fights from a distance: a dot in the middle.
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.r * 0.32, 0, TAU);
+      ctx.fillStyle = pal.ink;
+      ctx.fill();
+      ctx.fillStyle = pal.paper;
+    }
     if (e.def.elite) {
       const w = e.r * 2.4;
       ctx.fillStyle = pal.desk;
@@ -404,8 +412,11 @@ function drawHero() {
   const w = 34;
   ctx.fillStyle = pal.desk;
   ctx.fillRect(x - w / 2, y + r + 6, w, 4);
-  ctx.fillStyle = pal[hero.hp / hero.maxHp > 0.35 ? 'green-ink' : 'red-pencil'];
-  ctx.fillRect(x - w / 2, y + r + 6, w * Math.max(0, hero.hp / hero.maxHp), 4);
+  const share = Math.max(0, hero.hp / hero.maxHp);
+  ctx.fillStyle = pal[share > 0.35 ? 'green-ink' : 'red-pencil'];
+  if (share < 0.25) ctx.globalAlpha = 0.55 + 0.45 * Math.sin(elapsed * 12); // nearly dead: it pulses
+  ctx.fillRect(x - w / 2, y + r + 6, w * share, 4);
+  ctx.globalAlpha = 1;
 }
 
 function drawFx() {
@@ -495,8 +506,10 @@ function draw() {
   drawOrbs();
   drawRedOrbs();
   drawEnemies();
+  drawWarnings();
   drawBeams();
   drawShots();
+  drawEnemyShots();
   drawHeroEffects();
   drawHero();
   drawFx();

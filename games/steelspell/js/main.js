@@ -11,7 +11,7 @@
 //
 // Open with ?dev in the URL for test keys: L level up, G weapon pick, I open a chest,
 // K die (with a spare life, to see the revive), R reset the active skill, T skip a minute,
-// E call an elite, O fill the horde, H immortality, M max out a weapon. js/sim.js has them and the simulator.
+// E call an elite, F a pack of shooters, O fill the horde, H immortality, M max out a weapon. js/sim.js has them and the simulator.
 
 function update(dt) {
   elapsed += dt;
@@ -21,6 +21,8 @@ function update(dt) {
   moveEnemies(dt);
   rebuildGrid();
   collideHero();
+  updateEnemyShots(dt);
+  updateWarnings(dt);
   updateWeapons(dt);
   updateTimers(dt);
   updateShots(dt);

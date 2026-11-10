@@ -32,7 +32,7 @@ let shownCards = [];
 let metaBonus = {}; // what Camp upgrades add to stats this run (js/meta.js)
 let simulating = false; // true while js/sim.js plays a run: nothing is drawn or saved
 
-let hero, enemies, shots, enemyShots, zones, orbs, redOrbs, chests, fx, numbers, timers, queue;
+let hero, enemies, shots, enemyShots, warnings, zones, orbs, redOrbs, chests, fx, numbers, timers, queue;
 let upgrades, gear, items, activeDef, activeCd, berserkLeft, rerolls, choice, merges;
 let level, xp, xpNext, elapsed, kills, spawnBudget, nextElite, nextRing, wildOrbTimer, walked, toast, toastLeft;
 
@@ -45,11 +45,12 @@ function zeroPicks() {
 function resetWorld() {
   hero = {
     x: 0, y: 0, r: HERO.r, hp: HERO.hp, maxHp: HERO.hp, baseAttack: HERO.attack, lives: HERO.lives,
-    faceX: 1, faceY: 0, iframes: 0, ghostLeft: 0, phaseLeft: 0, weapons: [],
+    faceX: 1, faceY: 0, vx: 0, vy: 0, iframes: 0, ghostLeft: 0, phaseLeft: 0, hurtFlash: 0, weapons: [],
   };
   enemies = [];
   shots = [];
   enemyShots = [];
+  warnings = [];
   zones = [];
   orbs = [];
   redOrbs = [];

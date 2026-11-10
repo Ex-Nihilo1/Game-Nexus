@@ -121,3 +121,67 @@ function drawBeams() {
   }
   ctx.globalAlpha = 1;
 }
+
+// ---- What the horde throws ----
+
+// Physical shots are orange circles, magic ones violet diamonds, both outlined in ink so
+// that they read on either theme.
+function drawEnemyShots() {
+  ctx.strokeStyle = pal.ink;
+  ctx.lineWidth = 1;
+  for (const s of enemyShots) {
+    if (s.dead || !onScreen(s.x, s.y, 12)) continue;
+    ctx.beginPath();
+    if (s.kind === 'magic') {
+      const r = s.r * 1.25;
+      ctx.moveTo(s.x, s.y - r);
+      ctx.lineTo(s.x + r, s.y);
+      ctx.lineTo(s.x, s.y + r);
+      ctx.lineTo(s.x - r, s.y);
+      ctx.closePath();
+    } else {
+      ctx.arc(s.x, s.y, s.r, 0, TAU);
+    }
+    ctx.fillStyle = pal[KINDS[s.kind].pen];
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+// A strike on its way: the dashed outline is where it lands, the fill grows as it nears.
+function drawWarnings() {
+  ctx.strokeStyle = pal['red-pencil'];
+  ctx.fillStyle = pal['red-pencil'];
+  ctx.lineWidth = 2;
+  ctx.setLineDash([7, 5]);
+  for (const w of warnings) {
+    const k = 1 - w.life / w.max; // from 0 up to 1
+    ctx.beginPath();
+    if (w.shape === 'line') {
+      const cx = Math.cos(w.a);
+      const cy = Math.sin(w.a);
+      ctx.moveTo(w.x - cy * w.half, w.y + cx * w.half);
+      ctx.lineTo(w.x + cx * w.length - cy * w.half, w.y + cy * w.length + cx * w.half);
+      ctx.lineTo(w.x + cx * w.length + cy * w.half, w.y + cy * w.length - cx * w.half);
+      ctx.lineTo(w.x + cy * w.half, w.y - cx * w.half);
+      ctx.closePath();
+      ctx.globalAlpha = 0.1 + 0.2 * k;
+      ctx.fill();
+    } else {
+      ctx.arc(w.x, w.y, w.r, 0, TAU);
+      ctx.globalAlpha = 0.1;
+      ctx.fill();
+      ctx.globalAlpha = 0.9;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(w.x, w.y, w.r * k, 0, TAU);
+      ctx.globalAlpha = 0.25;
+      ctx.fill();
+      continue;
+    }
+    ctx.globalAlpha = 0.9;
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+}

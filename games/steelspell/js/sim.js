@@ -190,6 +190,25 @@ function simKite(job) {
   }
 }
 
+// Where the bot should not be in a moment: strikes about to land and shots on their way.
+function simThreats() {
+  const list = [];
+  for (const w of warnings) {
+    if (w.shape === 'circle') {
+      if (w.damage) list.push({ x: w.x, y: w.y, r: w.r, weight: 4 });
+    } else {
+      for (const share of [0.2, 0.5, 0.8]) {
+        list.push({ x: w.x + Math.cos(w.a) * w.length * share, y: w.y + Math.sin(w.a) * w.length * share, r: w.half + 30, weight: 4 });
+      }
+    }
+  }
+  for (const s of enemyShots) {
+    if (Math.hypot(s.x - hero.x, s.y - hero.y) > 260) continue;
+    for (const t of [0.3, 0.6]) list.push({ x: s.x + s.vx * t, y: s.y + s.vy * t, r: s.r + 12, weight: 1.5 });
+  }
+  return list;
+}
+
 function simSteer(job) {
   const standing = job.bot === 'afk' && elapsed >= (job.after || 0) * 60;
   stick.active = !standing;
@@ -301,7 +320,7 @@ function simRun(job) {
 function simDummyAt(x, y, r) {
   enemies.push({
     def: SIM_DUMMY, x, y, r, hp: SIM_DUMMY.hp, maxHp: SIM_DUMMY.hp, slowLeft: 0, slowBy: 0, flash: 0,
-    pushLeft: 0, pushX: 0, pushY: 0, speared: false, dead: false,
+    pushLeft: 0, pushX: 0, pushY: 0, speared: false, dead: false, freezeLeft: 0, rootLeft: 0, dash: null, side: 1, cool: null,
   });
   return enemies[enemies.length - 1];
 }
@@ -517,7 +536,8 @@ function devKey(code) {
   else if (code === 'KeyI') enqueueChoice(pickWeighted(CHEST_ROLL));
   else if (code === 'KeyR') activeCd = 0;
   else if (code === 'KeyT') elapsed += 60;
-  else if (code === 'KeyE') addEnemy(rand() < 0.5 ? 'hulk' : 'warden');
+  else if (code === 'KeyE') addEnemy(pickOne(['hulk', 'warden', 'siege']));
+  else if (code === 'KeyF') ['slinger', 'slinger', 'slinger', 'slinger', 'hexer', 'hexer', 'mortar', 'mortar'].forEach(type => addEnemy(type));
   else if (code === 'KeyO') {
     // Stress test: fill the horde up to its cap.
     while (enemies.length < MAX_ENEMIES) addEnemy(pickOne(['mite', 'runner', 'ironclad', 'warded']));

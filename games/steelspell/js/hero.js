@@ -52,6 +52,7 @@ function hurtHero(amount, kind = 'phys') {
     shield.charges--;
     hero.iframes = HERO.iframes;
     explode(hero.x, hero.y, auraRadius(shield), shield, shield.cfg.damage);
+    eraseEnemyShots(hero.x, hero.y, auraRadius(shield)); // the blast clears the air too
     return;
   }
   const dash = owned('phase');
@@ -59,8 +60,11 @@ function hurtHero(amount, kind = 'phys') {
     startPhase(dash, true);
     return;
   }
-  hero.hp -= amount * (1 - armorCut());
+  const taken = amount * (1 - armorCut());
+  hero.hp -= taken;
   hero.iframes = HERO.iframes;
+  hero.hurtFlash = HURT_FLASH;
+  floatText(hero.x, hero.y - hero.r - 8, `-${Math.round(taken)}`, 'red-pencil', 14);
 }
 
 // A spare life: full health and a blast that wipes everything close.
@@ -77,7 +81,7 @@ function revive() {
 // which is what Flash and Ghost are for.
 function collideHero() {
   if (hero.ghostLeft > 0 || hero.phaseLeft > 0) return;
-  const fury = 1 + DAMAGE_PER_MINUTE * elapsed / 60;
+  const rage = fury();
   eachEnemyNear(hero.x, hero.y, hero.r, e => {
     const dx = e.x - hero.x;
     const dy = e.y - hero.y;
@@ -88,7 +92,7 @@ function collideHero() {
     hero.y -= dy / d * overlap * share;
     e.x += dx / d * overlap * (1 - share);
     e.y += dy / d * overlap * (1 - share);
-    hurtHero(e.def.damage * fury);
+    hurtHero(e.def.damage * rage);
     prick(e);
   });
 }
@@ -127,10 +131,13 @@ function moveHero(dt) {
     pace *= 1 + (dash.cfg.moveBoost - 1) * weaponStat(dash, 'speed');
   }
   if (hero.ghostLeft > 0) pace *= activeDef.speedBoost;
+  hero.vx = mx * pace; // mortars aim where this takes the hero
+  hero.vy = my * pace;
   hero.x += mx * pace * dt;
   hero.y += my * pace * dt;
   walkFor(Math.hypot(mx, my) * pace * dt);
   hero.iframes = Math.max(0, hero.iframes - dt);
   hero.ghostLeft = Math.max(0, hero.ghostLeft - dt);
+  hero.hurtFlash = Math.max(0, hero.hurtFlash - dt);
   hero.hp = Math.min(hero.maxHp, hero.hp + (stat('recovery') + hero.maxHp * gearValue('regen')) * dt);
 }

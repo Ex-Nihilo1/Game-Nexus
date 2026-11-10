@@ -82,6 +82,15 @@ function drawHud() {
 
   drawWeaponTiles(H);
 
+  if (hero.hurtFlash > 0) {
+    // Just hit: the edge of the screen goes red for a moment.
+    ctx.globalAlpha = 0.4 * hero.hurtFlash / HURT_FLASH;
+    ctx.strokeStyle = pal['red-pencil'];
+    ctx.lineWidth = 26;
+    ctx.strokeRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
+
   if (stick.active) {
     ctx.strokeStyle = pal['ink-muted'];
     ctx.lineWidth = 1.5;
@@ -232,8 +241,9 @@ function showStart() {
       '<kbd>WASD</kbd> or arrows, or drag on the field, to walk &middot; <kbd>Space</kbd> active skill &middot; ' +
       '<kbd>1</kbd>&ndash;<kbd>4</kbd> pick a card &middot; <kbd>R</kbd> reroll the cards &middot; <kbd>X</kbd> skip a level-up &middot; <kbd>P</kbd> pause<br>' +
       'An orange outline is armor that blunts physical damage, a violet outline is a ward that blunts magic. Pure damage ignores both.<br>' +
+      'Enemies with a dot in the middle fight from a distance. A red dashed outline on the ground is a strike about to land: step out of it.<br>' +
       'Red orbs heal. Walking turns them up, and elites drop them along with a chest: pick 1 item of 3. A blue chest is better than a grey one, a yellow one better still.' +
-      (DEV ? '<br>Dev keys: <kbd>L</kbd> level up &middot; <kbd>G</kbd> weapon pick &middot; <kbd>I</kbd> open a chest &middot; <kbd>K</kbd> die and revive &middot; <kbd>R</kbd> reset active &middot; <kbd>T</kbd> skip a minute &middot; <kbd>E</kbd> elite &middot; <kbd>O</kbd> fill the horde &middot; <kbd>H</kbd> immortal &middot; <kbd>M</kbd> max a weapon' : '');
+      (DEV ? '<br>Dev keys: <kbd>L</kbd> level up &middot; <kbd>G</kbd> weapon pick &middot; <kbd>I</kbd> open a chest &middot; <kbd>K</kbd> die and revive &middot; <kbd>R</kbd> reset active &middot; <kbd>T</kbd> skip a minute &middot; <kbd>E</kbd> elite &middot; <kbd>F</kbd> shooters &middot; <kbd>O</kbd> fill the horde &middot; <kbd>H</kbd> immortal &middot; <kbd>M</kbd> max a weapon' : '');
     p.appendChild(hints);
   });
 }

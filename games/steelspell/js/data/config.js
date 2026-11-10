@@ -35,6 +35,8 @@ const RECYCLE_MARGIN = 260; // enemies and orbs this far off screen come back ah
 const MAX_ENEMIES = 320;
 const MAX_ORBS = 160;
 const MAX_FX = 120;
+const MAX_ENEMY_SHOTS = 150;
+const MAX_WARNINGS = 40; // strikes announced on the ground at once
 const MAX_ZONES = 140; // burning ground, beams and whirlwinds together
 const MAX_TRAIL = 60; // patches of one Fire Trail; past that the oldest gives way
 const BURN_TICK = 0.5; // an enemy on fire is hurt this often
@@ -42,6 +44,7 @@ const MAX_NUMBERS = 40;
 const DOT_NUMBER_EVERY = 0.3; // damage over time shows one summed number per enemy this often
 const MAX_ENEMY_R = 30;
 const STICK_RADIUS = 46;
+const HURT_FLASH = 0.3; // seconds the screen's edge stays red after a hit
 
 const BEST_KEY = 'games.steelspell.best';
 const LAST_KEY = 'games.steelspell.last';
