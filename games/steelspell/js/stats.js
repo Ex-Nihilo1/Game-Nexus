@@ -106,8 +106,16 @@ function magnetRadius() { return HERO.magnet * stat('magnet'); }
 
 function activeCooldown() { return activeDef.cooldown * (1 - gearValue('activeCooldown')); }
 
+// Bulwark Plate is armor only for a hero who carries no shield.
+function heroArmor() { return stat('armor') + (chargedWeapon() ? 0 : gearValue('plateArmor')); }
+
 // The share of a hit that armor takes off.
-function armorCut() { return 1 - 100 / (100 + stat('armor')); }
+function armorCut() { return 1 - 100 / (100 + heroArmor()); }
+
+function maxCharges(w) { return w.cfg.charges + gearValue('charges'); }
+
+// Items that favor weapons of fire.
+function fireBonus(w) { return w.def.fire ? 1 + gearValue('fireDamage') : 1; }
 
 function levelHealth() { return HP_PER_LEVEL * (level - 1); }
 
@@ -126,6 +134,7 @@ function takeItem(item) {
   items.push(item);
   for (const key of Object.keys(item.gives)) gear[key] = gearValue(key) + item.gives[key];
   hero.lives += item.gives.lives || 0;
+  rerolls += item.gives.rerolls || 0;
   for (let i = 0; i < (item.gives.levels || 0); i++) addLevel();
   for (let i = 0; i < (item.gives.weapons || 0); i++) queue.push('weapon');
   activeCd = Math.min(activeCd, activeCooldown());
@@ -158,7 +167,7 @@ function statRemark(key) {
       ? `Past +${COUNT.cap}: +${Math.round(COUNT.overflow * 100)}% damage instead of a shot`
       : '';
   }
-  if (key === 'armor') return `Hits will hurt ${Math.round((1 - 100 / (100 + stat('armor') + STATS.armor.step)) * 100)}% less`;
+  if (key === 'armor') return `Hits will hurt ${Math.round((1 - 100 / (100 + heroArmor() + STATS.armor.step)) * 100)}% less`;
   if (key === 'critChance' && stat(key) >= 1) return 'Past 100% a crit can land twice';
   const { from, rate } = softTier(key);
   if (rate >= 1) return '';

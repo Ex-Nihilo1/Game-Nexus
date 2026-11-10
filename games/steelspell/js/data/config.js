@@ -25,6 +25,10 @@ const SPEED_PER_MINUTE = 0.03;
 const AIM_RANGE = 460;
 const ORB_PULL_SPEED = 340;
 const WILD_ORB = { every: 2, share: 0.03 }; // orbs also appear on the map, each worth this share of the level, so a hero who cannot kill still grows
+// A magnet on the map pulls in every XP orb at once. Each elite drops one, an ordinary enemy
+// once in a long while, and one turns up by itself every `every` seconds. Only one lies on
+// the map at a time. `pull` is how much faster than usual the orbs fly in.
+const MAGNET = { every: 120, dropChance: 1 / 700, pull: 2.4 };
 const RED_ORB = { heal: 0.15, every: 1200, eliteDrop: 3, max: 10 }; // `heal` is a share of max health, `every` a distance walked
 const COUNT = { cap: 3, overflow: 0.15 }; // Count adds shots up to `cap`; each one past it adds this much damage instead
 const BODY_SHOVE = 0.25; // share of an overlap the hero gives way on: small enemies

@@ -15,7 +15,7 @@ function armorFactor(e, kind) {
 function hit(e, w, base, kind = w.def.kind, dot = false) {
   if (e.dead) return;
   const crits = critTiers(w);
-  let amount = base * weaponDamage(w) * attackMult() * kindBonus(kind);
+  let amount = base * weaponDamage(w) * attackMult() * kindBonus(kind) * fireBonus(w);
   if (crits) amount *= 1 + (weaponStat(w, 'critDamage') - 1) * crits;
   hurtEnemy(e, amount, kind, crits > 0, w, dot);
 }
@@ -44,12 +44,23 @@ function killEnemy(e) {
   e.dead = true;
   kills++;
   dropOrb(e.x, e.y, e.def.xp);
-  if (!e.def.elite) return;
-  chests.push({ x: e.x, y: e.y, type: pickWeighted(CHEST_ROLL), dead: false });
+  if (gearValue('killsPerHeal') && kills % gearValue('killsPerHeal') === 0) hero.hp = Math.min(hero.maxHp, hero.hp + 1);
+  if (!e.def.elite) {
+    if (rand() < MAGNET.dropChance) dropMagnet(e.x, e.y);
+    return;
+  }
+  dropMagnet(e.x + 30, e.y);
+  chests.push({ x: e.x, y: e.y, type: luckyChest(pickWeighted(CHEST_ROLL)), dead: false });
   for (let i = 0; i < RED_ORB.eliteDrop; i++) {
     const a = rand() * TAU;
     dropRedOrb(e.x + Math.cos(a) * 34, e.y + Math.sin(a) * 34);
   }
+}
+
+// Four-leaf Clover: now and then a chest comes one step better.
+function luckyChest(type) {
+  if (!gearValue('chestLuck') || rand() >= gearValue('chestLuck')) return type;
+  return type === 'common' ? 'rare' : 'legendary';
 }
 
 function slow(e, by, seconds) {

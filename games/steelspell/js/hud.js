@@ -20,7 +20,7 @@ function drawWeaponTiles(H) {
   for (const w of hero.weapons) {
     ctx.fillStyle = pal.paper;
     ctx.fillRect(x, y, size, size);
-    const fullyCharged = w.charges !== undefined && w.charges >= w.cfg.charges;
+    const fullyCharged = w.charges !== undefined && w.charges >= maxCharges(w);
     if (w.cfg.cooldown && w.timer > 0 && !fullyCharged) {
       const share = Math.min(1, w.timer / w.full);
       ctx.fillStyle = pal.rule;
@@ -242,7 +242,8 @@ function showStart() {
       '<kbd>1</kbd>&ndash;<kbd>4</kbd> pick a card &middot; <kbd>R</kbd> reroll the cards &middot; <kbd>X</kbd> skip a level-up &middot; <kbd>P</kbd> pause<br>' +
       'An orange outline is armor that blunts physical damage, a violet outline is a ward that blunts magic. Pure damage ignores both.<br>' +
       'Enemies with a dot in the middle fight from a distance. A red dashed outline on the ground is a strike about to land: step out of it.<br>' +
-      'Red orbs heal. Walking turns them up, and elites drop them along with a chest: pick 1 item of 3. A blue chest is better than a grey one, a yellow one better still.' +
+      'Red orbs heal. Walking turns them up, and elites drop them along with a chest: pick 1 item of 3. A blue chest is better than a grey one, a yellow one better still.<br>' +
+      'A blue horseshoe is a magnet: it pulls in every XP orb on the map.' +
       (DEV ? '<br>Dev keys: <kbd>L</kbd> level up &middot; <kbd>G</kbd> weapon pick &middot; <kbd>I</kbd> open a chest &middot; <kbd>K</kbd> die and revive &middot; <kbd>R</kbd> reset active &middot; <kbd>T</kbd> skip a minute &middot; <kbd>E</kbd> elite &middot; <kbd>F</kbd> shooters &middot; <kbd>O</kbd> fill the horde &middot; <kbd>H</kbd> immortal &middot; <kbd>M</kbd> max a weapon' : '');
     p.appendChild(hints);
   });
@@ -312,7 +313,7 @@ function addStatReport(p) {
     const text = formatStat(key, stat(key)) + (capped ? ` (${formatStat(key, raw)} picked)` : '');
     addRow(def.note ? self : arms, def.name, text);
   }
-  if (stat('armor')) addRow(self, 'Hits hurt', `${Math.round(armorCut() * 100)}% less`);
+  if (heroArmor()) addRow(self, 'Hits hurt', `${Math.round(armorCut() * 100)}% less`);
   addRow(self, 'Pickup radius', String(Math.round(magnetRadius())));
   if (gearValue('attackPerLevel')) addRow(arms, 'From levels', `+${Math.round(gearValue('attackPerLevel') * level * 100)}% damage`);
   if (gearValue('physDamage')) addRow(arms, 'All physical damage', `+${Math.round(gearValue('physDamage') * 100)}%`);

@@ -30,6 +30,7 @@ function update(dt) {
   updateBurns(dt);
   updateOrbs(dt);
   updateRedOrbs(dt);
+  updateMagnets(dt);
   updateChests();
   if (hero.hp <= 0 && hero.lives > 0) revive();
   sweep(enemies);

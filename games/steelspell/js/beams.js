@@ -252,12 +252,15 @@ TICK.firetrail = function (w, dt) {
   if (mine.length >= MAX_TRAIL) mine[0].dead = true; // the oldest patch gives way
   // Comet Tail: the faster the hero moves, the hotter the patch.
   const heat = d.cometGain ? 1 + Math.max(0, step / dt / HERO.speed - 1) * d.cometGain : 1;
-  addZone({
+  const patch = {
     look: 'trail', pen: d.pen, x: hero.x, y: hero.y, r: d.radius * weaponSize(w), life: d.life * weaponDuration(w),
     tick: d.tick, timer: d.tick, w,
     apply: e => {
       hit(e, w, d.damage * heat, undefined, true);
       if (d.afterburn) ignite(e, w, d.damage, d.afterburn, 1, d.spread);
     },
-  });
+  };
+  addZone(Object.assign({}, patch));
+  // Echo Stone: the same patch once more, on the same spot.
+  if (gearValue('echo') && rand() < gearValue('echo')) later(0.5, () => addZone(Object.assign({}, patch)));
 };

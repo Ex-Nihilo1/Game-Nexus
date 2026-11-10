@@ -83,8 +83,9 @@ function pullOrb(o, dt) {
   if (d < HERO.r + 6) return true;
   if (o.pulled || d < magnetRadius()) {
     o.pulled = true;
-    o.x += dx / d * ORB_PULL_SPEED * dt;
-    o.y += dy / d * ORB_PULL_SPEED * dt;
+    const pace = ORB_PULL_SPEED * (o.rush ? MAGNET.pull : 1);
+    o.x += dx / d * pace * dt;
+    o.y += dy / d * pace * dt;
   }
   return false;
 }
@@ -123,6 +124,31 @@ function updateRedOrbs(dt) {
     heal(hero.maxHp * RED_ORB.heal);
   }
   sweep(redOrbs);
+}
+
+// Only one magnet lies on the map at a time.
+function dropMagnet(x, y) {
+  if (!magnets.length) magnets.push({ x, y, dead: false });
+}
+
+function updateMagnets(dt) {
+  magnetTimer -= dt;
+  if (magnetTimer <= 0) {
+    magnetTimer += MAGNET.every;
+    const a = Math.atan2(hero.faceY, hero.faceX) + (rand() - 0.5) * 2;
+    const d = 220 + rand() * 180;
+    dropMagnet(hero.x + Math.cos(a) * d, hero.y + Math.sin(a) * d);
+  }
+  for (const m of magnets) {
+    if (Math.hypot(hero.x - m.x, hero.y - m.y) >= HERO.r + 14) continue;
+    m.dead = true;
+    for (const o of orbs) {
+      o.pulled = true;
+      o.rush = true;
+    }
+    say('Every orb comes to you');
+  }
+  sweep(magnets);
 }
 
 function updateChests() {
@@ -306,14 +332,15 @@ function mergeCard(merge) {
 // A level-up offers weapon levels and passives: see LEVEL_CARDS. A merge that is ready is
 // always among the cards, until it is taken.
 function levelCards() {
+  const slots = LEVEL_CARDS.slots + gearValue('cardSlots');
   const ups = hero.weapons.filter(canLevel).map(weapon => ({ weapon, weight: LEVEL_CARDS.weaponWeight }));
   const stats = statPool();
   const sure = [
     ...(LEVEL_CARDS.sureWeapon ? drawWeighted(ups, 1) : []),
     ...(LEVEL_CARDS.sureStat ? drawWeighted(stats, 1) : []),
   ];
-  const merging = readyMerges().slice(0, LEVEL_CARDS.slots - 1).map(mergeCard);
-  const room = LEVEL_CARDS.slots - merging.length;
+  const merging = readyMerges().slice(0, slots - 1).map(mergeCard);
+  const room = slots - merging.length;
   sure.length = Math.min(sure.length, room);
   const rest = [...ups, ...stats].filter(o => !sure.includes(o));
   const drawn = [...sure, ...drawWeighted(rest, room - sure.length)];

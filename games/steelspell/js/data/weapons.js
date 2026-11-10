@@ -12,7 +12,8 @@
 const LEVEL_PLAN = [{ damage: 0.2 }, 'a', { size: 0.2 }, { damage: 0.25 }, 'b', { haste: 0.2 }, { damage: 0.3 }];
 
 // `scales` lists the passive stats a weapon reads: this list is what makes a build.
-// `fire: true` marks a weapon that burns, for items that favor fire.
+// `fire: true` marks a weapon that burns, for items that favor fire; `lasting: true` one
+// whose attack stays for a while, for the Echo Stone.
 // Weapons marked `defense` cannot be the first pick, as they barely attack.
 const WEAPONS = [
   { id: 'fireball', fire: true, name: 'Fireball', tag: 'Fb', kind: 'magic', pen: 'red-pencil',
@@ -49,13 +50,13 @@ const WEAPONS = [
     cooldown: 14, duration: 1.6, damage: 10, tick: 0.25, radius: 72, moveBoost: 1.6, earlyCost: 2,
     ups: [{ add: { duration: 0.4 }, text: 'Lasts 0.4 s longer' }, { set: { earlyCost: 1 }, text: 'An early start no longer doubles the cooldown' }],
     blurb: 'On cooldown you turn into a damaging ghost. A hit triggers it early and blocks that hit, but then the cooldown is doubled.' },
-  { id: 'laser', name: 'Laser', tag: 'La', kind: 'magic', pen: 'red-pencil',
+  { id: 'laser', lasting: true, name: 'Laser', tag: 'La', kind: 'magic', pen: 'red-pencil',
     scales: ['damage', 'haste', 'size', 'duration', 'count', 'critChance', 'critDamage'],
     cooldown: 4, life: 1.5, tick: 0.1, damage: 5, length: 380, width: 10, turn: 2.5,
     ups: [{ mul: { width: 1.4 }, text: 'Width +40%' }, { count: 1, text: '+1 beam' }],
     lv4: { duration: 0.2 },
     blurb: 'A beam that burns through the whole line for a while and slowly follows its target. Count adds beams.' },
-  { id: 'flamethrower', name: 'Flamethrower', tag: 'Fl', kind: 'magic', pen: 'red-pencil', fire: true,
+  { id: 'flamethrower', lasting: true, name: 'Flamethrower', tag: 'Fl', kind: 'magic', pen: 'red-pencil', fire: true,
     scales: ['damage', 'haste', 'size', 'duration'],
     cooldown: 4, life: 2, tick: 0.15, damage: 4, length: 150, cone: 1.22, turn: 3, afterburn: 0, burnStacks: 1,
     ups: [{ add: { cone: 0.35 }, text: 'Cone 20° wider' }, { set: { afterburn: 1.5 }, text: 'Enemies keep burning for 1.5 s after they leave the cone' }],
@@ -105,7 +106,7 @@ const WEAPONS = [
     cooldown: 3.5, damage: 34, speed: 630, span: 620, r: 20, drones: 1,
     ups: [{ mul: { span: 1.3 }, text: 'Its path is 30% longer' }, { add: { drones: 1 }, text: '+1 drone, on another diagonal' }],
     blurb: 'Crosses the map on a diagonal, right through you, and hits everything on its way. Size makes its path wider.' },
-  { id: 'hurricane', name: 'Hurricane', tag: 'Hu', kind: 'phys', pen: 'orange-pen',
+  { id: 'hurricane', lasting: true, name: 'Hurricane', tag: 'Hu', kind: 'phys', pen: 'orange-pen',
     scales: ['damage', 'haste', 'size', 'duration', 'count'],
     cooldown: 5, life: 4, tick: 0.25, damage: 8, radius: 50, range: 400, drift: 40, pull: 60,
     ups: [{ mul: { pull: 1.6 }, text: 'Pulls 60% harder' }, { count: 1, text: '+1 whirlwind' }],
@@ -255,7 +256,7 @@ const SYNERGIES = [
     blurb: 'The Aura shifts toward the Spear: a long oval reaching far ahead of you. Its first touch knocks a target back. Speed makes it strike more often.' },
   // It grows from `grow.from` by `perSecond`, half as fast past `slowAt`, up to `max`, and
   // every second of its age adds `ramp` to its damage. `scorch` is the ground it leaves burning.
-  { id: 'firetornado', name: 'Fire Tornado', tag: 'To', kind: 'hybrid', pen: 'red-pencil', fire: true, needs: ['hurricane', 'flamethrower'],
+  { id: 'firetornado', lasting: true, name: 'Fire Tornado', tag: 'To', kind: 'hybrid', pen: 'red-pencil', fire: true, needs: ['hurricane', 'flamethrower'],
     scales: ['damage', 'haste', 'size', 'duration', 'count'],
     cooldown: 7, life: 6, tick: 0.25, damage: 10, range: 400, drift: 45, pull: 80, ramp: 0.15,
     grow: { from: 40, perSecond: 14, slowAt: 160, max: 260 },

@@ -48,7 +48,7 @@ function hurtHero(amount, kind = 'phys') {
   if (hero.ghostLeft > 0 || hero.phaseLeft > 0 || hero.iframes > 0) return;
   const shield = chargedWeapon();
   if (shield && shield.charges > 0) {
-    if (shield.charges === shield.cfg.charges) setCooldown(shield, cooldownOf(shield));
+    if (shield.charges === maxCharges(shield)) setCooldown(shield, cooldownOf(shield));
     shield.charges--;
     hero.iframes = HERO.iframes;
     explode(hero.x, hero.y, auraRadius(shield), shield, shield.cfg.damage);
@@ -61,6 +61,13 @@ function hurtHero(amount, kind = 'phys') {
     return;
   }
   const taken = amount * (1 - armorCut());
+  // Second Wind: the hit that would have left the hero nearly dead does not land.
+  if (gearValue('secondWind') && elapsed >= hero.windAt && hero.hp - taken < hero.maxHp * 0.2) {
+    hero.windAt = elapsed + gearValue('secondWind');
+    hero.iframes = 2;
+    say('Second Wind!');
+    return;
+  }
   hero.hp -= taken;
   hero.iframes = HERO.iframes;
   hero.hurtFlash = HURT_FLASH;
@@ -93,16 +100,18 @@ function collideHero() {
     e.x += dx / d * overlap * (1 - share);
     e.y += dy / d * overlap * (1 - share);
     hurtHero(e.def.damage * rage);
-    prick(e);
+    prick(e, e.def.damage * rage);
   });
 }
 
-// Spiked Shield: whatever touches the hero gets hurt, at most twice a second.
-function prick(e) {
+// Spiked Shield and Thorned Mail: whatever touches the hero gets hurt, at most twice a second.
+function prick(e, contact) {
   const shield = chargedWeapon();
-  if (!shield || !shield.cfg.thorns || (e.prickAt || 0) > elapsed) return;
+  const thorns = shield && shield.cfg.thorns;
+  if ((!thorns && !gearValue('thorns')) || (e.prickAt || 0) > elapsed) return;
   e.prickAt = elapsed + 0.5;
-  hit(e, shield, shield.cfg.thorns);
+  if (thorns) hit(e, shield, thorns);
+  if (gearValue('thorns') && !e.dead) hurtEnemy(e, contact * gearValue('thorns'), 'pure', false, null);
 }
 
 function moveHero(dt) {

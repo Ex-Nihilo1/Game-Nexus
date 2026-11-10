@@ -130,7 +130,7 @@ function mergeWeapons(merge) {
   const w = newWeapon(merge.id);
   for (const part of parts) {
     w.dealt += part.dealt;
-    if (part.charges !== undefined) w.charges = Math.min(part.charges, w.cfg.charges);
+    if (part.charges !== undefined) w.charges = Math.min(part.charges, maxCharges(w));
   }
   hero.weapons = hero.weapons.filter(o => !parts.includes(o));
   hero.weapons.push(w);
@@ -150,7 +150,12 @@ function updateWeapons(dt) {
     }
     w.timer -= dt;
     if (w.timer > 0) continue;
-    if (FIRE[w.def.id](w)) setCooldown(w, cooldownOf(w));
-    else w.timer = 0;
+    if (!FIRE[w.def.id](w)) {
+      w.timer = 0;
+      continue;
+    }
+    setCooldown(w, cooldownOf(w));
+    // Echo Stone: a lasting attack may come again half a second later.
+    if (w.def.lasting && gearValue('echo') && rand() < gearValue('echo')) later(0.5, () => FIRE[w.def.id](w));
   }
 }

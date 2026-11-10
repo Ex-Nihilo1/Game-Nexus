@@ -66,6 +66,25 @@ function drawRedOrbs() {
   }
 }
 
+// A horseshoe, open side up.
+function drawMagnets() {
+  ctx.lineCap = 'butt';
+  for (const m of magnets) {
+    if (!onScreen(m.x, m.y, 20)) continue;
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, 9, 0, Math.PI);
+    ctx.lineTo(m.x - 9, m.y - 8);
+    ctx.moveTo(m.x + 9, m.y);
+    ctx.lineTo(m.x + 9, m.y - 8);
+    ctx.strokeStyle = pal.ink;
+    ctx.lineWidth = 8;
+    ctx.stroke();
+    ctx.strokeStyle = pal['blue-pen'];
+    ctx.lineWidth = 5.5;
+    ctx.stroke();
+  }
+}
+
 function drawChests() {
   for (const c of chests) {
     if (!onScreen(c.x, c.y, 20)) continue;
@@ -505,6 +524,7 @@ function draw() {
   drawChests();
   drawOrbs();
   drawRedOrbs();
+  drawMagnets();
   drawEnemies();
   drawWarnings();
   drawBeams();

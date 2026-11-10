@@ -16,7 +16,7 @@ function pulseAura(w, dt, damage) {
 }
 
 function rechargeShield(w, dt) {
-  if (w.charges >= w.cfg.charges) return;
+  if (w.charges >= maxCharges(w)) return;
   w.timer -= dt;
   if (w.timer > 0) return;
   w.charges++;
