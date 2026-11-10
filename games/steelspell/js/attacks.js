@@ -251,7 +251,7 @@ function moveGuardian(s, dt) {
   eraseEnemyShots(s.x, s.y, s.r + 10);
   s.again -= dt;
   if (s.again <= 0) {
-    s.again = 0.5;
+    s.again = s.guardHit;
     s.hits.clear();
   }
   s.guardLeft -= dt;
@@ -266,7 +266,7 @@ function launchDrone(w, damage, extra) {
   if (d.guard) {
     for (let i = 0; i < d.drones; i++) {
       launch(Object.assign({
-        a: 0, speed: 0, move: moveGuardian, turn: i / d.drones * TAU, again: 0.5, onHit,
+        a: 0, speed: 0, move: moveGuardian, turn: i / d.drones * TAU, again: d.guardHit, guardHit: d.guardHit, onHit,
         guardRadius: d.guardRadius, guardTurn: d.guardTurn, guardLeft: d.guard * weaponDuration(w),
       }, body));
     }

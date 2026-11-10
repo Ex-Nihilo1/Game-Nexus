@@ -227,7 +227,7 @@ FIRE.firetornado = function (w) {
       look: 'tornado', pen: d.pen, x: spot.x, y: spot.y, r: tornadoRadius(d, 0, size), size,
       life: d.life * weaponDuration(w), tick: d.tick, timer: 0, w, think: 0, scorchIn: d.scorch.every, move: moveTornado,
     });
-    z.apply = e => hit(e, w, d.damage * (1 + d.ramp * z.age), undefined, true); // hotter every second
+    z.apply = e => hit(e, w, d.damage * (1 + d.ramp * Math.min(d.rampMax, z.age)), undefined, true); // hotter every second
   });
 };
 

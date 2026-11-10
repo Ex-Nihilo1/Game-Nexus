@@ -13,15 +13,12 @@ const MAX_WEAPON_LEVEL = 8; // a weapon grows through level-up cards up to here
 const LEVEL_CARDS = { slots: 3, weaponWeight: 2, sureWeapon: true, sureStat: true };
 const REROLLS = { start: 2, everyLevels: 12 }; // rerolls a run begins with, and how often a level adds one
 const SKIP_HEAL = 0.1; // share of max health for skipping a level-up
-const XP_BASE = 5;
-const XP_PER_LEVEL = 2.7;
-const XP_CURVE = 0.03; // ...and this much per level squared: late levels cost more and more
+const XP = { base: 5, perLevel: 2.7, curve: 0.03 }; // a level costs base + perLevel x level + curve x level squared
 const HP_PER_LEVEL = 1; // max health for every level gained
-const HP_PER_MINUTE = 0.12; // enemy health grows this much per minute of the run...
-const HP_ACCEL = 0.03; // ...and this much per minute squared, to keep up with five weapons...
-const HP_WALL = { from: 13, doubling: 2.3 }; // ...and from this minute on also doubles every so many minutes, so every run ends
-const DAMAGE_PER_MINUTE = 0.12;
-const SPEED_PER_MINUTE = 0.03;
+// How the horde grows with every minute of a run: health by `hp` and by `hpAccel` per minute
+// squared, to keep up with a growing kit; the damage of touches and shots; walking speed.
+const GROWTH = { hp: 0.12, hpAccel: 0.03, damage: 0.12, speed: 0.03 };
+const HP_WALL = { from: 13, doubling: 2.3 }; // from this minute on health also doubles every so many minutes, so every run ends
 const AIM_RANGE = 460;
 const ORB_PULL_SPEED = 340;
 const WILD_ORB = { every: 2, share: 0.03 }; // orbs also appear on the map, each worth this share of the level, so a hero who cannot kill still grows

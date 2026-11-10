@@ -2,7 +2,7 @@
 
 // ---- Levels, orbs and chests ----
 
-function xpNeeded(lv) { return Math.round(XP_BASE + XP_PER_LEVEL * lv + XP_CURVE * lv * lv); }
+function xpNeeded(lv) { return Math.round(XP.base + XP.perLevel * lv + XP.curve * lv * lv); }
 
 function addLevel() {
   level++;

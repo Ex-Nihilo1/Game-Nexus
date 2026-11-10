@@ -10,6 +10,7 @@
 //   after    with sim=afk: play as kite for this many minutes, then stand still
 //   god=1    a death does not end the run: deaths are counted, three in a minute end it
 //   meta     0 (default) | max: Camp upgrades for the run
+//   patch    a line of code run before each run, to try other numbers: patch=XP.curve=0.1
 // index.html?sim=dummy&weapon=<id>&level=<n>&evo=<0|1> measures one weapon's damage per second
 // against rings of dummies that neither move nor die.
 
@@ -116,7 +117,7 @@ function simKite(job) {
   const look = 0.6; // seconds ahead
   const safe = 55;
   const pace = HERO.speed * stat('speed') * (hero.ghostLeft > 0 ? activeDef.speedBoost : 1);
-  const hurry = 1 + SPEED_PER_MINUTE * elapsed / 60;
+  const hurry = 1 + GROWTH.speed * elapsed / 60;
   const close = enemies.filter(e => Math.hypot(e.x - hx, e.y - hy) < 340);
 
   let goal = null;
@@ -242,6 +243,7 @@ function simTrack(seen, events) {
 }
 
 function simPrepare(job) {
+  if (job.patch) (0, eval)(job.patch); // tuning: try other numbers without touching the tables
   simulating = true;
   view.w = SIM_VIEW.w;
   view.h = SIM_VIEW.h;
@@ -313,6 +315,7 @@ function simRun(job) {
     death: Math.round(deaths.length ? deaths[0] : elapsed), wall: Math.round(wall), deaths: deaths.length, capped,
     level, kills, perMinute, dealt, events, items: items.length, maxHp: hero.maxHp,
     hurtPerMinute: Math.round(hurt / Math.max(1 / 60, elapsed / 60)),
+    hurtBy: Object.fromEntries(Object.entries(hero.hurtBy).map(([k, v]) => [k, Math.round(v)])),
     kit: hero.weapons.map(w => w.def.tag + (w.level ? w.level : '')),
     updateMs: +(ms / Math.max(1, steps)).toFixed(3),
   };
@@ -374,7 +377,7 @@ function simJobs(params) {
     const ids = params.get('weapon') ? params.get('weapon').split(',') : WEAPON_DEFS.map(d => d.id);
     return ids.map(weapon => ({
       bot, weapon, seed, level: Number(params.get('level')) || 1,
-      evo: params.has('evo') ? Number(params.get('evo')) : undefined,
+      evo: params.has('evo') ? Number(params.get('evo')) : undefined, patch: params.get('patch') || '',
     }));
   }
   const starters = WEAPONS.filter(d => !d.defense).map(d => d.id);
@@ -386,6 +389,7 @@ function simJobs(params) {
       weapon: params.get('weapon') || starters[i % starters.length],
       active: params.get('active') || ACTIVES[i % ACTIVES.length].id,
       god: params.get('god') === '1', meta: params.get('meta') || '0', after: Number(params.get('after')) || 0,
+      patch: params.get('patch') || '',
     });
   }
   return jobs;

@@ -41,6 +41,7 @@ function rebuildWeapon(w) {
   w.cfg = Object.assign({}, w.def);
   for (const key of Object.keys(w.bonus)) w.bonus[key] = 0;
   for (let lv = 2; lv <= w.level; lv++) applyStep(w, levelStep(w.def, lv));
+  if (w.def.bonus) applyStep(w, w.def.bonus); // a merged weapon has no levels: it comes with what they would add
   const evo = evolutionOf(w);
   if (evo) applyStep(w, evo);
 }

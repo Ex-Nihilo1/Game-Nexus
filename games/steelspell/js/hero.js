@@ -42,8 +42,9 @@ function useActive() {
   dirty = true;
 }
 
-// `kind` is 'phys' or 'magic': it only tells what hit, armor cuts both alike.
-function hurtHero(amount, kind = 'phys') {
+// `kind` is 'phys' or 'magic': it only tells what hit, armor cuts both alike. `source` is
+// 'touch', 'shot' or 'strike', for the tally on the end screen.
+function hurtHero(amount, kind = 'phys', source = 'touch') {
   if (hero.immortal) return;
   if (hero.ghostLeft > 0 || hero.phaseLeft > 0 || hero.iframes > 0) return;
   const shield = chargedWeapon();
@@ -69,6 +70,7 @@ function hurtHero(amount, kind = 'phys') {
     return;
   }
   hero.hp -= taken;
+  hero.hurtBy[source] += taken;
   hero.iframes = HERO.iframes;
   hero.hurtFlash = HURT_FLASH;
   floatText(hero.x, hero.y - hero.r - 8, `-${Math.round(taken)}`, 'red-pencil', 14);

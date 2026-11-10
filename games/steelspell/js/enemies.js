@@ -3,11 +3,11 @@
 function healthGrowth() {
   const minutes = elapsed / 60;
   const wall = Math.max(0, minutes - HP_WALL.from) / HP_WALL.doubling;
-  return (1 + HP_PER_MINUTE * minutes + HP_ACCEL * minutes * minutes) * 2 ** wall;
+  return (1 + GROWTH.hp * minutes + GROWTH.hpAccel * minutes * minutes) * 2 ** wall;
 }
 
 // What contact and shot damage are multiplied by: the horde hits harder every minute.
-function fury() { return 1 + DAMAGE_PER_MINUTE * elapsed / 60; }
+function fury() { return 1 + GROWTH.damage * elapsed / 60; }
 
 function recycleDistance() { return Math.hypot(view.w, view.h) / 2 + RECYCLE_MARGIN; }
 
@@ -106,7 +106,7 @@ function walk(e, dx, dy, d, pace, dt) {
 
 function moveEnemies(dt) {
   const far = recycleDistance();
-  const hurry = 1 + SPEED_PER_MINUTE * elapsed / 60;
+  const hurry = 1 + GROWTH.speed * elapsed / 60;
   for (let i = 0; i < enemies.length; i++) {
     const e = enemies[i];
     const dx = hero.x - e.x;
@@ -236,7 +236,7 @@ function updateEnemyShots(dt) {
     if ((s.x - hero.x) ** 2 + (s.y - hero.y) ** 2 >= reach * reach) continue;
     if (hero.ghostLeft > 0 || hero.phaseLeft > 0) continue;
     s.dead = true;
-    hurtHero(s.damage, s.kind);
+    hurtHero(s.damage, s.kind, 'shot');
   }
   sweep(enemyShots);
 }
@@ -247,7 +247,7 @@ function updateWarnings(dt) {
     if (w.life > 0) continue;
     w.dead = true;
     if (w.shape === 'circle') addFx({ type: 'ring', x: w.x, y: w.y, r: w.r, life: 0.3, pen: 'red-pencil' });
-    if (w.damage && Math.hypot(hero.x - w.x, hero.y - w.y) < w.r + hero.r) hurtHero(w.damage, w.kind);
+    if (w.damage && Math.hypot(hero.x - w.x, hero.y - w.y) < w.r + hero.r) hurtHero(w.damage, w.kind, 'strike');
     if (w.then) w.then();
   }
   sweep(warnings);
