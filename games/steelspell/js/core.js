@@ -22,7 +22,7 @@ const loadout = { active: ACTIVES[0], weapon: WEAPONS[0] };
 
 let pal = {};
 let dirty = true;
-let phase = 'start'; // start | playing | choosing | paused | over
+let phase = 'start'; // start | menu (records, camp) | playing | choosing | paused | over
 let seed = 1;
 let frame = 0;
 let lastTime = 0;
@@ -33,7 +33,8 @@ let metaBonus = {}; // what Camp upgrades add to stats this run (js/meta.js)
 let simulating = false; // true while js/sim.js plays a run: nothing is drawn or saved
 
 let hero, enemies, shots, enemyShots, warnings, zones, orbs, redOrbs, magnets, chests, fx, numbers, timers, queue;
-let upgrades, gear, items, activeDef, activeCd, berserkLeft, rerolls, choice, merges;
+let upgrades, gear, items, activeDef, activeCd, berserkLeft, rerolls, choice, merges, elitesKilled;
+let startWeapon = '';
 let level, xp, xpNext, elapsed, kills, spawnBudget, nextElite, nextRing, wildOrbTimer, magnetTimer, walked, toast, toastLeft;
 
 function zeroPicks() {
@@ -44,7 +45,7 @@ function zeroPicks() {
 
 function resetWorld() {
   hero = {
-    x: 0, y: 0, r: HERO.r, hp: HERO.hp, maxHp: HERO.hp, baseAttack: HERO.attack, lives: HERO.lives,
+    x: 0, y: 0, r: HERO.r, hp: HERO.hp, maxHp: HERO.hp, baseAttack: HERO.attack, lives: HERO.lives + (metaBonus.lives || 0),
     faceX: 1, faceY: 0, vx: 0, vy: 0, iframes: 0, ghostLeft: 0, phaseLeft: 0, hurtFlash: 0, windAt: 0, weapons: [],
   };
   enemies = [];
@@ -69,6 +70,7 @@ function resetWorld() {
   rerolls = REROLLS.start + (metaBonus.rerolls || 0);
   choice = null;
   merges = 0;
+  elitesKilled = 0;
   level = 1;
   xp = 0;
   xpNext = xpNeeded(1);
@@ -88,7 +90,11 @@ function resetWorld() {
 
 function startRun(activeId, weaponId, runSeed = Date.now()) {
   seed = runSeed | 0;
+  metaBonus = campBonus();
+  startWeapon = weaponId;
   resetWorld();
+  refreshHero();
+  hero.hp = hero.maxHp;
   activeDef = ACTIVES.find(a => a.id === activeId);
   addWeapon(weaponId);
   saveJson(LAST_KEY, { active: activeId, weapon: weaponId });
@@ -108,11 +114,9 @@ function endRun() {
   if (simulating) return;
   activeBtn.hidden = true;
   pauseBtn.hidden = true;
-  const best = loadJson(BEST_KEY);
-  const isBest = !best || elapsed > best.time;
-  if (isBest) saveJson(BEST_KEY, { time: elapsed, level });
+  const result = recordRun();
   showBest();
-  showEnd(isBest);
+  showEnd(result);
   dirty = true;
 }
 

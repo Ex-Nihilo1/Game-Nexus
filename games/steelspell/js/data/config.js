@@ -50,8 +50,12 @@ const MAX_ENEMY_R = 30;
 const STICK_RADIUS = 46;
 const HURT_FLASH = 0.3; // seconds the screen's edge stays red after a hit
 
-const BEST_KEY = 'games.steelspell.best';
+const BEST_KEY = 'games.steelspell.best'; // the one best run of the first version: read once, never changed
 const LAST_KEY = 'games.steelspell.last';
+const RECORD_RUNS = 20; // the longest runs kept
+
+// Glory is what a run earns for the Camp, win or lose.
+const GLORY = { perMinute: 10, perElite: 15, perLevel: 2, perMerge: 25 };
 
 // `attack` is the base attack: at 100 every weapon deals the damage listed in its table.
 // `lives` are the spare lives a run starts with; items can add more.

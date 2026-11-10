@@ -141,10 +141,16 @@
     .report { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0 28px; }
     .report .row { padding: 3px 0; font-size: 13px; font-variant-numeric: tabular-nums; }
 
-    .sim-scroll { overflow-x: auto; margin-top: 10px; }
-    .sim-table { width: 100%; border-collapse: collapse; font: 12px var(--font-condensed); font-variant-numeric: tabular-nums; }
-    .sim-table th, .sim-table td { padding: 3px 6px; border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
-    .sim-table th { color: var(--ink-muted); font-weight: 400; }
+    .table-scroll { overflow-x: auto; margin-top: 10px; }
+    .data-table { width: 100%; border-collapse: collapse; font: 12px var(--font-condensed); font-variant-numeric: tabular-nums; }
+    .data-table th, .data-table td { padding: 3px 6px; border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+    .data-table th { color: var(--ink-muted); font-weight: 400; }
+
+    .camp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 0; border-bottom: 1px solid var(--rule); }
+    .camp-name { flex: 0 0 96px; font-size: 14px; font-weight: 600; }
+    .camp-text { flex: 1 1 130px; color: var(--ink-muted); font: 12px var(--font-condensed); }
+    .camp-rank { font: 13px var(--font-figure); font-variant-numeric: tabular-nums; }
+    .camp-row button { min-width: 92px; height: 28px; }
 
     @media (max-width: 560px) {
       .page { padding: 6px 8px 8px; }
@@ -199,6 +205,7 @@
   <script src="js/render.js"></script>
   <script src="js/render-fx.js"></script>
   <script src="js/hud.js"></script>
+  <script src="js/meta.js"></script>
   <script src="js/sim.js"></script>
   <script src="js/main.js"></script>
 </body>

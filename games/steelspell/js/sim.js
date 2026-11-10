@@ -249,7 +249,7 @@ function simPrepare(job) {
   simThink = 0;
   simDir = 0;
   simAngle = 0;
-  if (typeof setMetaForRun === 'function') setMetaForRun(job.meta === 'max' ? 'max' : 'none');
+  setMetaForRun(job.meta === 'max' ? 'max' : 'none');
 }
 
 function simRun(job) {
@@ -305,6 +305,7 @@ function simRun(job) {
   phase = 'over';
   stick.active = false;
   simulating = false;
+  setMetaForRun(null);
   const dealt = {};
   for (const w of hero.weapons) dealt[w.def.name] = Math.round(w.dealt);
   return {
@@ -354,7 +355,9 @@ function simDummy(job) {
   }
   Object.assign(window, real);
   phase = 'over';
+  stick.active = false;
   simulating = false;
+  setMetaForRun(null);
   return {
     bot: 'dummy', weapon: job.weapon, level: w.level || 1, evo: w.evo || '',
     crowd: Math.round(w.dealt / SIM_DUMMY_SECONDS), single: Math.round((boss.maxHp - boss.hp) / SIM_DUMMY_SECONDS),
@@ -498,8 +501,8 @@ function simShow(results) {
         ` · first weapon maxed ${stamp(summary.firstMax)}, first merge ${stamp(summary.firstMerge)}` +
         ` · update ${summary.ms} ms` + (summary.errors ? ` · ${summary.errors} errors` : '')));
     }
-    const scroll = el('div', 'sim-scroll');
-    const table = el('table', 'sim-table');
+    const scroll = el('div', 'table-scroll');
+    const table = el('table', 'data-table');
     const keys = [...new Set(rows.flatMap(row => Object.keys(row)))];
     const head = el('tr');
     keys.forEach(k => head.appendChild(el('th', '', k)));

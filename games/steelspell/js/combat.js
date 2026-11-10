@@ -49,6 +49,7 @@ function killEnemy(e) {
     if (rand() < MAGNET.dropChance) dropMagnet(e.x, e.y);
     return;
   }
+  elitesKilled++;
   dropMagnet(e.x + 30, e.y);
   chests.push({ x: e.x, y: e.y, type: luckyChest(pickWeighted(CHEST_ROLL)), dead: false });
   for (let i = 0; i < RED_ORB.eliteDrop; i++) {

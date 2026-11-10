@@ -80,3 +80,18 @@ const ITEMS = [
   { id: 'echo', name: 'Echo Stone', rarity: 'legendary', gives: { echo: 0.25 }, text: 'Beams, cones, whirlwinds and burning patches have a 25% chance to repeat half a second later' },
   { id: 'medal', name: "Veteran's Medal", rarity: 'legendary', gives: { attackPerLevel: 0.02 }, text: '+2% damage for each level you have' },
 ];
+
+// The Camp: upgrades bought with Glory that stay between runs. Rank n costs `cost` times n.
+// `gives` is a STATS key (added to that stat's sum, before soft caps), or rerolls, lives,
+// or glory (a share on top of the Glory a run earns).
+const META_UPGRADES = [
+  { id: 'vitality', name: 'Vitality', gives: 'vitality', amount: 0.04, ranks: 5, cost: 40, text: '+4% max Health' },
+  { id: 'might', name: 'Might', gives: 'damage', amount: 0.03, ranks: 5, cost: 50, text: '+3% Damage' },
+  { id: 'haste', name: 'Haste', gives: 'haste', amount: 0.03, ranks: 3, cost: 60, text: '+3% Haste' },
+  { id: 'swiftness', name: 'Swiftness', gives: 'speed', amount: 0.03, ranks: 3, cost: 40, text: '+3% Speed' },
+  { id: 'reach', name: 'Reach', gives: 'magnet', amount: 0.15, ranks: 3, cost: 30, text: '+15% Magnet' },
+  { id: 'rerolls', name: 'Rerolls', gives: 'rerolls', amount: 1, ranks: 3, cost: 60, text: '+1 reroll for the run' },
+  { id: 'plating', name: 'Plating', gives: 'armor', amount: 4, ranks: 3, cost: 50, text: '+4 Armor' },
+  { id: 'greed', name: 'Greed', gives: 'glory', amount: 0.1, ranks: 3, cost: 80, text: '+10% Glory' },
+  { id: 'revival', name: 'Revival', gives: 'lives', amount: 1, ranks: 1, cost: 600, text: '+1 spare life' },
+];

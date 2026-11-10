@@ -233,7 +233,11 @@ function showStart() {
     const actions = el('div', 'panel-actions');
     const go = el('button', 'primary', 'Start run');
     go.addEventListener('click', beginFromMenu);
-    actions.appendChild(go);
+    const camp = el('button', '', `Camp · ${loadMeta().glory} Glory`);
+    camp.addEventListener('click', showCamp);
+    const records = el('button', '', 'Records');
+    records.addEventListener('click', showRecords);
+    actions.append(go, camp, records);
     p.appendChild(actions);
 
     const hints = el('p', 'hints');
@@ -352,10 +356,16 @@ function togglePause() {
   }
 }
 
-function showEnd(isBest) {
+// `result` is what recordRun() made of the run: its place among the records and its Glory.
+function showEnd(result) {
   showPanel(p => {
     p.appendChild(el('h2', 'panel-title', hero.hp > 0 ? 'Run ended' : 'The horde got you'));
-    if (isBest) p.appendChild(el('p', 'panel-note', 'A new best time.'));
+    const notes = [];
+    if (result.place === 1) notes.push('A new best time.');
+    else if (result.place) notes.push(`#${result.place} of your runs.`);
+    if (result.bestWith && result.place !== 1) notes.push(`Your best with ${WEAPONS.find(d => d.id === startWeapon).name}.`);
+    notes.push(`+${result.glory} Glory for the Camp.`);
+    p.appendChild(el('p', 'panel-note', notes.join(' ')));
     const figures = el('div', 'figures');
     addFigure(figures, 'Time', formatTime(elapsed));
     addFigure(figures, 'Level', String(level));
@@ -367,12 +377,9 @@ function showEnd(isBest) {
     const actions = el('div', 'panel-actions');
     const again = el('button', 'primary', 'New run');
     again.addEventListener('click', showStart);
-    actions.appendChild(again);
+    const camp = el('button', '', 'Camp');
+    camp.addEventListener('click', showCamp);
+    actions.append(again, camp);
     p.appendChild(actions);
   });
-}
-
-function showBest() {
-  const best = loadJson(BEST_KEY);
-  setText(statusEl, best ? `Best run: ${formatTime(best.time)}, level ${best.level}` : '');
 }

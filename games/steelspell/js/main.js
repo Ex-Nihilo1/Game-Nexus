@@ -81,7 +81,8 @@ document.addEventListener('keydown', e => {
       break;
     case 'KeyP':
     case 'Escape':
-      togglePause();
+      if (phase === 'menu') showStart();
+      else togglePause();
       break;
     default:
       if (phase === 'choosing' && e.code === 'KeyR') rerollChoice();

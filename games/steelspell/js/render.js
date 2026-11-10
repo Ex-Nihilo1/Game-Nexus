@@ -535,7 +535,7 @@ function draw() {
   drawFx();
   drawNumbers();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  if (phase !== 'start') {
+  if (phase !== 'start' && phase !== 'menu') {
     drawHud();
     updateActiveButton();
   }
