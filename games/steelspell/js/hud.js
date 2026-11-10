@@ -14,7 +14,8 @@ function hudText(text, x, y, size, pen, align = 'left') {
 }
 
 function drawWeaponTiles(H) {
-  const size = 40;
+  // Tiles shrink when the kit would run into the active skill's button.
+  const size = Math.max(20, Math.min(40, Math.floor((view.cssW - 114) / Math.max(1, hero.weapons.length)) - 6));
   let x = 10;
   const y = H - size - 10;
   for (const w of hero.weapons) {
@@ -29,8 +30,8 @@ function drawWeaponTiles(H) {
     ctx.strokeStyle = pal[KINDS[w.def.kind].pen];
     ctx.lineWidth = 2;
     ctx.strokeRect(x, y, size, size);
-    hudText(w.def.tag, x + size / 2, y + size / 2 - (w.level ? 4 : 0), 15, 'ink', 'center');
-    if (w.level) hudText(w.evo ? 'EVO' : w.level >= MAX_WEAPON_LEVEL ? 'MAX' : `Lv ${w.level}`, x + size / 2, y + size - 8, 10, w.evo ? 'red-pencil' : 'ink-muted', 'center');
+    hudText(w.def.tag, x + size / 2, y + size / 2 - (w.level && size >= 32 ? 4 : 0), Math.max(9, Math.round(size * 0.38)), 'ink', 'center');
+    if (w.level && size >= 32) hudText(w.evo ? 'EVO' : w.level >= MAX_WEAPON_LEVEL ? 'MAX' : `Lv ${w.level}`, x + size / 2, y + size - 8, 10, w.evo ? 'red-pencil' : 'ink-muted', 'center');
     if (w.charges !== undefined) hudText(String(w.charges), x + size - 6, y + 8, 12, 'red-pencil', 'center');
     if (w.locked && w.cfg.earlyCost > 1) hudText('x2', x + 9, y + 9, 12, 'red-pencil', 'center');
     x += size + 6;
@@ -215,7 +216,7 @@ function showStart() {
   showPanel(p => {
     p.appendChild(el('h2', 'panel-title', 'Choose your loadout'));
     p.appendChild(el('p', 'panel-note',
-      `The horde never stops growing: last as long as you can. New weapons at levels ${WEAPON_LEVELS.join(', ')}, and some pairs merge into a stronger one.`));
+      `The horde never stops growing: last as long as you can. New weapons come at levels ${WEAPON_LEVELS.join(', ')}. A weapon grows to level ${MAX_WEAPON_LEVEL} through level-up cards, then evolves one of two ways, and two evolved weapons of a pair can merge into a stronger one.`));
 
     p.appendChild(el('h3', 'section-title', 'Active skill'));
     addPickRows(p, ACTIVE_GROUPS.map(group => ({
@@ -282,6 +283,18 @@ function addKitReport(p) {
   [...hero.weapons].sort((a, b) => b.dealt - a.dealt).forEach(w => {
     addRow(box, `${weaponTitle(w)} (${KINDS[w.def.kind].name})`, Math.round(w.dealt).toLocaleString('en-US'));
   });
+  p.appendChild(box);
+}
+
+// What hurt the hero over the run, by the way it came.
+function addHurtReport(p) {
+  const by = hero.hurtBy;
+  if (by.touch + by.shot + by.strike < 1) return;
+  p.appendChild(el('h3', 'section-title', 'Damage taken'));
+  const box = el('div', 'report');
+  addRow(box, 'Touches', Math.round(by.touch).toLocaleString('en-US'));
+  addRow(box, 'Shots', Math.round(by.shot).toLocaleString('en-US'));
+  addRow(box, 'Strikes on the ground', Math.round(by.strike).toLocaleString('en-US'));
   p.appendChild(box);
 }
 
@@ -372,6 +385,7 @@ function showEnd(result) {
     addFigure(figures, 'Kills', kills.toLocaleString('en-US'));
     p.appendChild(figures);
     addKitReport(p);
+    addHurtReport(p);
     addItemReport(p);
     addStatReport(p);
     const actions = el('div', 'panel-actions');

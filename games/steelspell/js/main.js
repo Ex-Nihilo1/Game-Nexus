@@ -1,17 +1,22 @@
-// Steel & Spell: a horde-survival demo in vanilla JS + canvas, no dependencies.
-// Walk, collect orbs, level up. Weapons fire on their own; the one button is the
-// active skill picked before the run. Weapons are physical or magic, upgrades are
-// split the same way, and armored enemies blunt one of the two damage types. Pure
-// damage ignores armor altogether. Two matching weapons merge into a stronger one,
-// and chests hold unique items. A run never ends by itself: the horde keeps growing
-// until it wins, and the time you lasted is your score.
+// Steel & Spell: a horde-survival game in vanilla JS + canvas, no dependencies.
+// Walk, collect orbs, level up. Weapons fire on their own; the one button is the active
+// skill picked before the run. A level-up offers levels for the weapons you carry and
+// passive stats for the hero. A weapon at its last level evolves one of two ways, and two
+// evolved weapons of a pair can merge into a stronger one. Weapons are physical or magic:
+// armored enemies blunt one of the two, pure damage ignores armor altogether. Some enemies
+// fight from a distance, so standing still is never safe. Chests hold unique items.
+// A run never ends by itself: the horde keeps growing until it wins. The time you lasted
+// is your score, and every run earns Glory for upgrades that stay (the Camp).
 //
-// All tuning lives in the tables below, so numbers can change (or move to another
-// engine) without touching the logic. Times are in seconds, distances in world units.
+// The scripts are classic ones, loaded in the order index.html lists them, so the game
+// opens straight from a file. All tuning lives in the tables under js/data: numbers can
+// change, or move to another engine, without touching the logic. Times are in seconds,
+// distances in world units.
 //
 // Open with ?dev in the URL for test keys: L level up, G weapon pick, I open a chest,
 // K die (with a spare life, to see the revive), R reset the active skill, T skip a minute,
-// E call an elite, F a pack of shooters, O fill the horde, H immortality, M max out a weapon. js/sim.js has them and the simulator.
+// E call an elite, F a pack of shooters, O fill the horde, H immortality, M max out a
+// weapon. js/sim.js has them, and the simulator that plays whole runs (?sim=kite).
 
 function update(dt) {
   elapsed += dt;

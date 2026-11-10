@@ -78,7 +78,7 @@ const GAMES = [
   {
     id: 'steelspell',
     name: 'Steel &amp; Spell',
-    blurb: 'Survive the horde. Split your build between steel and magic, pick one active skill, find synergies.',
+    blurb: 'Survive the horde for as long as you can. Level your weapons, evolve them, merge them, and dodge what the horde throws back.',
     href: 'games/steelspell/index.html',
     thumb:
       '<svg viewBox="0 0 80 80" aria-hidden="true">' +
