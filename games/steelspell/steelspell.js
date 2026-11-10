@@ -28,14 +28,14 @@ const DAMAGE_PER_MINUTE = 0.12;
 const SPEED_PER_MINUTE = 0.03;
 const AIM_RANGE = 460;
 const ORB_PULL_SPEED = 340;
-const WILD_ORB_EVERY = 3; // orbs also appear on the map, away from any fight
+const WILD_ORB = { every: 2, share: 0.03 }; // orbs also appear on the map, each worth this share of the level, so a hero who cannot kill still grows
 const RED_ORB = { heal: 0.15, every: 1200, eliteDrop: 3, max: 10 }; // `heal` is a share of max health, `every` a distance walked
 const COOLDOWN_CAP = 0.8; // no weapon's cooldown can be cut by more than this
 const BODY_SHOVE = 0.25; // share of an overlap the hero gives way on: small enemies
 const ELITE_SHOVE = 0.8; // and elites, who mostly push the hero around
 const SEPARATION = 0.5;
 const MAX_PUSHES = 5;
-const RECYCLE_MARGIN = 260; // enemies this far off screen come back ahead of the hero
+const RECYCLE_MARGIN = 260; // enemies and orbs this far off screen come back ahead of the hero
 const MAX_ENEMIES = 320;
 const MAX_ORBS = 160;
 const MAX_FX = 120;
@@ -69,7 +69,7 @@ const STATS = {
   damage: { name: 'Damage', split: true, base: 1, step: 0.15, max: 8 },
   cooldown: { name: 'Cooldown', split: true, base: 0, step: 0.05, max: 0.6 },
   size: { name: 'Size', split: true, base: 1, step: 0.08, max: 3 },
-  count: { name: 'Count', split: true, base: 0, step: 1, max: 5 },
+  count: { name: 'Count', split: true, base: 0, step: 0.5, max: 5 }, // only whole ones add shots; items give whole ones
   critChance: { name: 'Crit chance', split: true, base: 0.05, step: 0.04, max: 1, off: 0 },
   critDamage: { name: 'Crit damage', split: true, base: 1.5, step: 0.2, max: 6 },
   attack: { name: 'Attack', split: false, base: 1, step: 0.05, max: 6, note: 'All damage' },
@@ -136,7 +136,7 @@ const WEAPONS = [
     blurb: 'Cuts through enemies on the way out and again on the way back.' },
   { id: 'pistol', name: 'Pistol', tag: 'Pi', kind: 'phys', pen: 'ink',
     scales: ['damage', 'critChance', 'cooldown'],
-    cooldown: 0.55, damage: 15, range: 420,
+    cooldown: 0.55, damage: 30, range: 420,
     blurb: 'One shot, one target, the nearest. No crowd control at all.' },
   { id: 'sword', name: 'Sword', tag: 'Sw', kind: 'phys', pen: 'orange-pen',
     scales: ['damage', 'cooldown', 'size', 'count', 'critChance', 'critDamage'],
@@ -152,7 +152,7 @@ const WEAPONS = [
     blurb: 'Long cooldown, big blast. Flies over the horde at the toughest enemy around. Count adds rockets.' },
   { id: 'drone', name: 'Drone', tag: 'Dr', kind: 'phys', pen: 'orange-pen',
     scales: ['damage', 'cooldown', 'size'],
-    cooldown: 3.5, damage: 34, speed: 900, span: 620, r: 20,
+    cooldown: 3.5, damage: 34, speed: 630, span: 620, r: 20,
     blurb: 'Crosses the map on a diagonal, right through you, and hits everything on its way. Size makes its path wider.' },
 ];
 
@@ -160,7 +160,7 @@ const WEAPONS = [
 const SYNERGIES = [
   { id: 'electrogun', name: 'ElectroGun', tag: 'EG', kind: 'hybrid', pen: 'green-ink', needs: ['pistol', 'chain'],
     scales: ['damage', 'critChance', 'cooldown'],
-    cooldown: 0.55, damage: 16, range: 420, jumps: 4, jumpRange: 140, falloff: 0.8,
+    cooldown: 0.55, damage: 45, range: 420, jumps: 4, jumpRange: 140, falloff: 0.8,
     blurb: 'Every shot chains between targets and deals physical and magic damage at once.' },
   { id: 'iceboomerang', name: 'Ice Boomerang', tag: 'IB', kind: 'hybrid', pen: 'blue-pen', needs: ['boomerang', 'icearrow'],
     scales: ['cooldown', 'damage', 'size', 'count'],
@@ -177,7 +177,7 @@ const SYNERGIES = [
     blurb: 'Right after its blast the rocket bursts into 5 small rockets, each after an enemy of its own. Count adds rockets.' },
   { id: 'meteordrone', name: 'Meteor Drone', tag: 'MD', kind: 'hybrid', pen: 'red-pencil', needs: ['drone', 'meteor'],
     scales: ['damage', 'cooldown', 'size'],
-    cooldown: 6, damage: 90, passDamage: 34, speed: 700, span: 330, r: 22, radius: 88, delay: 0.7,
+    cooldown: 6, damage: 90, passDamage: 34, speed: 490, span: 330, r: 22, radius: 88, delay: 0.7,
     crater: { life: 5, tick: 0.5, damage: 10, share: 0.8 },
     blurb: 'The drone calls down 3 meteors on its way: where it starts, on you in the middle, and where it ends.' },
   { id: 'radiantlance', name: 'Radiant Lance', tag: 'RL', kind: 'hybrid', pen: 'blue-pen', needs: ['spear', 'aura'],
@@ -361,7 +361,7 @@ function resetWorld() {
   spawnBudget = 0;
   nextElite = 0;
   nextRing = 0;
-  wildOrbTimer = WILD_ORB_EVERY;
+  wildOrbTimer = WILD_ORB.every;
   walked = 0;
   toast = '';
   toastLeft = 0;
@@ -511,6 +511,8 @@ function cooldownOf(w) {
   const cut = Math.min(COOLDOWN_CAP, weaponStat(w, 'cooldown'));
   return w.def.cooldown * (1 - cut);
 }
+
+function shotCount(w) { return 1 + Math.floor(weaponStat(w, 'count')); }
 
 function setCooldown(w, seconds) {
   w.timer = seconds;
@@ -782,7 +784,7 @@ function throwBoomerangs(w, onHit) {
   const d = w.def;
   const target = nearestEnemies(hero.x, hero.y, AIM_RANGE, 1)[0];
   if (!target) return false;
-  const n = 1 + weaponStat(w, 'count');
+  const n = shotCount(w);
   const aim = aimAt(target);
   for (let i = 0; i < n; i++) {
     launch({
@@ -840,7 +842,7 @@ function launchRocket(o, blast) {
 
 function fireRockets(w, blast) {
   const d = w.def;
-  const n = 1 + weaponStat(w, 'count');
+  const n = shotCount(w);
   const targets = toughestEnemies(hero.x, hero.y, d.range, n);
   if (!targets.length) return false;
   for (let i = 0; i < n; i++) {
@@ -899,7 +901,7 @@ function launchDrone(w, damage, extra) {
 const FIRE = {
   fireball(w) {
     const d = w.def;
-    const n = 1 + weaponStat(w, 'count');
+    const n = shotCount(w);
     const targets = nearestEnemies(hero.x, hero.y, AIM_RANGE, n);
     if (!targets.length) return false;
     const radius = d.radius * weaponStat(w, 'size');
@@ -1004,7 +1006,7 @@ const FIRE = {
     const target = nearestEnemies(hero.x, hero.y, reach * 1.3, 1)[0];
     if (!target) return false;
     const aim = aimAt(target);
-    const n = 1 + weaponStat(w, 'count');
+    const n = shotCount(w);
     for (let i = 0; i < n; i++) later(i * d.swingGap, () => swing(w, aim + i * Math.PI, reach));
     return true;
   },
@@ -1190,14 +1192,37 @@ function dropOrb(x, y, value) {
   orbs.push({ x, y, value, pulled: false, dead: false });
 }
 
+function furthestFromHero(list) {
+  const away = o => Math.hypot(o.x - hero.x, o.y - hero.y);
+  return list.reduce((a, b) => (away(b) > away(a) ? b : a));
+}
+
+// Ahead of the hero, where nothing stands yet, so there is XP to reach even when nothing dies.
+// When the map is full, the orb furthest from the hero moves here with all it holds.
+function dropWildOrb() {
+  const a = Math.atan2(hero.faceY, hero.faceX) + (rand() - 0.5) * 2.4;
+  const d = 160 + rand() * 240;
+  const x = hero.x + Math.cos(a) * d;
+  const y = hero.y + Math.sin(a) * d;
+  const value = Math.max(1, xpNext * WILD_ORB.share);
+  if (orbs.length < MAX_ORBS) {
+    dropOrb(x, y, value);
+    return;
+  }
+  const far = furthestFromHero(orbs);
+  far.x = x;
+  far.y = y;
+  far.value += value;
+  far.pulled = false;
+}
+
 // When the map is full, the red orb furthest from the hero moves here.
 function dropRedOrb(x, y) {
   if (redOrbs.length < RED_ORB.max) {
     redOrbs.push({ x, y, pulled: false, dead: false });
     return;
   }
-  const away = o => Math.hypot(o.x - hero.x, o.y - hero.y);
-  const far = redOrbs.reduce((a, b) => (away(b) > away(a) ? b : a));
+  const far = furthestFromHero(redOrbs);
   far.x = x;
   far.y = y;
   far.pulled = false;
@@ -1227,8 +1252,18 @@ function pullOrb(o, dt) {
   return false;
 }
 
+// An orb left far behind comes back ahead of the hero: walking always turns up XP, and none
+// is lost for good.
 function updateOrbs(dt) {
+  const far = recycleDistance();
   for (const o of orbs) {
+    const dx = hero.x - o.x;
+    const dy = hero.y - o.y;
+    if (dx * dx + dy * dy > far * far) {
+      o.x = hero.x + dx * 0.8;
+      o.y = hero.y + dy * 0.8;
+      continue;
+    }
     if (!pullOrb(o, dt)) continue;
     o.dead = true;
     gainXp(o.value * stat('xp'));
@@ -1415,6 +1450,8 @@ function healthGrowth() {
   return (1 + HP_PER_MINUTE * minutes + HP_ACCEL * minutes * minutes) * 2 ** wall;
 }
 
+function recycleDistance() { return Math.hypot(view.w, view.h) / 2 + RECYCLE_MARGIN; }
+
 function ringEntry(i) {
   if (i < RINGS.length) return RINGS[i];
   const loop = i - RINGS.length;
@@ -1459,10 +1496,8 @@ function spawnEnemies(dt) {
   }
   wildOrbTimer -= dt;
   if (wildOrbTimer <= 0) {
-    wildOrbTimer += WILD_ORB_EVERY;
-    const a = rand() * TAU;
-    const d = 140 + rand() * 360;
-    dropOrb(hero.x + Math.cos(a) * d, hero.y + Math.sin(a) * d, 1);
+    wildOrbTimer += WILD_ORB.every;
+    dropWildOrb();
   }
 }
 
@@ -1492,7 +1527,7 @@ function separate(e) {
 }
 
 function moveEnemies(dt) {
-  const far = Math.hypot(view.w, view.h) / 2 + RECYCLE_MARGIN;
+  const far = recycleDistance();
   const hurry = 1 + SPEED_PER_MINUTE * elapsed / 60;
   for (let i = 0; i < enemies.length; i++) {
     const e = enemies[i];
@@ -1765,7 +1800,7 @@ function drawOrbs() {
   ctx.beginPath();
   for (const o of orbs) {
     if (!onScreen(o.x, o.y, 10)) continue;
-    const r = o.value >= 5 ? 7 : 4.5;
+    const r = o.value >= Math.max(5, xpNext * 0.1) ? 7 : 4.5; // the big ones are worth walking to
     ctx.moveTo(o.x, o.y - r);
     ctx.lineTo(o.x + r, o.y);
     ctx.lineTo(o.x, o.y + r);
