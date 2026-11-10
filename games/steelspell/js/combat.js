@@ -138,23 +138,73 @@ function updateShots(dt) {
   sweep(shots);
 }
 
-// A zone gets exactly life / tick ticks, so its total damage is what the table promises.
+// A zone hurts what is inside it every `tick`, and gets exactly life / tick ticks, so its
+// total damage is what the table promises. It is a circle that stays put unless it has
+// `each(z, fn)` (its own shape), `move(z, dt)` or `end(z)`.
 function addZone(o) {
-  zones.push(Object.assign({ ticksLeft: Math.round(o.life / o.tick), dead: false }, o));
+  if (zones.length >= MAX_ZONES) {
+    const oldest = zones.find(z => !z.dead && (z.look === 'trail' || z.look === 'fire')) || zones.find(z => !z.dead);
+    if (oldest) oldest.dead = true;
+  }
+  const z = Object.assign({ ticksLeft: Math.round(o.life / o.tick), age: 0, dead: false }, o);
+  zones.push(z);
+  return z;
 }
 
 function updateZones(dt) {
   for (const z of zones) {
+    if (z.dead) continue;
     z.life -= dt;
+    z.age += dt;
     z.timer -= dt;
+    if (z.move) z.move(z, dt);
     if (z.timer <= 0 && z.ticksLeft > 0) {
       z.timer += z.tick;
       z.ticksLeft--;
-      eachEnemyNear(z.x, z.y, z.r, z.apply);
+      if (z.each) z.each(z, z.apply);
+      else eachEnemyNear(z.x, z.y, z.r, z.apply);
     }
-    if (z.life <= 0) z.dead = true;
+    if (z.life <= 0) {
+      z.dead = true;
+      if (z.end) z.end(z);
+    }
   }
   sweep(zones);
+}
+
+// ---- Burning enemies ----
+
+// Sets an enemy on fire: `damage` every BURN_TICK for `seconds`. With `stacks` above 1,
+// lighting it again adds a stack, up to that many. With `spread`, it lights up to two
+// neighbors within that range on every tick; those do not spread it further.
+function ignite(e, w, damage, seconds, stacks = 1, spread = 0) {
+  if (!e.burn) e.burn = { left: 0, stacks: 0, timer: BURN_TICK };
+  const b = e.burn;
+  b.w = w;
+  b.damage = damage;
+  b.spread = spread;
+  b.left = Math.max(b.left, seconds);
+  b.stacks = Math.min(stacks, b.stacks + 1);
+}
+
+function updateBurns(dt) {
+  for (const e of enemies) {
+    const b = e.burn;
+    if (!b || e.dead) continue;
+    b.left -= dt;
+    b.timer -= dt;
+    if (b.timer <= 0) {
+      b.timer += BURN_TICK;
+      hit(e, b.w, b.damage * b.stacks, undefined, true);
+      let lit = 0;
+      if (b.spread) {
+        eachEnemyNear(e.x, e.y, b.spread, o => {
+          if (o !== e && !o.burn && lit++ < 2) ignite(o, b.w, b.damage, b.left + BURN_TICK);
+        });
+      }
+    }
+    if (b.left <= 0) e.burn = null;
+  }
 }
 
 // ---- Enemy shots: the ways weapons take them out of the air ----

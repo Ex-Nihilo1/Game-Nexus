@@ -64,6 +64,17 @@ function eachEnemyInOval(x, y, a, long, wide, fn) {
   });
 }
 
+// Everything touching a cone that starts at (x, y), points along `a` and opens `half` to
+// each side.
+function eachEnemyInCone(x, y, a, length, half, fn) {
+  eachEnemyNear(x, y, length, e => {
+    const d = Math.hypot(e.x - x, e.y - y);
+    // An enemy's own size counts: seen from the tip it is wider the closer it stands.
+    const slack = d > e.r ? Math.asin(e.r / d) : Math.PI;
+    if (angleGap(Math.atan2(e.y - y, e.x - x), a) <= half + slack) fn(e);
+  });
+}
+
 function nearestEnemies(x, y, range, n, skip) {
   const found = [];
   const limit = range * range;

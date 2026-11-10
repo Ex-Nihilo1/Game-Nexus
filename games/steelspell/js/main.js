@@ -25,6 +25,7 @@ function update(dt) {
   updateTimers(dt);
   updateShots(dt);
   updateZones(dt);
+  updateBurns(dt);
   updateOrbs(dt);
   updateRedOrbs(dt);
   updateChests();

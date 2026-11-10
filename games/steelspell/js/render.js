@@ -26,26 +26,6 @@ function drawGround() {
   gridLines(100, pal['grid-major']);
 }
 
-function drawZones() {
-  for (const z of zones) {
-    if (!onScreen(z.x, z.y, z.r)) continue;
-    const fade = Math.min(1, z.life / 0.5);
-    const fire = z.look === 'fire';
-    ctx.beginPath();
-    ctx.arc(z.x, z.y, z.r, 0, TAU);
-    ctx.globalAlpha = (fire ? 0.14 + 0.05 * Math.sin(z.life * 11) : 0.16) * fade;
-    ctx.fillStyle = pal[fire ? 'red-pencil' : 'ink-muted'];
-    ctx.fill();
-    ctx.globalAlpha = 0.8 * fade;
-    ctx.strokeStyle = pal[fire ? 'red-pencil' : 'orange-pen'];
-    ctx.lineWidth = fire ? 2 : 1.5;
-    ctx.setLineDash(fire ? [10, 7] : []);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.globalAlpha = 1;
-  }
-}
-
 function drawOrbs() {
   ctx.beginPath();
   for (const o of orbs) {
@@ -150,6 +130,15 @@ function drawEnemies() {
       traceBody(e);
       ctx.fill();
       ctx.globalAlpha = 1;
+    }
+    if (e.burn) {
+      ctx.strokeStyle = pal['red-pencil'];
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.r + 5, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
     if (e.slowLeft > 0 || e.freezeLeft > 0) {
       ctx.strokeStyle = pal['blue-pen'];
@@ -506,6 +495,7 @@ function draw() {
   drawOrbs();
   drawRedOrbs();
   drawEnemies();
+  drawBeams();
   drawShots();
   drawHeroEffects();
   drawHero();
