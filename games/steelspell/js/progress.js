@@ -325,7 +325,8 @@ function mergeCard(merge) {
     tag: 'Merge',
     name: merge.name,
     value: `${weaponName(a)} + ${weaponName(b)}`,
-    note: `${merge.blurb} Both weapons go, and you pick a new one right away.`,
+    note: `${merge.blurb}` + inheritedSteps(merge.id, [a, b].map(p => ({ id: p.def.id, evo: p.evo })))
+      .map(x => ` From ${x.evo.name}: ${x.step.text}.`).join('') + ' Both weapons go, and you pick a new one right away.',
     pick: () => mergeWeapons(merge),
   };
 }

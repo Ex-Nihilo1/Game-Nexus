@@ -45,6 +45,7 @@ function strikeLance(w, dt, touching) {
     if (struck.has(e)) return;
     struck.add(e);
     hit(e, w, d.damage);
+    if (d.chill) slow(e, d.chill, d.tick * 1.5); // Radiant Lance, from Frost Aura
     if (e.speared) return;
     e.speared = true;
     knockBack(e, a, d.push, d.pushTime);
@@ -62,16 +63,23 @@ function throwJavelin(w) {
   });
 }
 
-// The oval sits ahead of the hero, who stays inside it near the back end.
-function lanceOval(w) {
+// The oval sits ahead of the hero, who stays inside it near the back end. `angle` turns it
+// the other way for a lance that also reaches behind (from Pike Wall).
+function lanceOval(w, angle = w.angle) {
   const d = w.cfg;
   const size = weaponSize(w);
   return {
-    x: hero.x + Math.cos(w.angle) * d.shift * size,
-    y: hero.y + Math.sin(w.angle) * d.shift * size,
+    x: hero.x + Math.cos(angle) * d.shift * size,
+    y: hero.y + Math.sin(angle) * d.shift * size,
+    a: angle,
     long: d.long * size,
     wide: d.wide * size,
   };
+}
+
+// The ovals a lance has: one ahead, and one behind with Pike Wall.
+function lanceOvals(w) {
+  return w.cfg.back ? [lanceOval(w), lanceOval(w, w.angle + Math.PI)] : [lanceOval(w)];
 }
 
 const TICK = {
@@ -100,10 +108,11 @@ const TICK = {
     });
   },
 
+  // From Sanctum the ovals fade enemy shots.
   radiantlance(w, dt) {
+    if (w.cfg.ward) lanceOvals(w).forEach(eraseShotsInOval);
     strikeLance(w, dt, fn => {
-      const { x, y, long, wide } = lanceOval(w);
-      eachEnemyInOval(x, y, w.angle, long, wide, e => fn(e));
+      for (const o of lanceOvals(w)) eachEnemyInOval(o.x, o.y, o.a, o.long, o.wide, e => fn(e, o.a));
     });
   },
 

@@ -35,6 +35,16 @@ function evolutionOf(w) {
   return (EVOLUTIONS[w.def.id] || []).find(evo => evo.id === w.evo);
 }
 
+// What a merged weapon keeps from the evolutions of the weapons it was made of: `parts` is
+// [{ id, evo }], and each evolution's `inherit` for this merge is a step.
+function inheritedSteps(mergeId, parts = []) {
+  return parts.map(part => {
+    const evo = (EVOLUTIONS[part.id] || []).find(e => e.id === part.evo);
+    const step = evo && evo.inherit && evo.inherit[mergeId];
+    return step ? { evo, step } : null;
+  }).filter(Boolean);
+}
+
 // `cfg` is the weapon's own numbers and `bonus` what it adds to the stats it reads: both are
 // built again from the tables whenever the level or the evolution changes.
 function rebuildWeapon(w) {
@@ -42,6 +52,7 @@ function rebuildWeapon(w) {
   for (const key of Object.keys(w.bonus)) w.bonus[key] = 0;
   for (let lv = 2; lv <= w.level; lv++) applyStep(w, levelStep(w.def, lv));
   if (w.def.bonus) applyStep(w, w.def.bonus); // a merged weapon has no levels: it comes with what they would add
+  for (const { step } of inheritedSteps(w.def.id, w.parts)) applyStep(w, step);
   const evo = evolutionOf(w);
   if (evo) applyStep(w, evo);
 }
@@ -76,16 +87,18 @@ function stepText(step) {
   return parts.join(', ');
 }
 
-// The name a weapon goes by: its evolution's, once it has one.
+// The name a weapon goes by: its evolution's, once it has one. A merged one names what it kept.
 function weaponName(w) {
   const evo = evolutionOf(w);
-  return evo ? evo.name : w.def.name;
+  if (evo) return evo.name;
+  const kept = inheritedSteps(w.def.id, w.parts).map(x => x.evo.name);
+  return kept.length ? `${w.def.name} (${kept.join(', ')})` : w.def.name;
 }
 
 function newWeapon(id) {
   const def = WEAPON_DEFS.find(d => d.id === id);
   const w = {
-    def, cfg: def, level: def.needs ? 0 : 1, evo: '', bonus: { damage: 0, size: 0, haste: 0, duration: 0, count: 0 },
+    def, cfg: def, level: def.needs ? 0 : 1, evo: '', parts: [], bonus: { damage: 0, size: 0, haste: 0, duration: 0, count: 0 },
     timer: 0.3, full: 1, dealt: 0, pulse: 0.3,
   };
   rebuildWeapon(w);
@@ -129,6 +142,8 @@ function synergyPartner(id) {
 function mergeWeapons(merge) {
   const parts = merge.needs.map(owned);
   const w = newWeapon(merge.id);
+  w.parts = parts.map(part => ({ id: part.def.id, evo: part.evo }));
+  rebuildWeapon(w);
   for (const part of parts) {
     w.dealt += part.dealt;
     if (part.charges !== undefined) w.charges = Math.min(part.charges, maxCharges(w));

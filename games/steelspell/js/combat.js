@@ -87,17 +87,19 @@ function explode(x, y, r, w, base) {
   addFx({ type: 'ring', x, y, r, life: 0.3, pen: KINDS[w.def.kind].pen });
 }
 
-function strikeChain(first, w) {
+// `boost` multiplies the whole chain; a boosted chain loses nothing from jump to jump.
+function strikeChain(first, w, boost = 1) {
   const d = w.cfg;
   const struck = new Set([first]);
   const points = [{ x: hero.x, y: hero.y }, { x: first.x, y: first.y }];
+  const falloff = boost > 1 ? 1 : d.falloff;
   let from = first;
-  let amount = d.damage;
+  let amount = d.damage * boost;
   hit(first, w, amount);
   for (let i = 0; i < d.jumps; i++) {
     const next = nearestEnemies(from.x, from.y, d.jumpRange, 1, struck)[0];
     if (!next) break;
-    amount *= d.falloff;
+    amount *= falloff;
     hit(next, w, amount);
     struck.add(next);
     points.push({ x: next.x, y: next.y });
@@ -109,6 +111,9 @@ function strikeChain(first, w) {
       addFx({ type: 'bolt', points: jagged([next, side]), life: 0.16, pen: d.pen });
     }
     from = next;
+  }
+  if (d.ward) {
+    for (let i = 1; i < points.length; i++) eraseShotsOnLine(points[i - 1].x, points[i - 1].y, points[i].x, points[i].y, 12);
   }
   addFx({ type: 'bolt', points: jagged(points), life: 0.16, pen: d.pen });
 }
@@ -236,6 +241,19 @@ function eraseShotsOnLine(x0, y0, x1, y1, halfWidth) {
     const t = Math.max(0, Math.min(1, ((s.x - x0) * dx + (s.y - y0) * dy) / length2));
     const reach = halfWidth + s.r;
     if ((s.x - x0 - dx * t) ** 2 + (s.y - y0 - dy * t) ** 2 < reach * reach) s.dead = true;
+  }
+}
+
+// Shots inside an oval, as `lanceOval` gives it.
+function eraseShotsInOval(o) {
+  const cos = Math.cos(o.a);
+  const sin = Math.sin(o.a);
+  for (const s of enemyShots) {
+    const dx = s.x - o.x;
+    const dy = s.y - o.y;
+    const along = (dx * cos + dy * sin) / o.long;
+    const across = (dy * cos - dx * sin) / o.wide;
+    if (along * along + across * across < 1) s.dead = true;
   }
 }
 

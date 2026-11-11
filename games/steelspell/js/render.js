@@ -347,16 +347,17 @@ function drawSpear(w, angle) {
 
 function drawRadiantLance(w) {
   const size = weaponSize(w);
-  const { x, y, long, wide } = lanceOval(w);
-  ctx.beginPath();
-  ctx.ellipse(x, y, long, wide, w.angle, 0, TAU);
-  ctx.globalAlpha = (0.1 + 0.14 * w.thrust) * HERO_FILL;
-  ctx.fillStyle = pal[w.def.pen];
-  ctx.fill();
-  ctx.globalAlpha = 0.7;
-  ctx.strokeStyle = pal[w.def.pen];
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
+  for (const o of lanceOvals(w)) {
+    ctx.beginPath();
+    ctx.ellipse(o.x, o.y, o.long, o.wide, o.a, 0, TAU);
+    ctx.globalAlpha = (0.1 + 0.14 * w.thrust) * HERO_FILL;
+    ctx.fillStyle = pal[w.def.pen];
+    ctx.fill();
+    ctx.globalAlpha = 0.7;
+    ctx.strokeStyle = pal[w.def.pen];
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
   ctx.globalAlpha = 1;
   ctx.save();
   ctx.translate(hero.x, hero.y);
