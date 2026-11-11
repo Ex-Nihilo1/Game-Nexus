@@ -11,7 +11,8 @@ const Theme = (function () {
     { id: 'sepia', name: 'Sepia' },
   ];
   const PEN_NAMES = ['desk', 'paper', 'rule', 'ink', 'ink-muted', 'red-pencil', 'highlighter',
-    'violet', 'green-ink', 'blue-pen', 'orange-pen', 'hover', 'grid-minor', 'grid-major'];
+    'violet', 'green-ink', 'blue-pen', 'orange-pen', 'hover', 'grid-minor', 'grid-major',
+    'enemy-attack', 'enemy-edge', 'ice', 'ice-edge'];
   const SCHEME_KEY = 'games.scheme';
   const MODE_KEY = 'games.mode';
 

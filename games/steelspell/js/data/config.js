@@ -46,6 +46,8 @@ const DOT_NUMBER_EVERY = 0.3; // damage over time shows one summed number per en
 const MAX_ENEMY_R = 30;
 const STICK_RADIUS = 46;
 const HURT_FLASH = 0.3; // seconds the screen's edge stays red after a hit
+// The hero's own effects are filled this much lighter, so that the horde's attacks stand out.
+const HERO_FILL = 0.6;
 
 const BEST_KEY = 'games.steelspell.best'; // the one best run of the first version: read once, never changed
 const LAST_KEY = 'games.steelspell.last';
