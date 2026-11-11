@@ -81,7 +81,10 @@ document.addEventListener('keydown', e => {
       useActive();
       break;
     case 'Enter':
-      if (phase === 'start') beginFromMenu();
+      if (phase === 'start') {
+        if (loadSave()) continueRun();
+        else beginFromMenu();
+      }
       else if (phase === 'over') showStart();
       break;
     case 'KeyP':
@@ -142,7 +145,13 @@ function pauseIfPlaying() {
   if (phase === 'playing') togglePause();
 }
 window.addEventListener('blur', pauseIfPlaying);
-document.addEventListener('visibilitychange', () => { if (document.hidden) pauseIfPlaying(); });
+// Leaving the page keeps the run in the save slot, to be continued from the start screen.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return;
+  pauseIfPlaying();
+  saveRun();
+});
+window.addEventListener('pagehide', saveRun);
 
 window.addEventListener('resize', resize);
 document.addEventListener('themechange', readTheme);

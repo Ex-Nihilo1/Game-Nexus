@@ -80,7 +80,7 @@ function refundCamp() {
 function recordRun() {
   const records = loadRecords();
   const run = {
-    version: BALANCE_VERSION, time: elapsed, level, kills, active: activeDef.id, start: startWeapon,
+    version: runVersionNow, time: elapsed, level, kills, active: activeDef.id, start: startWeapon,
     weapons: hero.weapons.map(w => (w.evo ? `${w.def.id}:${w.evo}` : w.def.id)),
     items: items.map(item => item.id), date: new Date().toISOString().slice(0, 10),
   };

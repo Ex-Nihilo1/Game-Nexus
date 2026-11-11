@@ -232,7 +232,13 @@ function showStart() {
     })), loadout.weapon, d => `${d.blurb} Uses: ${d.scales.map(k => STATS[k].name).join(', ')}.`, d => { loadout.weapon = d; });
 
     const actions = el('div', 'panel-actions');
-    const go = el('button', 'primary', 'Start run');
+    const save = loadSave();
+    if (save) {
+      const resume = el('button', 'primary', `Continue · ${formatTime(save.elapsed)}, level ${save.level}`);
+      resume.addEventListener('click', continueRun);
+      actions.appendChild(resume);
+    }
+    const go = el('button', save ? '' : 'primary', 'Start run');
     go.addEventListener('click', beginFromMenu);
     const camp = el('button', '', `Camp · ${loadMeta().glory} Glory`);
     camp.addEventListener('click', showCamp);
@@ -242,6 +248,7 @@ function showStart() {
     codex.addEventListener('click', () => showCodex('weapons', 'start'));
     actions.append(go, camp, records, codex);
     p.appendChild(actions);
+    if (save) p.appendChild(el('p', 'panel-note', 'A saved run is waiting. Starting a new one drops it.'));
 
     const hints = el('p', 'hints');
     hints.innerHTML =
@@ -257,6 +264,7 @@ function showStart() {
 }
 
 function beginFromMenu() {
+  clearSave();
   startRun(loadout.active.id, loadout.weapon.id);
 }
 
@@ -360,9 +368,11 @@ function showPause() {
     resume.addEventListener('click', togglePause);
     const codex = el('button', '', 'Codex');
     codex.addEventListener('click', () => showCodex('weapons', 'pause'));
+    const keep = el('button', '', 'Save & quit');
+    keep.addEventListener('click', saveAndQuit);
     const quit = el('button', '', 'End run');
     quit.addEventListener('click', endRun);
-    actions.append(resume, codex, quit);
+    actions.append(resume, codex, keep, quit);
     p.appendChild(actions);
   });
 }
