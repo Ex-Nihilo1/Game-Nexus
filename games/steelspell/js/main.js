@@ -86,7 +86,8 @@ document.addEventListener('keydown', e => {
       break;
     case 'KeyP':
     case 'Escape':
-      if (phase === 'menu') showStart();
+      if (codexBack) codexBack();
+      else if (phase === 'menu') showStart();
       else togglePause();
       break;
     default:

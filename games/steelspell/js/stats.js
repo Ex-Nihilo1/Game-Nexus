@@ -151,7 +151,7 @@ function statRemark(key) {
 // A bonus as the stats window shows it.
 function bonusText(key, value) {
   if (key === 'count') return `+${value}`;
-  if (key === 'armor') return `+${Math.round(value)}`;
-  if (key === 'recovery') return `+${value.toFixed(1)}/s`;
-  return `+${Math.round(value * 100)}%`;
+  if (key === 'armor') return `+${+value.toFixed(1)}`;
+  if (key === 'recovery') return `+${+value.toFixed(2)}/s`;
+  return `+${+(value * 100).toFixed(1)}%`;
 }

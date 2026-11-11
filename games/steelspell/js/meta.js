@@ -7,6 +7,10 @@ let metaOverride = null; // the simulator's say: 'max', 'none', or null for what
 
 // ---- Storage ----
 
+// The balance version of a run. Runs saved before versions were kept are 0.2, except the one
+// best run carried over from 0.1 (it has no date).
+function runVersion(run) { return run.version || (run.date ? '0.2' : '0.1'); }
+
 function loadRecords() {
   const saved = loadJson(RECORDS_KEY);
   if (saved && saved.version === 1) return saved;
@@ -76,22 +80,25 @@ function refundCamp() {
 function recordRun() {
   const records = loadRecords();
   const run = {
-    time: elapsed, level, kills, active: activeDef.id, start: startWeapon,
+    version: BALANCE_VERSION, time: elapsed, level, kills, active: activeDef.id, start: startWeapon,
     weapons: hero.weapons.map(w => (w.evo ? `${w.def.id}:${w.evo}` : w.def.id)),
     items: items.map(item => item.id), date: new Date().toISOString().slice(0, 10),
   };
   records.runs.push(run);
   records.runs.sort((a, b) => b.time - a.time);
-  const place = records.runs.indexOf(run) + 1;
-  records.runs.length = Math.min(records.runs.length, RECORD_RUNS);
+  const place = records.runs.filter(r => runVersion(r) === BALANCE_VERSION).indexOf(run) + 1;
+  // The longest RECORD_RUNS of every version stay.
+  const kept = {};
+  records.runs = records.runs.filter(r => (kept[runVersion(r)] = (kept[runVersion(r)] || 0) + 1) <= RECORD_RUNS);
   const totals = records.totals;
   totals.runs++;
   totals.kills += kills;
   totals.seconds += Math.round(elapsed);
   totals.elites += elitesKilled;
   totals.merges += merges;
-  const bestWith = !(records.bestByWeapon[startWeapon] >= elapsed);
-  if (bestWith) records.bestByWeapon[startWeapon] = elapsed;
+  const best = bestByWeapon(records);
+  const bestWith = !(best[startWeapon] >= elapsed);
+  if (bestWith) best[startWeapon] = elapsed;
   saveJson(RECORDS_KEY, records);
 
   const meta = loadMeta();
@@ -99,6 +106,13 @@ function recordRun() {
   meta.glory += glory;
   saveJson(META_KEY, meta);
   return { place: place <= RECORD_RUNS ? place : 0, bestWith, glory };
+}
+
+// The best run with each first weapon in this balance version. `bestByWeapon` from 0.2
+// stays as it was, under its own version.
+function bestByWeapon(records) {
+  if (!records.bestByVersion) records.bestByVersion = { '0.2': records.bestByWeapon || {} };
+  return records.bestByVersion[BALANCE_VERSION] || (records.bestByVersion[BALANCE_VERSION] = {});
 }
 
 // ---- Screens ----
@@ -135,39 +149,57 @@ function addTable(parent, head, rows) {
   parent.appendChild(scroll);
 }
 
-function showRecords() {
+// `earlier` lists the runs of past balance versions instead of this one.
+function showRecords(earlier = false) {
   phase = 'menu';
   const records = loadRecords();
   const name = (list, id) => (list.find(o => o.id === id) || { name: '' }).name;
+  const runs = records.runs.filter(run => (runVersion(run) === BALANCE_VERSION) !== earlier);
   showPanel(p => {
     p.appendChild(el('h2', 'panel-title', 'Records'));
-    if (!records.runs.length) {
-      p.appendChild(el('p', 'panel-note', 'No runs yet. The 20 longest will be listed here.'));
+    const tabs = el('div', 'codex-tabs');
+    [[false, `This version (${BALANCE_VERSION})`], [true, 'Earlier versions']].forEach(([value, label]) => {
+      const b = el('button', value === earlier ? 'primary' : '', label);
+      b.setAttribute('aria-pressed', String(value === earlier));
+      b.addEventListener('click', () => showRecords(value));
+      tabs.appendChild(b);
+    });
+    p.appendChild(tabs);
+
+    const t = records.totals;
+    if (t.runs && !earlier) {
+      const figures = el('div', 'figures');
+      addFigure(figures, 'Runs, all versions', String(t.runs));
+      addFigure(figures, 'Time played', formatTime(t.seconds));
+      addFigure(figures, 'Kills', t.kills.toLocaleString('en-US'));
+      addFigure(figures, 'Elites', String(t.elites));
+      addFigure(figures, 'Merges', String(t.merges));
+      p.appendChild(figures);
+    }
+
+    if (!runs.length) {
+      p.appendChild(el('p', 'panel-note', earlier
+        ? 'No runs from earlier versions.'
+        : `No runs in ${BALANCE_VERSION} yet. Runs are compared only within one balance version; the 20 longest are listed here.`));
       backButton(p);
       return;
     }
-    const t = records.totals;
-    const figures = el('div', 'figures');
-    addFigure(figures, 'Runs', String(t.runs));
-    addFigure(figures, 'Time played', formatTime(t.seconds));
-    addFigure(figures, 'Kills', t.kills.toLocaleString('en-US'));
-    addFigure(figures, 'Elites', String(t.elites));
-    addFigure(figures, 'Merges', String(t.merges));
-    p.appendChild(figures);
-
     p.appendChild(el('h3', 'section-title', 'Longest runs'));
-    addTable(p, ['#', 'Time', 'Level', 'Kills', 'Start', 'Active', 'Weapons at the end', 'Items', 'Date'],
-      records.runs.map((run, i) => [
-        i + 1, formatTime(run.time), run.level, run.kills.toLocaleString('en-US'), name(WEAPONS, run.start),
-        name(ACTIVES, run.active), run.weapons.map(weaponLabel).join(', '), run.items.length, run.date,
+    addTable(p, ['#', ...(earlier ? ['Version'] : []), 'Time', 'Level', 'Kills', 'Start', 'Active', 'Weapons at the end', 'Items', 'Date'],
+      runs.map((run, i) => [
+        i + 1, ...(earlier ? [runVersion(run)] : []), formatTime(run.time), run.level, run.kills.toLocaleString('en-US'),
+        name(WEAPONS, run.start), name(ACTIVES, run.active), run.weapons.map(weaponLabel).join(', '), run.items.length, run.date,
       ]));
 
-    const starts = Object.keys(records.bestByWeapon).sort((a, b) => records.bestByWeapon[b] - records.bestByWeapon[a]);
-    if (starts.length) {
-      p.appendChild(el('h3', 'section-title', 'Best run by first weapon'));
-      const box = el('div', 'report');
-      starts.forEach(id => addRow(box, name(WEAPONS, id), formatTime(records.bestByWeapon[id])));
-      p.appendChild(box);
+    if (!earlier) {
+      const best = bestByWeapon(records);
+      const starts = Object.keys(best).sort((a, b) => best[b] - best[a]);
+      if (starts.length) {
+        p.appendChild(el('h3', 'section-title', 'Best run by first weapon'));
+        const box = el('div', 'report');
+        starts.forEach(id => addRow(box, name(WEAPONS, id), formatTime(best[id])));
+        p.appendChild(box);
+      }
     }
     backButton(p);
   });
@@ -209,6 +241,6 @@ function showCamp() {
 }
 
 function showBest() {
-  const best = loadRecords().runs[0];
-  setText(statusEl, best ? `Best run: ${formatTime(best.time)}, level ${best.level}` : '');
+  const best = loadRecords().runs.find(run => runVersion(run) === BALANCE_VERSION);
+  setText(statusEl, best ? `Best run in ${BALANCE_VERSION}: ${formatTime(best.time)}, level ${best.level}` : `Version ${BALANCE_VERSION}`);
 }

@@ -237,8 +237,10 @@ function showStart() {
     const camp = el('button', '', `Camp · ${loadMeta().glory} Glory`);
     camp.addEventListener('click', showCamp);
     const records = el('button', '', 'Records');
-    records.addEventListener('click', showRecords);
-    actions.append(go, camp, records);
+    records.addEventListener('click', () => showRecords());
+    const codex = el('button', '', 'Codex');
+    codex.addEventListener('click', () => showCodex('weapons', 'start'));
+    actions.append(go, camp, records, codex);
     p.appendChild(actions);
 
     const hints = el('p', 'hints');
@@ -246,7 +248,7 @@ function showStart() {
       '<kbd>WASD</kbd> or arrows, or drag on the field, to walk &middot; <kbd>Space</kbd> active skill &middot; ' +
       '<kbd>1</kbd>&ndash;<kbd>4</kbd> pick a card &middot; <kbd>R</kbd> reroll the cards &middot; <kbd>X</kbd> skip a level-up &middot; <kbd>P</kbd> pause<br>' +
       'An orange outline is armor that blunts physical damage, a violet outline is a ward that blunts magic. Pure damage ignores both.<br>' +
-      'Enemies with a dot in the middle fight from a distance. A red dashed outline on the ground is a strike about to land: step out of it.<br>' +
+      'Enemies with a dot in the middle fight from a distance. Everything the horde throws at you is bright cyan: shots, and dashed outlines on the ground for strikes about to land. Step out of them.<br>' +
       'Red orbs heal. Walking turns them up, and elites drop them along with a chest: pick 1 item of 3. A blue chest is better than a grey one, a yellow one better still.<br>' +
       'A blue horseshoe is a magnet: it pulls in every XP orb on the map.' +
       (DEV ? '<br>Dev keys: <kbd>L</kbd> level up &middot; <kbd>G</kbd> weapon pick &middot; <kbd>I</kbd> open a chest &middot; <kbd>K</kbd> die and revive &middot; <kbd>R</kbd> reset active &middot; <kbd>T</kbd> skip a minute &middot; <kbd>E</kbd> elite &middot; <kbd>F</kbd> shooters &middot; <kbd>O</kbd> fill the horde &middot; <kbd>H</kbd> immortal &middot; <kbd>M</kbd> max a weapon' : '');
@@ -356,9 +358,11 @@ function showPause() {
     const actions = el('div', 'panel-actions');
     const resume = el('button', 'primary', 'Resume');
     resume.addEventListener('click', togglePause);
+    const codex = el('button', '', 'Codex');
+    codex.addEventListener('click', () => showCodex('weapons', 'pause'));
     const quit = el('button', '', 'End run');
     quit.addEventListener('click', endRun);
-    actions.append(resume, quit);
+    actions.append(resume, codex, quit);
     p.appendChild(actions);
   });
 }

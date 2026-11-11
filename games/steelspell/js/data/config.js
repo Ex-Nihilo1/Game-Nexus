@@ -55,7 +55,9 @@ const HERO_FILL = 0.6;
 
 const BEST_KEY = 'games.steelspell.best'; // the one best run of the first version: read once, never changed
 const LAST_KEY = 'games.steelspell.last';
-const RECORD_RUNS = 20; // the longest runs kept
+const RECORD_RUNS = 20; // the longest runs kept, for each balance version
+// Runs are compared only within one balance version: raise it whenever the numbers change.
+const BALANCE_VERSION = '0.2.1';
 
 // Glory is what a run earns for the Camp, win or lose.
 const GLORY = { perMinute: 10, perElite: 15, perLevel: 2, perMerge: 25 };
