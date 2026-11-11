@@ -251,6 +251,7 @@ function statPool() {
   for (const key of Object.keys(STATS)) {
     const def = STATS[key];
     const users = defs.filter(d => d.scales.includes(key)).map(d => d.name);
+    if (!canPick(key)) continue;
     if (def.note || users.length) pool.push({ key, users: def.note ? [def.note, ...users] : users, weight: def.weight || 1 });
   }
   return pool;

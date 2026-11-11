@@ -34,7 +34,7 @@ function metaRanks() {
   return loadMeta().ranks;
 }
 
-// What the Camp adds to a run. Stat keys join the stats' own sums, before the soft caps.
+// What the Camp adds to a run. Stat keys add on top of the picks, like items.
 function campBonus() {
   const ranks = metaRanks();
   const bonus = {};

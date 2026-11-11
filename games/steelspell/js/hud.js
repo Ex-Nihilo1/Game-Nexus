@@ -311,7 +311,7 @@ function addItemReport(p) {
   p.appendChild(box);
 }
 
-// Past a soft cap a stat shows what was picked as well as what works.
+// Each stat shows its strong and weak picks, and what items and the Camp add on top.
 function addStatReport(p) {
   p.appendChild(el('h3', 'section-title', 'Stats'));
   const box = el('div', 'report');
@@ -325,9 +325,14 @@ function addStatReport(p) {
   addRow(arms, 'Base attack', String(Math.round(hero.baseAttack)));
   for (const key of Object.keys(STATS)) {
     const def = STATS[key];
-    const raw = def.base + rawBonus(key);
-    const capped = Math.abs(raw - stat(key)) > 1e-9;
-    const text = formatStat(key, stat(key)) + (capped ? ` (${formatStat(key, raw)} picked)` : '');
+    const picks = upgrades[key];
+    const parts = [];
+    if (picks) {
+      const strong = Math.min(picks, STRONG_PICKS);
+      parts.push(key === 'count' ? `${picks} picked` : `${strong}/${STRONG_PICKS} strong${picks > strong ? ` + ${picks - strong} weak` : ''}`);
+    }
+    if (extraBonus(key)) parts.push(`${bonusText(key, extraBonus(key))} from items and Camp`);
+    const text = formatStat(key, stat(key)) + (parts.length ? ` (${parts.join(', ')})` : '');
     addRow(def.note ? self : arms, def.name, text);
   }
   if (heroArmor()) addRow(self, 'Hits hurt', `${Math.round(armorCut() * 100)}% less`);
