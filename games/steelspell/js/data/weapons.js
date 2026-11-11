@@ -378,7 +378,7 @@ const SYNERGIES = [
     cooldown: 12, charges: 3, damage: 120, radius: 110,
     swingCooldown: 1.2, swingDamage: 75, reach: 105, arc: 3.1, swingGap: 0.14, recharge: 0.3, armorScale: 0.01,
     bonus: { count: 1, size: 0.2 },
-    blurb: 'Sword swings that hit 1% harder for every point of Armor. Every hit brings the next shield charge 0.3 s closer. Stores up to 3 charges: a charge blocks one hit and blasts everything nearby.' },
+    blurb: 'Sword swings that hit 1% harder for every point of Armor. Every swing that lands brings the next shield charge 0.3 s closer. Stores up to 3 charges: a charge blocks one hit and blasts everything nearby.' },
   { id: 'stormlance', lasting: true, name: 'Storm Lance', tag: 'SL', kind: 'magic', pen: 'violet', needs: ['hurricane', 'laser'],
     scales: ['damage', 'haste', 'size', 'duration', 'count', 'critChance', 'critDamage'],
     cooldown: 5, life: 5, tick: 0.2, damage: 14, radius: 60, range: 400, drift: 40, pull: 60,

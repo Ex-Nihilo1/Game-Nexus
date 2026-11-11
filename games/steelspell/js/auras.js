@@ -85,7 +85,7 @@ function lanceOvals(w) {
 }
 
 // Bastion: a shield that recharges, and sword swings on a timer of their own that hit harder
-// with Armor and bring the next charge closer.
+// with Armor. A swing that lands brings the next charge closer, once however many it hits.
 function tickBastion(w, dt) {
   const d = w.cfg;
   rechargeShield(w, dt);
@@ -100,8 +100,15 @@ function tickBastion(w, dt) {
   w.swingTimer = d.swingCooldown / (1 + weaponStat(w, 'haste') + w.bonus.haste);
   const aim = aimAt(target);
   const damage = d.swingDamage * (1 + heroArmor() * d.armorScale);
-  const closer = () => { if (w.charges < maxCharges(w)) w.timer -= d.recharge; };
-  for (let i = 0; i < shotCount(w); i++) later(i * d.swingGap, () => swing(w, aim + i * Math.PI, reach, damage, closer));
+  for (let i = 0; i < shotCount(w); i++) {
+    let landed = false;
+    const closer = () => {
+      if (landed || w.charges >= maxCharges(w)) return;
+      landed = true;
+      w.timer -= d.recharge;
+    };
+    later(i * d.swingGap, () => swing(w, aim + i * Math.PI, reach, damage, closer));
+  }
 }
 
 const TICK = {
