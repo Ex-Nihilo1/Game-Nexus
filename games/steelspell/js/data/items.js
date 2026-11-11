@@ -38,6 +38,8 @@ const CHESTS = {
 //   cardSlots            more cards on a level-up
 //   enemyHp              share of health added to every enemy that arrives from now on
 //   echo                 chance that a lasting attack (beam, cone, whirlwind, patch) repeats
+//   ricochet             share of a gun's bullet damage that bounces on to one more enemy
+//   pocketMagnet         seconds between pulls of every XP orb on the map
 const ITEMS = [
   { id: 'vest', name: 'Leather Vest', rarity: 'grey', gives: { vitality: 0.15 }, text: '+15% Vitality' },
   { id: 'boots', name: 'Light Boots', rarity: 'grey', gives: { speed: 0.2 }, text: '+20% Speed' },
@@ -68,6 +70,7 @@ const ITEMS = [
   { id: 'kindling', name: 'Kindling', rarity: 'purple', gives: { fireDamage: 0.4 }, text: '+40% damage from weapons of fire: fireballs, meteors, flames, trails, tornadoes' },
   { id: 'wind', name: 'Second Wind', rarity: 'purple', gives: { secondWind: 60 }, text: 'Once a minute, a hit that would leave you under 20% Health is cancelled and you cannot be hurt for 2 s' },
   { id: 'fang', name: 'Vampire Fang', rarity: 'purple', gives: { killsPerHeal: 8 }, text: 'Every 8 kills give 1 Health back' },
+  { id: 'rubber', name: 'Rubber Bullets', rarity: 'purple', gives: { ricochet: 0.6 }, text: 'Bullets of guns (Pistol, Shotgun, Railgun, ElectroGun, a copy\'s pistol) bounce on to one more enemy for 60% damage' },
   { id: 'plate', name: 'Bulwark Plate', rarity: 'purple', gives: { charges: 1, plateArmor: 25 }, text: '+1 charge for a Shield. Without a Shield: +25 Armor' },
 
   { id: 'edge', name: 'Void Edge', rarity: 'legendary', gives: { pureShare: 0.3 }, text: '30% of all damage becomes pure' },
@@ -78,6 +81,7 @@ const ITEMS = [
   { id: 'compass', name: 'Compass', rarity: 'legendary', gives: { cardSlots: 1 }, text: '4 cards on every level-up instead of 3' },
   { id: 'crown', name: 'Cursed Crown', rarity: 'legendary', gives: { xp: 0.4, enemyHp: 0.25 }, text: '+40% XP, but every enemy that arrives from now on has 25% more Health' },
   { id: 'echo', name: 'Echo Stone', rarity: 'legendary', gives: { echo: 0.25 }, text: 'Beams, cones, whirlwinds and burning patches have a 25% chance to repeat half a second later' },
+  { id: 'pocket', name: 'Pocket Magnet', rarity: 'legendary', gives: { pocketMagnet: 60 }, text: 'Every 60 s every XP orb on the map comes to you' },
   { id: 'medal', name: "Veteran's Medal", rarity: 'legendary', gives: { attackPerLevel: 0.02 }, text: '+2% damage for each level you have' },
 ];
 

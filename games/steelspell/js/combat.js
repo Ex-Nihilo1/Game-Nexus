@@ -189,6 +189,29 @@ function updateZones(dt) {
   sweep(zones);
 }
 
+// ---- What some weapons add to a hit ----
+
+// EMP (see EMP in data/weapons.js): an enemy that an area touches every `every` seconds or so,
+// `after` seconds in a row, is stunned; an elite is slowed instead.
+function empTouch(e, emp, every) {
+  if (e.empAt === undefined || elapsed - e.empAt > every * 1.6) e.empSince = elapsed;
+  e.empAt = elapsed;
+  if (elapsed - e.empSince < emp.after) return;
+  e.empSince = elapsed;
+  if (e.def.elite) slow(e, emp.eliteSlow, emp.stun);
+  else freeze(e, emp.stun);
+}
+
+// Rubber Bullets: a gun's bullet that hit `from` bounces on to the nearest other enemy.
+function ricochet(w, from, base, kind = w.def.kind) {
+  const share = gearValue('ricochet');
+  if (!share) return;
+  const next = nearestEnemies(from.x, from.y, 150, 1, new Set([from]))[0];
+  if (!next) return;
+  hit(next, w, base * share, kind);
+  addFx({ type: 'tracer', x0: from.x, y0: from.y, x: next.x, y: next.y, life: 0.1, pen: w.def.pen });
+}
+
 // ---- Burning enemies ----
 
 // Sets an enemy on fire: `damage` every BURN_TICK for `seconds`. With `stacks` above 1,

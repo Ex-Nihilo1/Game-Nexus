@@ -193,7 +193,7 @@ function drawShots() {
   for (const s of shots) {
     if (!onScreen(s.x, s.y, 40)) continue;
     const pen = pal[s.pen];
-    if (s.look === 'ball') {
+    if (s.look === 'ball' || s.look === 'pellet') {
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.r, 0, TAU);
       ctx.fillStyle = pen;
@@ -368,13 +368,13 @@ function drawRadiantLance(w) {
 
 function drawHeroEffects() {
   const { x, y, r } = hero;
-  const spear = owned('spear');
-  if (spear) drawSpear(spear, spear.angle);
-  if (spear && spear.cfg.back) drawSpear(spear, spear.angle + Math.PI);
+  for (const spear of hero.weapons.filter(w => w.def.spear)) {
+    drawSpear(spear, spear.angle);
+    if (spear.cfg.back) drawSpear(spear, spear.angle + Math.PI);
+  }
   const lance = owned('radiantlance');
   if (lance) drawRadiantLance(lance);
-  const aura = owned('aura') || owned('fireshield');
-  if (aura) {
+  for (const aura of hero.weapons.filter(w => w.def.halo)) {
     ctx.beginPath();
     ctx.arc(x, y, auraRadius(aura), 0, TAU);
     ctx.globalAlpha = 0.1 * HERO_FILL;
@@ -386,7 +386,7 @@ function drawHeroEffects() {
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
-  const dash = owned('phase');
+  const dash = phaseWeapon();
   if (dash && hero.phaseLeft > 0) {
     ctx.beginPath();
     ctx.arc(x, y, auraRadius(dash), 0, TAU);
@@ -413,6 +413,36 @@ function drawHeroEffects() {
     ctx.arc(x, y, r + 15, 0, TAU);
     ctx.stroke();
     ctx.setLineDash([]);
+  }
+}
+
+// Summoned copies: a ghost of the hero with a short spear, and a health bar.
+function drawAllies() {
+  for (const a of allies) {
+    if (!onScreen(a.x, a.y, 160)) continue;
+    const w = a.w;
+    const reach = w.cfg.copy.reach * weaponSize(w);
+    ctx.save();
+    ctx.translate(a.x, a.y);
+    ctx.rotate(a.angle);
+    ctx.strokeStyle = pal[w.def.pen];
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(a.r, 0);
+    ctx.lineTo(reach + a.thrust * 6, 0);
+    ctx.stroke();
+    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, a.r, 0, TAU);
+    ctx.globalAlpha = 0.4;
+    ctx.fillStyle = pal[w.def.pen];
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = pal.ink;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = pal['green-ink'];
+    ctx.fillRect(a.x - 12, a.y - a.r - 7, 24 * Math.max(0, a.hp / a.maxHp), 3);
   }
 }
 
@@ -537,6 +567,7 @@ function draw() {
   drawBeams();
   drawShots();
   drawHeroEffects();
+  drawAllies();
   drawHero();
   drawFx();
   drawWarnings();

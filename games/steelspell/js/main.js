@@ -29,6 +29,7 @@ function update(dt) {
   updateEnemyShots(dt);
   updateWarnings(dt);
   updateWeapons(dt);
+  updateAllies(dt);
   updateTimers(dt);
   updateShots(dt);
   updateZones(dt);
@@ -89,6 +90,7 @@ document.addEventListener('keydown', e => {
       break;
     case 'KeyP':
     case 'Escape':
+      if (closeCodexWindow()) break;
       if (codexBack) codexBack();
       else if (phase === 'menu') showStart();
       else togglePause();
