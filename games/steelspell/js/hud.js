@@ -287,11 +287,24 @@ function weaponTitle(w) {
   return w.def.name + (w.level ? ` Lv ${w.level}` : '');
 }
 
+// How many shots a weapon fires, and where they come from.
+function shotsText(w) {
+  const reads = w.cfg.scales.includes('count');
+  const parts = [];
+  if (reads && upgrades.count) parts.push(`cards +${upgrades.count}`);
+  if (reads && extraBonus('count')) parts.push(`items +${extraBonus('count')}`);
+  if (w.bonus.count) parts.push(`weapon +${w.bonus.count}`);
+  if (reads && berserkLeft > 0 && BERSERK.buff.count) parts.push(`Berserk +${BERSERK.buff.count}`);
+  if (!parts.length) return '';
+  if (w.cfg.single) return ` · 1 shot, Count +${Math.round(weaponCount(w) * COUNT.overflow * 100)}% damage (${parts.join(', ')})`;
+  return ` · ${shotCount(w)} shots (${parts.join(', ')})`;
+}
+
 function addKitReport(p) {
   p.appendChild(el('h3', 'section-title', 'Damage dealt'));
   const box = el('div', 'report');
   [...hero.weapons].sort((a, b) => b.dealt - a.dealt).forEach(w => {
-    addRow(box, `${weaponTitle(w)} (${KINDS[w.def.kind].name})`, Math.round(w.dealt).toLocaleString('en-US'));
+    addRow(box, `${weaponTitle(w)} (${KINDS[w.def.kind].name})${shotsText(w)}`, Math.round(w.dealt).toLocaleString('en-US'));
   });
   p.appendChild(box);
 }
