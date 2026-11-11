@@ -232,21 +232,30 @@ function showStart() {
     })), loadout.weapon, d => `${d.blurb} Uses: ${d.scales.map(k => STATS[k].name).join(', ')}.`, d => { loadout.weapon = d; });
 
     const actions = el('div', 'panel-actions');
-    const go = el('button', 'primary', 'Start run');
+    const save = loadSave();
+    if (save) {
+      const resume = el('button', 'primary', `Continue · ${formatTime(save.elapsed)}, level ${save.level}`);
+      resume.addEventListener('click', continueRun);
+      actions.appendChild(resume);
+    }
+    const go = el('button', save ? '' : 'primary', 'Start run');
     go.addEventListener('click', beginFromMenu);
     const camp = el('button', '', `Camp · ${loadMeta().glory} Glory`);
     camp.addEventListener('click', showCamp);
     const records = el('button', '', 'Records');
-    records.addEventListener('click', showRecords);
-    actions.append(go, camp, records);
+    records.addEventListener('click', () => showRecords());
+    const codex = el('button', '', 'Codex');
+    codex.addEventListener('click', () => showCodex('weapons', 'start'));
+    actions.append(go, camp, records, codex);
     p.appendChild(actions);
+    if (save) p.appendChild(el('p', 'panel-note', 'A saved run is waiting. Starting a new one drops it.'));
 
     const hints = el('p', 'hints');
     hints.innerHTML =
       '<kbd>WASD</kbd> or arrows, or drag on the field, to walk &middot; <kbd>Space</kbd> active skill &middot; ' +
       '<kbd>1</kbd>&ndash;<kbd>4</kbd> pick a card &middot; <kbd>R</kbd> reroll the cards &middot; <kbd>X</kbd> skip a level-up &middot; <kbd>P</kbd> pause<br>' +
       'An orange outline is armor that blunts physical damage, a violet outline is a ward that blunts magic. Pure damage ignores both.<br>' +
-      'Enemies with a dot in the middle fight from a distance. A red dashed outline on the ground is a strike about to land: step out of it.<br>' +
+      'Enemies with a dot in the middle fight from a distance. Everything the horde throws at you is bright cyan: shots, and dashed outlines on the ground for strikes about to land. Step out of them.<br>' +
       'Red orbs heal. Walking turns them up, and elites drop them along with a chest: pick 1 item of 3. A blue chest is better than a grey one, a yellow one better still.<br>' +
       'A blue horseshoe is a magnet: it pulls in every XP orb on the map.' +
       (DEV ? '<br>Dev keys: <kbd>L</kbd> level up &middot; <kbd>G</kbd> weapon pick &middot; <kbd>I</kbd> open a chest &middot; <kbd>K</kbd> die and revive &middot; <kbd>R</kbd> reset active &middot; <kbd>T</kbd> skip a minute &middot; <kbd>E</kbd> elite &middot; <kbd>F</kbd> shooters &middot; <kbd>O</kbd> fill the horde &middot; <kbd>H</kbd> immortal &middot; <kbd>M</kbd> max a weapon' : '');
@@ -255,6 +264,7 @@ function showStart() {
 }
 
 function beginFromMenu() {
+  clearSave();
   startRun(loadout.active.id, loadout.weapon.id);
 }
 
@@ -277,11 +287,24 @@ function weaponTitle(w) {
   return w.def.name + (w.level ? ` Lv ${w.level}` : '');
 }
 
+// How many shots a weapon fires, and where they come from.
+function shotsText(w) {
+  const reads = w.cfg.scales.includes('count');
+  const parts = [];
+  if (reads && upgrades.count) parts.push(`cards +${upgrades.count}`);
+  if (reads && extraBonus('count')) parts.push(`items +${extraBonus('count')}`);
+  if (w.bonus.count) parts.push(`weapon +${w.bonus.count}`);
+  if (reads && berserkLeft > 0 && BERSERK.buff.count) parts.push(`Berserk +${BERSERK.buff.count}`);
+  if (!parts.length) return '';
+  if (w.cfg.single) return ` · 1 shot, Count +${Math.round(weaponCount(w) * COUNT.overflow * 100)}% damage (${parts.join(', ')})`;
+  return ` · ${shotCount(w)} shots (${parts.join(', ')})`;
+}
+
 function addKitReport(p) {
   p.appendChild(el('h3', 'section-title', 'Damage dealt'));
   const box = el('div', 'report');
   [...hero.weapons].sort((a, b) => b.dealt - a.dealt).forEach(w => {
-    addRow(box, `${weaponTitle(w)} (${KINDS[w.def.kind].name})`, Math.round(w.dealt).toLocaleString('en-US'));
+    addRow(box, `${weaponTitle(w)} (${KINDS[w.def.kind].name})${shotsText(w)}`, Math.round(w.dealt).toLocaleString('en-US'));
   });
   p.appendChild(box);
 }
@@ -311,7 +334,7 @@ function addItemReport(p) {
   p.appendChild(box);
 }
 
-// Past a soft cap a stat shows what was picked as well as what works.
+// Each stat shows its strong and weak picks, and what items and the Camp add on top.
 function addStatReport(p) {
   p.appendChild(el('h3', 'section-title', 'Stats'));
   const box = el('div', 'report');
@@ -325,9 +348,14 @@ function addStatReport(p) {
   addRow(arms, 'Base attack', String(Math.round(hero.baseAttack)));
   for (const key of Object.keys(STATS)) {
     const def = STATS[key];
-    const raw = def.base + rawBonus(key);
-    const capped = Math.abs(raw - stat(key)) > 1e-9;
-    const text = formatStat(key, stat(key)) + (capped ? ` (${formatStat(key, raw)} picked)` : '');
+    const picks = upgrades[key];
+    const parts = [];
+    if (picks) {
+      const strong = Math.min(picks, STRONG_PICKS);
+      parts.push(key === 'count' ? `${picks} picked` : `${strong}/${STRONG_PICKS} strong${picks > strong ? ` + ${picks - strong} weak` : ''}`);
+    }
+    if (extraBonus(key)) parts.push(`${bonusText(key, extraBonus(key))} from items and Camp`);
+    const text = formatStat(key, stat(key)) + (parts.length ? ` (${parts.join(', ')})` : '');
     addRow(def.note ? self : arms, def.name, text);
   }
   if (heroArmor()) addRow(self, 'Hits hurt', `${Math.round(armorCut() * 100)}% less`);
@@ -351,9 +379,13 @@ function showPause() {
     const actions = el('div', 'panel-actions');
     const resume = el('button', 'primary', 'Resume');
     resume.addEventListener('click', togglePause);
+    const codex = el('button', '', 'Codex');
+    codex.addEventListener('click', () => showCodex('weapons', 'pause'));
+    const keep = el('button', '', 'Save & quit');
+    keep.addEventListener('click', saveAndQuit);
     const quit = el('button', '', 'End run');
     quit.addEventListener('click', endRun);
-    actions.append(resume, quit);
+    actions.append(resume, codex, keep, quit);
     p.appendChild(actions);
   });
 }

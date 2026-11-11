@@ -251,6 +251,7 @@ function statPool() {
   for (const key of Object.keys(STATS)) {
     const def = STATS[key];
     const users = defs.filter(d => d.scales.includes(key)).map(d => d.name);
+    if (!canPick(key)) continue;
     if (def.note || users.length) pool.push({ key, users: def.note ? [def.note, ...users] : users, weight: def.weight || 1 });
   }
   return pool;
@@ -324,7 +325,8 @@ function mergeCard(merge) {
     tag: 'Merge',
     name: merge.name,
     value: `${weaponName(a)} + ${weaponName(b)}`,
-    note: `${merge.blurb} Both weapons go, and you pick a new one right away.`,
+    note: `${merge.blurb}` + inheritedSteps(merge.id, [a, b].map(p => ({ id: p.def.id, evo: p.evo })))
+      .map(x => ` From ${x.evo.name}: ${x.step.text}.`).join('') + ' Both weapons go, and you pick a new one right away.',
     pick: () => mergeWeapons(merge),
   };
 }

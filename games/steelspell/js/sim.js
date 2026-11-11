@@ -12,7 +12,8 @@
 //   meta     0 (default) | max: Camp upgrades for the run
 //   patch    a line of code run before each run, to try other numbers: patch=XP.curve=0.1
 // index.html?sim=dummy&weapon=<id>&level=<n>&evo=<0|1> measures one weapon's damage per second
-// against rings of dummies that neither move nor die.
+// against rings of dummies that neither move nor die. For a merged weapon, parts=<0|1>,<0|1>
+// picks the evolutions of its two parts that it keeps.
 
 const SIM_PARAMS = new URLSearchParams(location.search);
 const SIM_IN_WORKER = typeof importScripts === 'function';
@@ -339,6 +340,10 @@ function simDummy(job) {
   const w = hero.weapons[0];
   if (job.level > 1 && typeof setWeaponLevel === 'function') setWeaponLevel(w, job.level);
   if (job.evo !== undefined && typeof evolveWeapon === 'function') evolveWeapon(w, job.evo);
+  if (job.parts && w.def.needs) {
+    w.parts = w.def.needs.map((id, i) => ({ id, evo: EVOLUTIONS[id][job.parts[i]].id }));
+    rebuildWeapon(w);
+  }
   queue.length = 0;
   for (const [radius, count] of SIM_DUMMY_RINGS) {
     for (let i = 0; i < count; i++) {
@@ -362,7 +367,7 @@ function simDummy(job) {
   simulating = false;
   setMetaForRun(null);
   return {
-    bot: 'dummy', weapon: job.weapon, level: w.level || 1, evo: w.evo || '',
+    bot: 'dummy', weapon: job.weapon, level: w.level || 1, evo: w.evo || (w.parts || []).map(p => p.evo).join('+'),
     crowd: Math.round(w.dealt / SIM_DUMMY_SECONDS), single: Math.round((boss.maxHp - boss.hp) / SIM_DUMMY_SECONDS),
   };
 }
@@ -378,6 +383,7 @@ function simJobs(params) {
     return ids.map(weapon => ({
       bot, weapon, seed, level: Number(params.get('level')) || 1,
       evo: params.has('evo') ? Number(params.get('evo')) : undefined, patch: params.get('patch') || '',
+      parts: params.has('parts') ? params.get('parts').split(',').map(Number) : undefined,
     }));
   }
   const starters = WEAPONS.filter(d => !d.defense).map(d => d.id);

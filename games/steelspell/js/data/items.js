@@ -18,8 +18,8 @@ const CHESTS = {
   stash: { name: 'Stash', pen: 'green-ink', odds: { grey: 50, blue: 30, purple: 15, legendary: 5 } },
 };
 
-// To add an item, add a row. In `gives`, the keys of STATS add to that stat's sum, soft caps
-// and all. The other keys:
+// To add an item, add a row. In `gives`, the keys of STATS add to that stat on top of the picks,
+// at full value. The other keys:
 //   baseHp, baseAttack   flat, before everything else
 //   regen                share of max health per second
 //   pureShare            share of all damage that turns pure
@@ -82,7 +82,7 @@ const ITEMS = [
 ];
 
 // The Camp: upgrades bought with Glory that stay between runs. Rank n costs `cost` times n.
-// `gives` is a STATS key (added to that stat's sum, before soft caps), or rerolls, lives,
+// `gives` is a STATS key (added to that stat on top of the picks, like items), or rerolls, lives,
 // or glory (a share on top of the Glory a run earns).
 const META_UPGRADES = [
   { id: 'vitality', name: 'Vitality', gives: 'vitality', amount: 0.04, ranks: 5, cost: 40, text: '+4% max Health' },

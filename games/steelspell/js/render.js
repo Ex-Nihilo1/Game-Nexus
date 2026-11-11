@@ -160,7 +160,7 @@ function drawEnemies() {
       ctx.setLineDash([]);
     }
     if (e.slowLeft > 0 || e.freezeLeft > 0) {
-      ctx.strokeStyle = pal['blue-pen'];
+      ctx.strokeStyle = pal['ice-edge'];
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(e.x, e.y, e.r + 3, 0, TAU);
@@ -184,6 +184,9 @@ function drawEnemies() {
     }
   }
 }
+
+// The outline for a pen: a pale one (ice) has a darker edge of its own on light paper.
+function edgeOf(pen) { return pal[`${pen}-edge`] || pal[pen]; }
 
 function drawShots() {
   ctx.lineCap = 'round';
@@ -213,7 +216,7 @@ function drawShots() {
       ctx.fillStyle = pen;
       ctx.fill();
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = pen;
+      ctx.strokeStyle = edgeOf(s.pen);
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.beginPath();
@@ -228,8 +231,11 @@ function drawShots() {
       ctx.moveTo(s.x + Math.cos(s.spin) * r, s.y + Math.sin(s.spin) * r);
       ctx.lineTo(s.x, s.y);
       ctx.lineTo(s.x + Math.cos(s.spin + 1.9) * r, s.y + Math.sin(s.spin + 1.9) * r);
+      ctx.strokeStyle = edgeOf(s.pen);
+      ctx.lineWidth = 5.5;
+      ctx.stroke();
       ctx.strokeStyle = pen;
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 3;
       ctx.stroke();
     } else if (s.look === 'rocket') {
       const k = s.r / 8;
@@ -327,7 +333,7 @@ function drawSpear(w, angle) {
   ctx.rotate(angle);
   ctx.beginPath();
   ctx.rect(0, -width / 2, length, width);
-  ctx.globalAlpha = 0.1 + 0.16 * w.thrust;
+  ctx.globalAlpha = (0.1 + 0.16 * w.thrust) * HERO_FILL;
   ctx.fillStyle = pal[w.def.pen];
   ctx.fill();
   ctx.globalAlpha = 0.7;
@@ -341,16 +347,17 @@ function drawSpear(w, angle) {
 
 function drawRadiantLance(w) {
   const size = weaponSize(w);
-  const { x, y, long, wide } = lanceOval(w);
-  ctx.beginPath();
-  ctx.ellipse(x, y, long, wide, w.angle, 0, TAU);
-  ctx.globalAlpha = 0.1 + 0.14 * w.thrust;
-  ctx.fillStyle = pal[w.def.pen];
-  ctx.fill();
-  ctx.globalAlpha = 0.7;
-  ctx.strokeStyle = pal[w.def.pen];
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
+  for (const o of lanceOvals(w)) {
+    ctx.beginPath();
+    ctx.ellipse(o.x, o.y, o.long, o.wide, o.a, 0, TAU);
+    ctx.globalAlpha = (0.1 + 0.14 * w.thrust) * HERO_FILL;
+    ctx.fillStyle = pal[w.def.pen];
+    ctx.fill();
+    ctx.globalAlpha = 0.7;
+    ctx.strokeStyle = pal[w.def.pen];
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
   ctx.globalAlpha = 1;
   ctx.save();
   ctx.translate(hero.x, hero.y);
@@ -370,7 +377,7 @@ function drawHeroEffects() {
   if (aura) {
     ctx.beginPath();
     ctx.arc(x, y, auraRadius(aura), 0, TAU);
-    ctx.globalAlpha = 0.1;
+    ctx.globalAlpha = 0.1 * HERO_FILL;
     ctx.fillStyle = pal[aura.def.pen];
     ctx.fill();
     ctx.globalAlpha = 0.7;
@@ -383,7 +390,7 @@ function drawHeroEffects() {
   if (dash && hero.phaseLeft > 0) {
     ctx.beginPath();
     ctx.arc(x, y, auraRadius(dash), 0, TAU);
-    ctx.globalAlpha = 0.14;
+    ctx.globalAlpha = 0.14 * HERO_FILL;
     ctx.fillStyle = pal[dash.def.pen];
     ctx.fill();
     ctx.globalAlpha = 1;
@@ -443,12 +450,13 @@ function drawFx() {
   for (const f of fx) {
     const k = f.life / f.max; // runs from 1 down to 0
     const pen = pal[f.pen];
+    const fill = f.pen === 'enemy-attack' ? 1 : HERO_FILL;
     ctx.strokeStyle = pen;
     switch (f.type) {
       case 'ring':
         ctx.beginPath();
         ctx.arc(f.x, f.y, f.r * (1 - k * 0.4), 0, TAU);
-        ctx.globalAlpha = k * 0.25;
+        ctx.globalAlpha = k * 0.25 * fill;
         ctx.fillStyle = pen;
         ctx.fill();
         ctx.globalAlpha = k;
@@ -475,7 +483,7 @@ function drawFx() {
         ctx.moveTo(hero.x, hero.y);
         ctx.arc(hero.x, hero.y, f.r, f.a - f.span / 2, f.a + f.span / 2);
         ctx.closePath();
-        ctx.globalAlpha = k * 0.3;
+        ctx.globalAlpha = k * 0.3 * fill;
         ctx.fillStyle = pen;
         ctx.fill();
         ctx.globalAlpha = k;
@@ -526,13 +534,13 @@ function draw() {
   drawRedOrbs();
   drawMagnets();
   drawEnemies();
-  drawWarnings();
   drawBeams();
   drawShots();
-  drawEnemyShots();
   drawHeroEffects();
   drawHero();
   drawFx();
+  drawWarnings();
+  drawEnemyShots();
   drawNumbers();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (phase !== 'start' && phase !== 'menu') {

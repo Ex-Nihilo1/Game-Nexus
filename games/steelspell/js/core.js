@@ -92,6 +92,7 @@ function startRun(activeId, weaponId, runSeed = Date.now()) {
   seed = runSeed | 0;
   metaBonus = campBonus();
   startWeapon = weaponId;
+  runVersionNow = BALANCE_VERSION;
   resetWorld();
   refreshHero();
   hero.hp = hero.maxHp;
@@ -112,6 +113,7 @@ function endRun() {
   phase = 'over';
   queue = [];
   if (simulating) return;
+  clearSave(); // the slot only ever holds the run in progress
   activeBtn.hidden = true;
   pauseBtn.hidden = true;
   const result = recordRun();

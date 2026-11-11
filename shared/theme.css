@@ -14,6 +14,7 @@
   --ink: #1E2B45; --ink-muted: #56675F;
   --red-pencil: #C42B1C; --highlighter: #D9A400; --violet: #6A4C9C; --green-ink: #23784F;
   --blue-pen: #1F5FBF; --orange-pen: #C8641A;
+  --enemy-attack: #00AEDB; --enemy-edge: #0B3A4F; --ice: #B3F5FF; --ice-edge: #1F5FBF;
   --hover: #E3EAE6; --grid-minor: #D6E1DB; --grid-major: #B8CBC1;
 }
 [data-scheme="blueprint"][data-theme="dark"] {
@@ -21,6 +22,7 @@
   --ink: #E8EFF7; --ink-muted: #94A9C6;
   --red-pencil: #FF806B; --highlighter: #F2C94C; --violet: #B9A0F2; --green-ink: #5ED39B;
   --blue-pen: #6FB4FF; --orange-pen: #FFA65C;
+  --enemy-attack: #19D8FF; --enemy-edge: #031A26; --ice: #B3F5FF; --ice-edge: #B3F5FF;
   --hover: #24406A; --grid-minor: #223C61; --grid-major: #2F4F7D;
 }
 
@@ -30,6 +32,7 @@
   --ink: #2A2A2E; --ink-muted: #66666A;
   --red-pencil: #C0392B; --highlighter: #C99700; --violet: #6F4FA0; --green-ink: #2E7D4F;
   --blue-pen: #2F62B5; --orange-pen: #C4621D;
+  --enemy-attack: #00AEDB; --enemy-edge: #0B3A4F; --ice: #B3F5FF; --ice-edge: #2F62B5;
   --hover: #E6E6E3; --grid-minor: #E0E0DD; --grid-major: #C8C8C4;
 }
 [data-scheme="graphite"][data-theme="dark"] {
@@ -37,6 +40,7 @@
   --ink: #E6E6E3; --ink-muted: #9C9EA3;
   --red-pencil: #FF7A6B; --highlighter: #F0C94A; --violet: #B49CF0; --green-ink: #63D29A;
   --blue-pen: #79AEFF; --orange-pen: #FFA35C;
+  --enemy-attack: #19D8FF; --enemy-edge: #031A26; --ice: #B3F5FF; --ice-edge: #B3F5FF;
   --hover: #31343A; --grid-minor: #2E3035; --grid-major: #3A3D43;
 }
 
@@ -46,6 +50,7 @@
   --ink: #1F3B2A; --ink-muted: #557060;
   --red-pencil: #C2321F; --highlighter: #B88A00; --violet: #6A4C9C; --green-ink: #1E7A3E;
   --blue-pen: #24609E; --orange-pen: #C25E14;
+  --enemy-attack: #00AEDB; --enemy-edge: #0B3A4F; --ice: #B3F5FF; --ice-edge: #24609E;
   --hover: #DEEADA; --grid-minor: #D3E4CD; --grid-major: #B3CDAB;
 }
 [data-scheme="engineering"][data-theme="dark"] {
@@ -53,6 +58,7 @@
   --ink: #CFF5DC; --ink-muted: #86B399;
   --red-pencil: #FF8A70; --highlighter: #F2D057; --violet: #C0A8F5; --green-ink: #6BE3A0;
   --blue-pen: #78C0FF; --orange-pen: #FFAE63;
+  --enemy-attack: #19D8FF; --enemy-edge: #031A26; --ice: #B3F5FF; --ice-edge: #B3F5FF;
   --hover: #1D3A2B; --grid-minor: #1C3528; --grid-major: #26473A;
 }
 
@@ -62,6 +68,7 @@
   --ink: #3B2A1A; --ink-muted: #7A6449;
   --red-pencil: #B5361F; --highlighter: #C08A00; --violet: #6E4C8C; --green-ink: #3D7A3A;
   --blue-pen: #2F5E92; --orange-pen: #B9581A;
+  --enemy-attack: #00AEDB; --enemy-edge: #0B3A4F; --ice: #B3F5FF; --ice-edge: #2F5E92;
   --hover: #EDE3CF; --grid-minor: #E8DCC4; --grid-major: #D6C4A0;
 }
 [data-scheme="sepia"][data-theme="dark"] {
@@ -69,6 +76,7 @@
   --ink: #F2DFC0; --ink-muted: #B39A7A;
   --red-pencil: #FF8A6A; --highlighter: #F5C451; --violet: #C8A8E8; --green-ink: #8FD48A;
   --blue-pen: #82B6E8; --orange-pen: #FFAA5E;
+  --enemy-attack: #19D8FF; --enemy-edge: #031A26; --ice: #B3F5FF; --ice-edge: #B3F5FF;
   --hover: #372A20; --grid-minor: #33281F; --grid-major: #43352A;
 }
 

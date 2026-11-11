@@ -18,7 +18,7 @@ function drawRoundZone(z, fade) {
   const fire = z.look === 'fire' || z.look === 'trail';
   ctx.beginPath();
   ctx.arc(z.x, z.y, z.r, 0, TAU);
-  ctx.globalAlpha = (z.look === 'trail' ? 0.07 : fire ? 0.14 + 0.05 * Math.sin(z.life * 11) : 0.16) * fade;
+  ctx.globalAlpha = (z.look === 'trail' ? 0.07 : fire ? 0.14 + 0.05 * Math.sin(z.life * 11) : 0.16) * fade * HERO_FILL;
   ctx.fillStyle = pal[fire ? 'red-pencil' : 'ink-muted'];
   ctx.fill();
   ctx.globalAlpha = (z.look === 'trail' ? 0.45 : 0.8) * fade;
@@ -33,7 +33,7 @@ function drawGale(z, fade) {
   const fiery = z.look === 'tornado';
   ctx.beginPath();
   ctx.arc(z.x, z.y, z.r, 0, TAU);
-  ctx.globalAlpha = 0.1 * fade;
+  ctx.globalAlpha = 0.1 * fade * HERO_FILL;
   ctx.fillStyle = pal[z.pen];
   ctx.fill();
   if (fiery) {
@@ -59,7 +59,7 @@ function strokeBeam(x0, y0, x1, y1, width, fade, pen) {
   ctx.beginPath();
   ctx.moveTo(x0, y0);
   ctx.lineTo(x1, y1);
-  ctx.globalAlpha = 0.3 * fade;
+  ctx.globalAlpha = 0.3 * fade * HERO_FILL;
   ctx.strokeStyle = pal[pen];
   ctx.lineWidth = width;
   ctx.stroke();
@@ -90,7 +90,7 @@ function drawFlame(z, fade) {
   ctx.moveTo(z.x, z.y);
   ctx.arc(z.x, z.y, z.length, z.a - z.half, z.a + z.half);
   ctx.closePath();
-  ctx.globalAlpha = (0.2 + 0.08 * Math.sin(z.life * 23)) * fade;
+  ctx.globalAlpha = (0.2 + 0.08 * Math.sin(z.life * 23)) * fade * HERO_FILL;
   ctx.fillStyle = pal[z.pen];
   ctx.fill();
   ctx.globalAlpha = 0.8 * fade;
@@ -124,11 +124,12 @@ function drawBeams() {
 
 // ---- What the horde throws ----
 
-// Physical shots are orange circles, magic ones violet diamonds, both outlined in ink so
-// that they read on either theme.
+// Everything the horde attacks with is one bright color, drawn over the hero's own effects:
+// physical shots are circles, magic ones diamonds, both with a thick dark edge.
 function drawEnemyShots() {
-  ctx.strokeStyle = pal.ink;
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = pal['enemy-edge'];
+  ctx.fillStyle = pal['enemy-attack'];
+  ctx.lineWidth = 2;
   for (const s of enemyShots) {
     if (s.dead || !onScreen(s.x, s.y, 12)) continue;
     ctx.beginPath();
@@ -142,7 +143,6 @@ function drawEnemyShots() {
     } else {
       ctx.arc(s.x, s.y, s.r, 0, TAU);
     }
-    ctx.fillStyle = pal[KINDS[s.kind].pen];
     ctx.fill();
     ctx.stroke();
   }
@@ -150,8 +150,8 @@ function drawEnemyShots() {
 
 // A strike on its way: the dashed outline is where it lands, the fill grows as it nears.
 function drawWarnings() {
-  ctx.strokeStyle = pal['red-pencil'];
-  ctx.fillStyle = pal['red-pencil'];
+  ctx.strokeStyle = pal['enemy-attack'];
+  ctx.fillStyle = pal['enemy-attack'];
   ctx.lineWidth = 2;
   ctx.setLineDash([7, 5]);
   for (const w of warnings) {

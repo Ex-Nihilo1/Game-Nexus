@@ -199,15 +199,22 @@ function tornadoRadius(d, age, size) {
   return Math.min(g.max, r) * size;
 }
 
+// From Eye of the Storm a tornado circles the hero instead of wandering.
 function moveTornado(z, dt) {
   const d = z.w.cfg;
   z.r = tornadoRadius(d, z.age, z.size);
-  wander(z, dt);
+  if (d.eye) {
+    z.turn += d.eyeTurn * dt;
+    z.x = hero.x + Math.cos(z.turn) * d.eyeRadius;
+    z.y = hero.y + Math.sin(z.turn) * d.eyeRadius;
+  } else {
+    wander(z, dt);
+  }
   drag(z, d.pull, dt);
   z.scorchIn -= dt;
   if (z.scorchIn <= 0) {
     z.scorchIn += d.scorch.every;
-    burnGround(z.w, z.x, z.y, z.r * 0.5, d.scorch);
+    burnGround(z.w, z.x, z.y, z.r * (d.scorchWide || 0.5), d.scorch); // wider from Dragon's Breath
   }
   // Two tornadoes that touch become one: their ages add up, so it is bigger than either.
   for (const o of zones) {
@@ -221,13 +228,16 @@ function moveTornado(z, dt) {
 
 FIRE.firetornado = function (w) {
   const d = w.cfg;
-  return castWhirlwinds(w, (weapon, spot) => {
+  return castWhirlwinds(w, (weapon, spot, turn) => {
     const size = weaponSize(w);
     const z = addZone({
-      look: 'tornado', pen: d.pen, x: spot.x, y: spot.y, r: tornadoRadius(d, 0, size), size,
+      look: 'tornado', pen: d.pen, x: spot.x, y: spot.y, r: tornadoRadius(d, 0, size), size, turn,
       life: d.life * weaponDuration(w), tick: d.tick, timer: 0, w, think: 0, scorchIn: d.scorch.every, move: moveTornado,
     });
-    z.apply = e => hit(e, w, d.damage * (1 + d.ramp * Math.min(d.rampMax, z.age)), undefined, true); // hotter every second
+    z.apply = e => {
+      hit(e, w, d.damage * (1 + d.ramp * Math.min(d.rampMax, z.age)), undefined, true); // hotter every second
+      if (d.afterburn) ignite(e, w, d.damage * 0.5, d.afterburn, d.burnStacks); // from Napalm
+    };
   });
 };
 

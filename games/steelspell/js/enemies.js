@@ -246,7 +246,7 @@ function updateWarnings(dt) {
     w.life -= dt;
     if (w.life > 0) continue;
     w.dead = true;
-    if (w.shape === 'circle') addFx({ type: 'ring', x: w.x, y: w.y, r: w.r, life: 0.3, pen: 'red-pencil' });
+    if (w.shape === 'circle') addFx({ type: 'ring', x: w.x, y: w.y, r: w.r, life: 0.3, pen: 'enemy-attack' });
     if (w.damage && Math.hypot(hero.x - w.x, hero.y - w.y) < w.r + hero.r) hurtHero(w.damage, w.kind, 'strike');
     if (w.then) w.then();
   }

@@ -27,7 +27,11 @@ const WILD_ORB = { every: 2, share: 0.03 }; // orbs also appear on the map, each
 // the map at a time. `pull` is how much faster than usual the orbs fly in.
 const MAGNET = { every: 120, dropChance: 1 / 700, pull: 2.4 };
 const RED_ORB = { heal: 0.15, every: 1200, eliteDrop: 3, max: 10 }; // `heal` is a share of max health, `every` a distance walked
-const COUNT = { cap: 3, overflow: 0.15 }; // Count adds shots up to `cap`; each one past it adds this much damage instead
+// The Count card comes up until the picks reach `cap`; items, the Camp, weapon levels and
+// Berserk add shots on top of that, with no limit. A weapon that fires a single shot (Nuke)
+// turns every Count into `overflow` more damage instead.
+const COUNT = { cap: 3, overflow: 0.15 };
+const STRONG_PICKS = 5; // the first picks of a stat add `step`, every pick after them `weak`
 const BODY_SHOVE = 0.25; // share of an overlap the hero gives way on: small enemies
 const ELITE_SHOVE = 0.8; // and elites, who mostly push the hero around
 const SEPARATION = 0.5;
@@ -46,10 +50,14 @@ const DOT_NUMBER_EVERY = 0.3; // damage over time shows one summed number per en
 const MAX_ENEMY_R = 30;
 const STICK_RADIUS = 46;
 const HURT_FLASH = 0.3; // seconds the screen's edge stays red after a hit
+// The hero's own effects are filled this much lighter, so that the horde's attacks stand out.
+const HERO_FILL = 0.6;
 
 const BEST_KEY = 'games.steelspell.best'; // the one best run of the first version: read once, never changed
 const LAST_KEY = 'games.steelspell.last';
-const RECORD_RUNS = 20; // the longest runs kept
+const RECORD_RUNS = 20; // the longest runs kept, for each balance version
+// Runs are compared only within one balance version: raise it whenever the numbers change.
+const BALANCE_VERSION = '0.2.1';
 
 // Glory is what a run earns for the Camp, win or lose.
 const GLORY = { perMinute: 10, perElite: 15, perLevel: 2, perMerge: 25 };
@@ -69,25 +77,25 @@ const KINDS = {
   hero: { name: 'Hero', pen: 'green-ink' },
 };
 
-// Passive stats. A pick on a level-up adds one `step`; items and Camp upgrades add to the
-// same sum. Nothing has a hard cap: `soft` lists [bonus up to, rate] tiers, so past the first
-// tier a pick still helps, only less. A weapon gets a stat only if it lists it in `scales`
-// (`off` is what it gets otherwise, the base value unless given). Stats with a `note` belong
-// to the hero and are always on offer. `weight` is how often the card comes up, 1 unless given.
+// Passive stats. The first STRONG_PICKS picks of a stat on level-ups add `step` each, every
+// pick after them adds `weak`. Items and Camp upgrades add on top at their full value. A
+// weapon gets a stat only if it lists it in `scales` (`off` is what it gets otherwise, the
+// base value unless given). Stats with a `note` belong to the hero and are always on offer.
+// `weight` is how often the card comes up, 1 unless given.
 const STATS = {
-  damage: { name: 'Damage', base: 1, step: 0.08, soft: [[1, 1], [2, 0.5], [Infinity, 0.25]] },
-  haste: { name: 'Haste', base: 0, step: 0.06, soft: [[1, 1], [Infinity, 0.5]] }, // attacks this much more often
-  size: { name: 'Size', base: 1, step: 0.05, soft: [[0.6, 1], [1.4, 0.5], [Infinity, 0.25]] },
+  damage: { name: 'Damage', base: 1, step: 0.08, weak: 0.03 },
+  haste: { name: 'Haste', base: 0, step: 0.06, weak: 0.025 }, // attacks this much more often
+  size: { name: 'Size', base: 1, step: 0.05, weak: 0.02 },
   count: { name: 'Count', base: 0, step: 1, weight: 0.4 }, // see COUNT
-  critChance: { name: 'Crit chance', base: 0.05, step: 0.03, off: 0 }, // past 100% a crit can land twice
-  critDamage: { name: 'Crit damage', base: 1.5, step: 0.12, soft: [[1.5, 1], [Infinity, 0.5]] },
-  duration: { name: 'Duration', base: 1, step: 0.08, soft: [[0.8, 1], [Infinity, 0.5]] },
-  speed: { name: 'Speed', base: 1, step: 0.04, soft: [[0.5, 1], [Infinity, 0.5]], note: 'Move speed' },
-  xp: { name: 'XP', base: 1, step: 0.05, soft: [[0.3, 1], [0.6, 0.5], [Infinity, 0.25]], note: 'Value of every orb' },
-  magnet: { name: 'Magnet', base: 1, step: 0.15, soft: [[1.5, 1], [Infinity, 0.5]], note: 'Pickup radius' },
-  armor: { name: 'Armor', base: 0, step: 6, note: 'Softens every hit you take' }, // a hit does 100 / (100 + armor) of its damage
-  vitality: { name: 'Vitality', base: 1, step: 0.08, soft: [[1, 1], [Infinity, 0.5]], note: 'Max health' },
-  recovery: { name: 'Recovery', base: 0, step: 0.4, note: 'Health per second' },
+  critChance: { name: 'Crit chance', base: 0.05, step: 0.05, weak: 0.02, off: 0 }, // past 100% a crit can land twice
+  critDamage: { name: 'Crit damage', base: 1.5, step: 0.12, weak: 0.05 },
+  duration: { name: 'Duration', base: 1, step: 0.08, weak: 0.03 },
+  speed: { name: 'Speed', base: 1, step: 0.04, weak: 0.015, note: 'Move speed' },
+  xp: { name: 'XP', base: 1, step: 0.05, weak: 0.02, note: 'Value of every orb' },
+  magnet: { name: 'Magnet', base: 1, step: 0.15, weak: 0.06, note: 'Pickup radius' },
+  armor: { name: 'Armor', base: 0, step: 6, weak: 2.5, note: 'Softens every hit you take' }, // a hit does 100 / (100 + armor) of its damage
+  vitality: { name: 'Vitality', base: 1, step: 0.08, weak: 0.03, note: 'Max health' },
+  recovery: { name: 'Recovery', base: 0, step: 0.4, weak: 0.15, note: 'Health per second' },
 };
 
 // Active skills: one is picked before the run and sits on the Space key.

@@ -2,45 +2,25 @@
 
 function gearValue(key) { return gear[key] || 0; }
 
-// A bonus counted through soft-cap tiers [[up to, rate], ...]: the part of it inside each
-// tier counts at that tier's rate.
-function soft(bonus, tiers) {
-  if (!tiers) return bonus;
-  let out = 0;
-  let from = 0;
-  for (const [upTo, rate] of tiers) {
-    if (bonus <= from) break;
-    out += (Math.min(bonus, upTo) - from) * rate;
-    from = upTo;
-  }
-  return out;
+// What `picks` picks of a stat add: the first STRONG_PICKS a full step each, the rest `weak`.
+function pickBonus(key, picks = upgrades[key]) {
+  const def = STATS[key];
+  const strong = Math.min(picks, STRONG_PICKS);
+  return strong * def.step + (picks - strong) * (def.weak !== undefined ? def.weak : def.step);
 }
 
-// What picks, items and Camp upgrades add up to, before the soft cap.
-function rawBonus(key) {
-  return upgrades[key] * STATS[key].step + gearValue(key) + (metaBonus[key] || 0);
-}
+// What items and Camp upgrades add, on top of the picks.
+function extraBonus(key) { return gearValue(key) + (metaBonus[key] || 0); }
 
 function stat(key) {
-  const def = STATS[key];
-  return def.base + soft(rawBonus(key), def.soft);
+  return STATS[key].base + pickBonus(key) + extraBonus(key);
 }
 
-// What one more pick would really add.
-function statGain(key) {
-  const def = STATS[key];
-  return soft(rawBonus(key) + def.step, def.soft) - soft(rawBonus(key), def.soft);
-}
+// What one more pick would add.
+function statGain(key) { return pickBonus(key, upgrades[key] + 1) - pickBonus(key); }
 
-// The rate the next pick counts at, and where that tier began.
-function softTier(key) {
-  let from = 0;
-  for (const [upTo, rate] of STATS[key].soft || []) {
-    if (rawBonus(key) < upTo - 1e-9) return { from, rate };
-    from = upTo;
-  }
-  return { from: 0, rate: 1 };
-}
+// The Count card stops coming once the picks reach the cap.
+function canPick(key) { return key !== 'count' || upgrades.count < COUNT.cap; }
 
 // What a weapon really gets: stats it does not list stay neutral, whatever the hero has.
 function weaponStat(w, key) {
@@ -56,14 +36,12 @@ function weaponStat(w, key) {
 
 function weaponCount(w) { return Math.floor(weaponStat(w, 'count') + w.bonus.count); }
 
-// Count adds shots only up to a cap. Past it, every one makes the weapon hit harder. A
-// weapon marked `single` (Nuke) never fires more than one.
-function shotCap(w) { return w.cfg.single ? 0 : COUNT.cap; }
-
-function shotCount(w) { return 1 + Math.min(shotCap(w), weaponCount(w)); }
+// Every Count is one more shot, with no limit. A weapon marked `single` (Nuke) never fires
+// more than one: its Count makes it hit harder instead.
+function shotCount(w) { return w.cfg.single ? 1 : 1 + weaponCount(w); }
 
 function weaponDamage(w) {
-  const spare = Math.max(0, weaponCount(w) - shotCap(w));
+  const spare = w.cfg.single ? weaponCount(w) : 0;
   return weaponStat(w, 'damage') * (1 + w.bonus.damage) * (1 + spare * COUNT.overflow);
 }
 
@@ -155,21 +133,25 @@ function formatStat(key, value) {
 function gainText(key) {
   const gain = statGain(key);
   if (key === 'count') return '+1';
-  if (key === 'armor') return `+${Math.round(gain)}`;
-  if (key === 'recovery') return `+${gain.toFixed(1)}/s`;
+  if (key === 'armor') return `+${+gain.toFixed(1)}`;
+  if (key === 'recovery') return `+${+gain.toFixed(2)}/s`;
   return `+${+(gain * 100).toFixed(1)}%`;
 }
 
-// A line for the card when the stat is past a soft cap, or works in a way worth a word.
+// A line for the card: which pick this is, and what is worth a word.
 function statRemark(key) {
-  if (key === 'count') {
-    return stat('count') >= COUNT.cap
-      ? `Past +${COUNT.cap}: +${Math.round(COUNT.overflow * 100)}% damage instead of a shot`
-      : '';
-  }
-  if (key === 'armor') return `Hits will hurt ${Math.round((1 - 100 / (100 + heroArmor() + STATS.armor.step)) * 100)}% less`;
-  if (key === 'critChance' && stat(key) >= 1) return 'Past 100% a crit can land twice';
-  const { from, rate } = softTier(key);
-  if (rate >= 1) return '';
-  return `Past +${Math.round(from * 100)}% a pick gives ${rate === 0.5 ? 'half' : 'a quarter'}`;
+  const picks = upgrades[key];
+  if (key === 'count') return `Shot ${picks + 1} of ${COUNT.cap} from cards. Items and weapon levels add more`;
+  const parts = [picks < STRONG_PICKS ? `Strong pick ${picks + 1} of ${STRONG_PICKS}` : `Weak pick: the ${STRONG_PICKS} strong ones are taken`];
+  if (key === 'armor') parts.push(`Hits will hurt ${Math.round((1 - 100 / (100 + heroArmor() + statGain('armor'))) * 100)}% less`);
+  if (key === 'critChance' && stat(key) >= 1) parts.push('Past 100% a crit can land twice');
+  return parts.join(' · ');
+}
+
+// A bonus as the stats window shows it.
+function bonusText(key, value) {
+  if (key === 'count') return `+${value}`;
+  if (key === 'armor') return `+${+value.toFixed(1)}`;
+  if (key === 'recovery') return `+${+value.toFixed(2)}/s`;
+  return `+${+(value * 100).toFixed(1)}%`;
 }

@@ -216,7 +216,10 @@ function fireRockets(w, blast) {
 function burstRocket(w, x, y, size) {
   const d = w.cfg;
   const targets = nearestEnemies(x, y, d.miniRange, d.minis);
-  const blast = s => explode(s.x, s.y, d.miniRadius * size, w, d.miniDamage);
+  const blast = s => {
+    explode(s.x, s.y, d.miniRadius * size, w, d.miniDamage);
+    if (d.burn) burnGround(w, s.x, s.y, d.miniRadius * size * 0.8, d.burn); // from Inferno Orb
+  };
   for (let i = 0; i < d.minis; i++) {
     launchRocket({
       x, y, pen: d.pen, r: 5, a: i / d.minis * TAU,
@@ -234,6 +237,7 @@ function moveDrone(s, dt) {
   s.spin += 18 * dt;
   s.x = hero.x + Math.cos(s.a) * s.offset;
   s.y = hero.y + Math.sin(s.a) * s.offset;
+  if (s.ward) eraseEnemyShots(s.x, s.y, s.r + 10);
   if (s.onDrop && s.offset >= s.nextDrop) {
     s.onDrop(s);
     s.nextDrop += s.span;
@@ -367,6 +371,7 @@ const FIRE = {
     const size = weaponSize(w);
     return fireRockets(w, s => {
       explode(s.x, s.y, d.radius * size, w, d.damage);
+      if (d.fallout) burnGround(w, s.x, s.y, d.radius * size * 0.8, d.fallout); // from Nuke
       burstRocket(w, s.x, s.y, size);
     });
   },
@@ -375,9 +380,18 @@ const FIRE = {
     return launchDrone(w, w.cfg.damage);
   },
 
+  // `extraMeteors` (from Meteor Shower) fall around each spot; `ward` (from Guardian) lets
+  // the drones catch shots.
   meteordrone(w) {
     const d = w.cfg;
-    return launchDrone(w, d.passDamage, { nextDrop: -d.span, onDrop: s => fallMeteor(w, s.x, s.y) });
+    const onDrop = s => {
+      fallMeteor(w, s.x, s.y);
+      for (let i = 0; i < (d.extraMeteors || 0); i++) {
+        const a = rand() * TAU;
+        fallMeteor(w, s.x + Math.cos(a) * 70, s.y + Math.sin(a) * 70);
+      }
+    };
+    return launchDrone(w, d.passDamage, { nextDrop: -d.span, onDrop, ward: !!d.ward });
   },
 
   chain(w) {
@@ -387,10 +401,14 @@ const FIRE = {
     return true;
   },
 
+  // From Revolver every 6th shot is boosted; from Dual Wield it strikes two chains.
   electrogun(w) {
-    const first = nearestEnemies(hero.x, hero.y, w.cfg.range, 1)[0];
-    if (!first) return false;
-    strikeChain(first, w);
+    const d = w.cfg;
+    const targets = nearestEnemies(hero.x, hero.y, d.range, d.targets || 1);
+    if (!targets.length) return false;
+    w.fired = (w.fired || 0) + 1;
+    const boost = d.sixth && w.fired % 6 === 0 ? d.sixth : 1;
+    for (const first of targets) strikeChain(first, w, boost);
     return true;
   },
 
@@ -413,6 +431,9 @@ const FIRE = {
     return throwBoomerangs(w, (s, e) => {
       hit(e, w, d.damage, s.back ? 'magic' : 'phys');
       slow(e, d.slow, d.slowTime);
+      if (d.freeze) freeze(e, d.freeze); // from Glacier Lance
+      if (!d.shards || !e.dead) return; // from Shatter
+      for (let i = 0; i < d.shards; i++) shootArrow(w, e.x, e.y, (s.a || 0) + (i - (d.shards - 1) / 2) * 0.7, d.shardDamage);
     });
   },
 
