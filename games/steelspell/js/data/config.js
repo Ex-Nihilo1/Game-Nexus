@@ -18,7 +18,7 @@ const HP_PER_LEVEL = 1; // max health for every level gained
 // How the horde grows with every minute of a run: health by `hp` and by `hpAccel` per minute
 // squared, to keep up with a growing kit; the damage of touches and shots; walking speed.
 const GROWTH = { hp: 0.12, hpAccel: 0.03, damage: 0.12, speed: 0.03 };
-const HP_WALL = { from: 50, doubling: 5 }; // from this minute on health also doubles every so many minutes, so every run ends
+const HP_WALL = { from: 24, doubling: 3 }; // from this minute on health also doubles every so many minutes, so every run ends
 const AIM_RANGE = 460;
 const ORB_PULL_SPEED = 340;
 const WILD_ORB = { every: 2, share: 0.03 }; // orbs also appear on the map, each worth this share of the level, so a hero who cannot kill still grows
