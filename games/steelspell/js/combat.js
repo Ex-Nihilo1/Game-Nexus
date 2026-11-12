@@ -2,11 +2,36 @@
 
 // ---- Damage ----
 
+// Armor and ward work as the hero's armor does: a hit does 100 / (100 + armor) of its damage,
+// so damage never vanishes. Below zero (penetration past the armor) a hit does more:
+// 2 - 100 / (100 - armor), up to twice.
+function resistMult(value) { return value >= 0 ? 100 / (100 + value) : 2 - 100 / (100 - value); }
+
+// An enemy's armor or ward as a hit meets it: what Railgun or Frost Halo took off, then the
+// hero's penetration of that kind, a share and then a flat amount.
+function effectiveResist(e, which) {
+  const base = which === 'armor' ? e.armor : e.ward;
+  const shredded = elapsed < (e[`${which}ShredUntil`] || 0) ? e[`${which}Shred`] : 0;
+  const share = gearValue(which === 'armor' ? 'armorPenPct' : 'magicPenPct');
+  const flat = gearValue(which === 'armor' ? 'armorPen' : 'magicPen');
+  return ((base === undefined ? e.def[which] : base) - shredded) * (1 - share) - flat;
+}
+
+// A hybrid hit meets the average of armor and ward, so it never gets past either in full.
 function armorFactor(e, kind) {
-  if (kind === 'phys') return 1 - e.def.armor;
-  if (kind === 'magic') return 1 - e.def.ward;
-  if (kind === 'hybrid') return 1 - (e.def.armor + e.def.ward) / 2;
+  if (kind === 'phys') return resistMult(effectiveResist(e, 'armor'));
+  if (kind === 'magic') return resistMult(effectiveResist(e, 'ward'));
+  if (kind === 'hybrid') return resistMult((effectiveResist(e, 'armor') + effectiveResist(e, 'ward')) / 2);
   return 1; // pure damage ignores both
+}
+
+// Takes armor or ward off an enemy for `seconds`, stacking or not, never past SHRED_MAX of it.
+function shred(e, which, amount, seconds, stack = true) {
+  const key = `${which}Shred`;
+  const now = elapsed < (e[`${key}Until`] || 0) ? e[key] : 0;
+  const base = which === 'armor' ? e.armor : e.ward;
+  e[key] = Math.min((base || 0) * SHRED_MAX, stack ? now + amount : Math.max(now, amount));
+  e[`${key}Until`] = elapsed + seconds;
 }
 
 // One hit from a weapon: base damage, then stats, crit, and the enemy's armor. `kind` only
@@ -14,6 +39,8 @@ function armorFactor(e, kind) {
 // `dot` marks damage over time: its numbers are shown summed up, a few times a second.
 function hit(e, w, base, kind = w.def.kind, dot = false) {
   if (e.dead) return;
+  // Weak Spot: every so many hits on one enemy leave it open for a while.
+  if (gearValue('weakSpot') && (e.hitsTaken = (e.hitsTaken || 0) + 1) % WEAK_SPOT.every === 0) e.weakUntil = elapsed + WEAK_SPOT.time;
   const crits = critTiers(w);
   let amount = base * weaponDamage(w) * attackMult() * kindBonus(kind) * fireBonus(w);
   if (crits) amount *= 1 + (weaponStat(w, 'critDamage') - 1) * crits;
@@ -22,7 +49,9 @@ function hit(e, w, base, kind = w.def.kind, dot = false) {
 
 function hurtEnemy(e, amount, kind, crit, w, dot = false) {
   const armor = armorFactor(e, kind);
-  const factor = armor + (1 - armor) * gearValue('pureShare');
+  // Void Edge turns part of a hit pure; it never makes a hit weaker than it was.
+  let factor = Math.max(armor, armor + (1 - armor) * gearValue('pureShare'));
+  if (elapsed < (e.weakUntil || 0)) factor *= 1 + gearValue('weakSpot');
   const dealt = amount * factor;
   e.hp -= dealt;
   e.flash = 0.08;
@@ -236,6 +265,11 @@ function updateBurns(dt) {
     if (b.timer <= 0) {
       b.timer += BURN_TICK;
       hit(e, b.w, b.damage * b.stacks, undefined, true);
+      // And a share of its max health: not raised by Damage, raised by fire bonuses, half on elites.
+      if (!e.dead && !e.def.dummy) {
+        const share = BURN_SHARE * BURN_TICK * b.stacks * (e.def.elite ? 0.5 : 1);
+        hurtEnemy(e, e.maxHp * share * fireBonus(b.w), b.w.def.kind, false, b.w, true);
+      }
       let lit = 0;
       if (b.spread) {
         eachEnemyNear(e.x, e.y, b.spread, o => {

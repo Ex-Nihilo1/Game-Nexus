@@ -18,7 +18,7 @@ const HP_PER_LEVEL = 1; // max health for every level gained
 // How the horde grows with every minute of a run: health by `hp` and by `hpAccel` per minute
 // squared, to keep up with a growing kit; the damage of touches and shots; walking speed.
 const GROWTH = { hp: 0.12, hpAccel: 0.03, damage: 0.12, speed: 0.03 };
-const HP_WALL = { from: 13, doubling: 2.3 }; // from this minute on health also doubles every so many minutes, so every run ends
+const HP_WALL = { from: 50, doubling: 5 }; // from this minute on health also doubles every so many minutes, so every run ends
 const AIM_RANGE = 460;
 const ORB_PULL_SPEED = 340;
 const WILD_ORB = { every: 2, share: 0.03 }; // orbs also appear on the map, each worth this share of the level, so a hero who cannot kill still grows
@@ -45,6 +45,9 @@ const MAX_WARNINGS = 40; // strikes announced on the ground at once
 const MAX_ZONES = 140; // burning ground, beams and whirlwinds together
 const MAX_TRAIL = 60; // patches of one Fire Trail; past that the oldest gives way
 const BURN_TICK = 0.5; // an enemy on fire is hurt this often
+const BURN_SHARE = 0.02; // share of its max health a burning enemy loses per second, per stack (elites half)
+const SHRED_MAX = 0.5; // armor or ward taken off an enemy never goes past this share of it
+const WEAK_SPOT = { every: 10, time: 4 }; // Weak Spot: every 10th hit on one enemy, for 4 s
 const MAX_NUMBERS = 40;
 const DOT_NUMBER_EVERY = 0.3; // damage over time shows one summed number per enemy this often
 const MAX_ENEMY_R = 30;
@@ -57,7 +60,7 @@ const BEST_KEY = 'games.steelspell.best'; // the one best run of the first versi
 const LAST_KEY = 'games.steelspell.last';
 const RECORD_RUNS = 20; // the longest runs kept, for each balance version
 // Runs are compared only within one balance version: raise it whenever the numbers change.
-const BALANCE_VERSION = '0.2.2';
+const BALANCE_VERSION = '0.2.3';
 
 // Glory is what a run earns for the Camp, win or lose.
 const GLORY = { perMinute: 10, perElite: 15, perLevel: 2, perMerge: 25 };
@@ -98,20 +101,27 @@ const STATS = {
   recovery: { name: 'Recovery', base: 0, step: 0.4, weak: 0.15, note: 'Health per second' },
 };
 
-// Active skills: one is picked before the run and sits on the Space key.
+// Active skills: one is picked before the run and sits on the Space key. Each also has a
+// passive for the whole run: `gives` adds to the hero like an item, `passive` says what it does.
 const ACTIVES = [
-  { id: 'flash', name: 'Flash', group: 'Mobility', cooldown: 40, distance: 190,
+  { id: 'flash', name: 'Flash', group: 'Mobility', cooldown: 40, distance: 190, critBoost: 0.25, critTime: 20,
+    passive: 'After a blink: +25% crit chance for 20 s.',
     blurb: 'Blink a short way in the direction you are walking.' },
-  { id: 'ghost', name: 'Ghost', group: 'Mobility', cooldown: 120, duration: 5, speedBoost: 2,
+  { id: 'ghost', name: 'Ghost', group: 'Mobility', cooldown: 120, duration: 5, speedBoost: 2, gives: { speed: 0.1, magnet: 0.25 },
+    passive: '+10% Speed and +25% Magnet for the whole run.',
     blurb: 'For 5 s nothing can hurt you, you walk straight through enemies and move twice as fast.' },
-  { id: 'berserk', name: 'Berserk', group: 'Damage', cooldown: 60, duration: 30,
+  { id: 'berserk', name: 'Berserk', group: 'Damage', cooldown: 60, duration: 30, gives: { baseHp: 50, regen: 0.005 }, rageRegen: 0.05,
     buff: { damage: 1.3, size: 1.25, haste: 0.25, count: 1 },
+    passive: '+50 max health and 0.5% health back per second; 5% while Berserk lasts.',
     blurb: 'For 30 s: damage +30%, size +25%, haste +25%, count +1, on every weapon that uses them.' },
   { id: 'ignite', name: 'Ignite', group: 'Damage', cooldown: 120, duration: 8, radius: 270, tick: 0.5, share: 0.7,
+    gives: { fireDamage: 0.1 }, freeWeapon: 'flamethrower',
+    passive: 'A free Flamethrower from the start, on top of your weapons. Fire damage +10%. The Flamethrower cannot be your first weapon.',
     blurb: 'Sets the ground around you on fire for 8 s. Whatever burns the whole time loses 70% of its max health, as pure damage.' },
-  { id: 'stash', name: 'Stash', group: 'Economy', cooldown: 240, distance: 110,
+  { id: 'stash', name: 'Stash', group: 'Economy', cooldown: 300, distance: 110, passive: '',
     blurb: 'Drops a chest nearby: pick 1 of 3 items, any rarity.' },
-  { id: 'inspiration', name: 'Inspiration', group: 'Economy', cooldown: 100, share: 0.6,
+  { id: 'inspiration', name: 'Inspiration', group: 'Economy', cooldown: 100, share: 0.6, startLevels: 3,
+    passive: '+3 levels at the start of the run.',
     blurb: 'Instantly gain 60% of the XP this level needs.' },
 ];
 const ACTIVE_GROUPS = ['Mobility', 'Damage', 'Economy'];

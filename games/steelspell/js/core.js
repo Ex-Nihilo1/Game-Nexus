@@ -46,7 +46,7 @@ function zeroPicks() {
 function resetWorld() {
   hero = {
     x: 0, y: 0, r: HERO.r, hp: HERO.hp, maxHp: HERO.hp, baseAttack: HERO.attack, lives: HERO.lives + (metaBonus.lives || 0),
-    faceX: 1, faceY: 0, vx: 0, vy: 0, iframes: 0, ghostLeft: 0, phaseLeft: 0, hurtFlash: 0, windAt: 0, hurtBy: { touch: 0, shot: 0, strike: 0 }, weapons: [],
+    faceX: 1, faceY: 0, vx: 0, vy: 0, iframes: 0, ghostLeft: 0, phaseLeft: 0, critBoostLeft: 0, hurtFlash: 0, windAt: 0, hurtBy: { touch: 0, shot: 0, strike: 0 }, weapons: [],
   };
   enemies = [];
   allies = [];
@@ -96,10 +96,14 @@ function startRun(activeId, weaponId, runSeed = Date.now()) {
   startWeapon = weaponId;
   runVersionNow = BALANCE_VERSION;
   resetWorld();
+  activeDef = ACTIVES.find(a => a.id === activeId);
+  // The active skill's passive: what it gives, a free weapon, levels at the start.
+  for (const [key, value] of Object.entries(activeDef.gives || {})) gear[key] = gearValue(key) + value;
   refreshHero();
   hero.hp = hero.maxHp;
-  activeDef = ACTIVES.find(a => a.id === activeId);
   addWeapon(weaponId);
+  if (activeDef.freeWeapon && weaponId !== activeDef.freeWeapon) addWeapon(activeDef.freeWeapon);
+  for (let i = 0; i < (activeDef.startLevels || 0); i++) addLevel();
   saveJson(LAST_KEY, { active: activeId, weapon: weaponId });
   setText(activeNameEl, activeDef.name);
   activeBtn.title = activeDef.blurb;
@@ -109,6 +113,7 @@ function startRun(activeId, weaponId, runSeed = Date.now()) {
   phase = 'playing';
   hideOverlay();
   dirty = true;
+  if (queue.length) nextChoice();
 }
 
 function endRun() {

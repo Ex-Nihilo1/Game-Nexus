@@ -28,9 +28,11 @@ function addEnemy(type, a = rand() * TAU) {
   const def = ENEMIES[type];
   const ring = Math.hypot(view.w, view.h) / 2 + def.r + 20;
   const hp = def.hp * healthGrowth() * (1 + gearValue('enemyHp'));
+  const grown = def.grow ? Math.max(0, elapsed / 60 - def.grow.from) : 0;
   enemies.push({
     def, x: hero.x + Math.cos(a) * ring, y: hero.y + Math.sin(a) * ring, r: def.r,
-    hp, maxHp: hp, slowLeft: 0, slowBy: 0, flash: 0, pushLeft: 0, pushX: 0, pushY: 0, speared: false, dead: false,
+    hp, maxHp: hp,
+    armor: def.armor + (def.grow ? def.grow.armor * grown : 0), ward: def.ward + (def.grow ? def.grow.ward * grown : 0), slowLeft: 0, slowBy: 0, flash: 0, pushLeft: 0, pushX: 0, pushY: 0, speared: false, dead: false,
     freezeLeft: 0, rootLeft: 0, dash: null, side: enemies.length % 2 ? 1 : -1,
     // Each attack waits its own time; a random head start keeps a pack from firing as one.
     cool: def.attacks ? def.attacks.map(at => at.every * (0.4 + 0.6 * rand())) : null,
@@ -53,6 +55,7 @@ function spawnEnemies(dt) {
   }
   while (elapsed >= ringEntry(nextRing).at) {
     const ring = ringEntry(nextRing++);
+    if (ring.from && elapsed < ring.from) continue; // this ring comes only later in a run
     for (let i = 0; i < ring.count; i++) addEnemy(ring.type, i / ring.count * TAU);
     say('They are closing in');
   }

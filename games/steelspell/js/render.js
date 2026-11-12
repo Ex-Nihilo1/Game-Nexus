@@ -127,18 +127,24 @@ function traceBody(e) {
   }
 }
 
-// The outline tells the armor: orange blunts physical damage, violet blunts magic.
+// The outline tells the armor: orange blunts physical damage, violet blunts magic. A tank has
+// a double outline.
 function drawEnemies() {
   for (const def of ENEMY_LIST) {
     ctx.beginPath();
     for (const e of enemies) if (e.def === def && onScreen(e.x, e.y, 30)) traceBody(e);
     ctx.fillStyle = pal[def.pen];
     ctx.fill();
-    const armored = def.armor >= 0.3;
-    const warded = def.ward >= 0.3;
+    const armored = def.armor >= 50 && def.armor >= def.ward;
+    const warded = def.ward >= 50 && !armored;
     ctx.strokeStyle = armored ? pal[KINDS.phys.pen] : warded ? pal[KINDS.magic.pen] : pal.ink;
-    ctx.lineWidth = armored || warded ? 3 : 1;
+    ctx.lineWidth = def.tank ? 6 : armored || warded ? 3 : 1;
     ctx.stroke();
+    if (def.tank) {
+      ctx.strokeStyle = pal.paper;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
   }
   ctx.fillStyle = pal.paper;
   for (const e of enemies) {

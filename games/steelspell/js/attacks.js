@@ -369,6 +369,7 @@ function fireRails(w, boost) {
     let nearest = Infinity;
     eachEnemyOnLance(hero.x, hero.y, a, d.range, 6, e => {
       hit(e, w, d.damage * boost);
+      if (d.shred) shred(e, 'armor', d.shred, d.shredTime);
       if (d.knock) knockBack(e, a, d.knock, 0.12);
       const along = (e.x - hero.x) * Math.cos(a) + (e.y - hero.y) * Math.sin(a);
       if (along < nearest) {
