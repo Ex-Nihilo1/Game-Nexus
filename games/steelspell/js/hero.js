@@ -152,7 +152,8 @@ function moveHero(dt) {
   hero.ghostLeft = Math.max(0, hero.ghostLeft - dt);
   hero.hurtFlash = Math.max(0, hero.hurtFlash - dt);
   hero.critBoostLeft = Math.max(0, hero.critBoostLeft - dt);
-  // Berserk's passive heals faster while Berserk lasts.
-  const rage = berserkLeft > 0 && activeDef.rageRegen ? activeDef.rageRegen - gearValue('regen') : 0;
+  // Berserk's passive heals faster for the first `rageTime` seconds of Berserk.
+  const raging = activeDef.rageRegen && berserkLeft > activeDef.duration - activeDef.rageTime;
+  const rage = raging ? activeDef.rageRegen - gearValue('regen') : 0;
   hero.hp = Math.min(hero.maxHp, hero.hp + (stat('recovery') + hero.maxHp * (gearValue('regen') + Math.max(0, rage))) * dt);
 }
