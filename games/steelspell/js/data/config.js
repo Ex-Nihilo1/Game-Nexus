@@ -19,6 +19,8 @@ const HP_PER_LEVEL = 1; // max health for every level gained
 // squared, to keep up with a growing kit; the damage of touches and shots; walking speed.
 const GROWTH = { hp: 0.12, hpAccel: 0.03, damage: 0.12, speed: 0.03 };
 const HP_WALL = { from: 24, doubling: 3 }; // from this minute on health also doubles every so many minutes, so every run ends
+// Contact damage doubles too, from later on: a build that only outlasts the horde without killing it still ends.
+const TOUCH_WALL = { from: 32, doubling: 3 };
 const AIM_RANGE = 460;
 const ORB_PULL_SPEED = 340;
 const WILD_ORB = { every: 2, share: 0.03 }; // orbs also appear on the map, each worth this share of the level, so a hero who cannot kill still grows
@@ -119,7 +121,7 @@ const ACTIVES = [
     passive: 'A free Flamethrower from the start, on top of your weapons. Fire damage +10%. The Flamethrower cannot be your first weapon.',
     blurb: 'Sets the ground around you on fire for 8 s. Whatever burns the whole time loses 70% of its max health, as pure damage.' },
   { id: 'stash', name: 'Stash', group: 'Economy', cooldown: 300, distance: 110, passive: '',
-    blurb: 'Drops a chest nearby: pick 1 of 3 items, any rarity.' },
+    blurb: 'Drops a chest nearby: pick 1 of 3 items, common, rare or epic (never legendary).' },
   { id: 'inspiration', name: 'Inspiration', group: 'Economy', cooldown: 100, share: 0.6, startLevels: 3,
     passive: '+3 levels at the start of the run.',
     blurb: 'Instantly gain 60% of the XP this level needs.' },

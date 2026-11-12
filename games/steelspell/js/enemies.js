@@ -9,6 +9,12 @@ function healthGrowth() {
 // What contact and shot damage are multiplied by: the horde hits harder every minute.
 function fury() { return 1 + GROWTH.damage * elapsed / 60; }
 
+// Contact damage only: past TOUCH_WALL.from it also doubles every so many minutes.
+function touchFury() {
+  const wall = Math.max(0, elapsed / 60 - TOUCH_WALL.from) / TOUCH_WALL.doubling;
+  return fury() * 2 ** wall;
+}
+
 function recycleDistance() { return Math.hypot(view.w, view.h) / 2 + RECYCLE_MARGIN; }
 
 function ringEntry(i) {

@@ -91,7 +91,7 @@ function revive() {
 // which is what Flash and Ghost are for.
 function collideHero() {
   if (hero.ghostLeft > 0 || hero.phaseLeft > 0) return;
-  const rage = fury();
+  const rage = touchFury();
   eachEnemyNear(hero.x, hero.y, hero.r, e => {
     const dx = e.x - hero.x;
     const dy = e.y - hero.y;

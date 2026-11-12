@@ -15,7 +15,7 @@ const CHESTS = {
   common: { name: 'Common chest', pen: 'ink-muted', odds: { grey: 65, blue: 25, purple: 10 } },
   rare: { name: 'Rare chest', pen: 'blue-pen', odds: { grey: 25, blue: 50, purple: 20, legendary: 5 } },
   legendary: { name: 'Legendary chest', pen: 'highlighter', odds: { purple: 75, legendary: 25 } },
-  stash: { name: 'Stash', pen: 'green-ink', odds: { grey: 50, blue: 30, purple: 15, legendary: 5 } },
+  stash: { name: 'Stash', pen: 'green-ink', odds: { grey: 50, blue: 30, purple: 15 } }, // never a legendary
 };
 
 // To add an item, add a row. In `gives`, the keys of STATS add to that stat on top of the picks,
