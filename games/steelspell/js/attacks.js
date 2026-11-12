@@ -141,12 +141,13 @@ function throwBoomerangs(w, onHit) {
 
 // ---- Sword ----
 
-function swing(w, angle, reach) {
+function swing(w, angle, reach, damage = w.cfg.damage, onHit = null) {
   const d = w.cfg;
   const half = d.arc / 2;
   eachEnemyNear(hero.x, hero.y, reach, e => {
     if (angleGap(aimAt(e), angle) > half) return;
-    hit(e, w, d.damage);
+    hit(e, w, damage);
+    if (onHit) onHit(e);
     if (d.knock && (e.knockAt || 0) <= elapsed) {
       e.knockAt = elapsed + d.knockEvery; // not every swing, or nothing would ever reach the hero
       knockBack(e, aimAt(e), d.knock, 0.15);
@@ -240,7 +241,7 @@ function moveDrone(s, dt) {
   if (s.ward) eraseEnemyShots(s.x, s.y, s.r + 10);
   if (s.onDrop && s.offset >= s.nextDrop) {
     s.onDrop(s);
-    s.nextDrop += s.span;
+    s.nextDrop += s.dropEvery || s.span;
   }
   if (s.offset >= s.span) s.dead = true;
 }
@@ -263,7 +264,7 @@ function moveGuardian(s, dt) {
 }
 
 // Each pass takes the next of the four diagonals.
-function launchDrone(w, damage, extra) {
+function launchDrone(w, damage, extra, count = w.cfg.drones) {
   const d = w.cfg;
   const body = { look: 'drone', pen: d.pen, r: d.r * weaponSize(w), life: Infinity, pierce: Infinity, spin: 0 };
   const onHit = (s, e) => hit(e, w, damage);
@@ -277,7 +278,7 @@ function launchDrone(w, damage, extra) {
     return true;
   }
   if (!nearestEnemies(hero.x, hero.y, d.span, 1).length) return false;
-  for (let i = 0; i < d.drones; i++) {
+  for (let i = 0; i < count; i++) {
     w.passes = (w.passes || 0) + 1;
     const a = TAU / 8 + w.passes * TAU / 4;
     launch(Object.assign({
@@ -296,6 +297,7 @@ function shootLine(w, target, boost, pierce) {
   const a = aimAt(target);
   let last = target;
   hit(target, w, d.damage * boost);
+  ricochet(w, target, d.damage * boost);
   if (pierce > 0) {
     const along = e => (e.x - hero.x) * Math.cos(a) + (e.y - hero.y) * Math.sin(a);
     const behind = [];
@@ -328,6 +330,101 @@ function shootArrow(w, x, y, a, scale) {
       if (!d.shards || shard || !e.dead) return;
       for (let i = 0; i < d.shards; i++) shootArrow(w, e.x, e.y, s.a + (i - (d.shards - 1) / 2) * 0.7, d.shardDamage);
     },
+  });
+}
+
+// ---- Shotgun and Railgun ----
+
+// Pellets in a narrow cone at the nearest enemy; a pellet hits one enemy (more with `pierce`).
+function blastPellets(w) {
+  const d = w.cfg;
+  const target = nearestEnemies(hero.x, hero.y, d.range, 1)[0];
+  if (!target) return false;
+  const aim = aimAt(target);
+  const n = d.pellets + (shotCount(w) - 1) * d.perCount;
+  for (let i = 0; i < n; i++) {
+    const a = aim + (n > 1 ? i / (n - 1) - 0.5 : 0) * d.cone + (rand() - 0.5) * 0.04;
+    launch({
+      look: 'pellet', pen: d.pen, a, speed: d.speed, r: 4, life: d.range / d.speed, pierce: d.pierce,
+      onHit: (s, e) => {
+        hit(e, w, d.damage);
+        if (d.knock) knockBack(e, s.a, d.knock, 0.12); // Double Barrel
+        ricochet(w, e, d.damage);
+      },
+    });
+  }
+  return true;
+}
+
+// Railgun: a volley of instant beams through everything on their lines.
+function fireRails(w, boost) {
+  const d = w.cfg;
+  const target = nearestEnemies(hero.x, hero.y, d.range, 1)[0];
+  if (!target) return false;
+  const aim = aimAt(target);
+  const n = d.rays + (shotCount(w) - 1) * d.perCount;
+  for (let i = 0; i < n; i++) {
+    const a = aim + (n > 1 ? i / (n - 1) - 0.5 : 0) * d.cone;
+    let first = null;
+    let nearest = Infinity;
+    eachEnemyOnLance(hero.x, hero.y, a, d.range, 6, e => {
+      hit(e, w, d.damage * boost);
+      if (d.knock) knockBack(e, a, d.knock, 0.12);
+      const along = (e.x - hero.x) * Math.cos(a) + (e.y - hero.y) * Math.sin(a);
+      if (along < nearest) {
+        nearest = along;
+        first = e;
+      }
+    });
+    if (first) ricochet(w, first, d.damage * boost);
+    const x = hero.x + Math.cos(a) * d.range;
+    const y = hero.y + Math.sin(a) * d.range;
+    if (d.ward) eraseShotsOnLine(hero.x, hero.y, x, y, 8);
+    addFx({ type: 'tracer', x0: hero.x, y0: hero.y, x, y, life: 0.12, pen: d.pen });
+  }
+  return true;
+}
+
+// ---- Ice Flash ----
+
+// A flash of cold. Dark Ice sets enemies on fire and slows them harder with every flash, up
+// to `chillMax` more; Permafrost leaves icy ground behind.
+function iceFlash(w, radius, damage, slowBy) {
+  const d = w.cfg;
+  eachEnemyNear(hero.x, hero.y, radius, e => {
+    hit(e, w, damage);
+    let extra = 0;
+    if (d.chillGrow) {
+      const fresh = elapsed - (e.darkChillAt === undefined ? -99 : e.darkChillAt) > d.slowTime * 2;
+      e.darkChill = fresh ? d.chillGrow : Math.min(d.chillMax, (e.darkChill || 0) + d.chillGrow);
+      e.darkChillAt = elapsed;
+      extra = e.darkChill;
+    }
+    slow(e, Math.min(0.9, slowBy + extra), d.slowTime);
+    if (d.burn) ignite(e, w, d.burn, d.burnTime);
+  });
+  if (d.frost) {
+    addZone({
+      look: 'frost', pen: 'ice', x: hero.x, y: hero.y, r: radius, life: d.frost.life * weaponDuration(w), tick: d.frost.tick, timer: 0,
+      apply: e => slow(e, d.frost.slow, d.frost.tick * 2),
+    });
+  }
+  addFx({ type: 'ring', x: hero.x, y: hero.y, r: radius, life: 0.35, pen: 'ice' });
+}
+
+// ---- Bomber Drone ----
+
+function dropBomb(w, s) {
+  const d = w.cfg;
+  const target = toughestEnemies(s.x, s.y, d.dropRange, 1)[0];
+  if (!target) return;
+  launchRocket({
+    x: s.x, y: s.y, pen: d.pen, r: 7, a: Math.atan2(target.y - s.y, target.x - s.x),
+    speed: 160, accel: 600, turn: 10, life: 1.2, target,
+  }, r => {
+    const radius = d.radius * weaponSize(w);
+    explode(r.x, r.y, radius, w, d.rocketDamage);
+    if (d.fallout) burnGround(w, r.x, r.y, radius * 0.8, d.fallout); // from Nuke
   });
 }
 
@@ -408,7 +505,10 @@ const FIRE = {
     if (!targets.length) return false;
     w.fired = (w.fired || 0) + 1;
     const boost = d.sixth && w.fired % 6 === 0 ? d.sixth : 1;
-    for (const first of targets) strikeChain(first, w, boost);
+    for (const first of targets) {
+      strikeChain(first, w, boost);
+      ricochet(w, first, d.damage * boost);
+    }
     return true;
   },
 
@@ -446,6 +546,35 @@ const FIRE = {
     const big = d.sixth && w.fired % 6 === 0;
     for (const target of targets) shootLine(w, target, big ? d.sixth : 1, big ? Infinity : d.pierce);
     return true;
+  },
+
+  shotgun(w) {
+    const ok = blastPellets(w);
+    if (ok && w.cfg.second) later(w.cfg.second, () => blastPellets(w)); // Double Barrel
+    return ok;
+  },
+
+  // From Revolver every 6th volley is boosted; from Double Barrel a second volley follows.
+  railgun(w) {
+    const d = w.cfg;
+    const boost = d.sixth && ((w.fired || 0) + 1) % 6 === 0 ? d.sixth : 1;
+    if (!fireRails(w, boost)) return false;
+    w.fired = (w.fired || 0) + 1;
+    if (d.second) later(d.second, () => fireRails(w, 1));
+    return true;
+  },
+
+  iceflash(w) {
+    if (!nearestEnemies(hero.x, hero.y, auraRadius(w), 1).length) return false;
+    iceFlash(w, auraRadius(w), w.cfg.damage, w.cfg.slow);
+    return true;
+  },
+
+  bomber(w) {
+    const d = w.cfg;
+    return launchDrone(w, d.damage, {
+      nextDrop: -d.span + d.dropEvery, dropEvery: d.dropEvery, onDrop: s => dropBomb(w, s), ward: !!d.ward,
+    }, d.drones + shotCount(w) - 1);
   },
 
   sword(w) {

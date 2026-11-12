@@ -75,7 +75,11 @@ function drawHud() {
     hudText(`Berserk ${Math.ceil(berserkLeft)}s`, 10, line, 13, 'red-pencil');
     line += 16;
   }
-  if (hero.ghostLeft > 0) hudText(`Ghost ${Math.ceil(hero.ghostLeft)}s`, 10, line, 13, 'violet');
+  if (hero.ghostLeft > 0) {
+    hudText(`Ghost ${Math.ceil(hero.ghostLeft)}s`, 10, line, 13, 'violet');
+    line += 16;
+  }
+  if (gearValue('pocketMagnet')) hudText(`Pocket Magnet ${Math.ceil(pocketLeft)}s`, 10, line, 13, 'blue-pen');
 
   hudText(formatTime(elapsed), W / 2, 28, 22, 'ink', 'center');
   hudText(`Kills ${kills}`, W - 74, 30, 13, 'ink-muted', 'right');

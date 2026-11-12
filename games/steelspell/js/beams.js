@@ -37,12 +37,7 @@ function moveLaser(z, dt) {
   const d = z.w.cfg;
   z.x = hero.x;
   z.y = hero.y;
-  if (d.sweep) {
-    z.a += d.sweep / z.span * dt; // Sweeper: across its arc once in a lifetime
-    return;
-  }
-  if (z.target.dead) z.target = nearestEnemies(hero.x, hero.y, z.length, 1)[0] || NO_TARGET;
-  if (!z.target.dead) z.a = turnToward(z.a, aimAt(z.target), d.turn * dt);
+  if (d.sweep) z.a += d.sweep / z.span * dt; // Sweeper: across its arc once in a lifetime
 }
 
 function eachOnLaser(z, fn) {
@@ -78,14 +73,12 @@ function eachOnLaser(z, fn) {
 FIRE.laser = function (w) {
   const d = w.cfg;
   const n = shotCount(w);
-  const targets = nearestEnemies(hero.x, hero.y, d.length, n);
-  if (!targets.length) return false;
+  if (!nearestEnemies(hero.x, hero.y, d.length, 1).length) return false;
   const life = d.life * weaponDuration(w);
   for (let i = 0; i < n; i++) {
-    const target = targets[i % targets.length];
-    const aim = aimAt(target) + (i < targets.length ? 0 : (i - targets.length + 1) * 0.5);
+    const aim = rand() * TAU; // a random direction: the Laser does not aim
     addZone({
-      look: 'laser', pen: d.pen, x: hero.x, y: hero.y, r: d.length, a: d.sweep ? aim - d.sweep / 2 : aim, target,
+      look: 'laser', pen: d.pen, x: hero.x, y: hero.y, r: d.length, a: d.sweep ? aim - d.sweep / 2 : aim,
       length: d.length, half: d.width * weaponSize(w) / 2, life, span: life, tick: d.tick, timer: 0, w,
       move: moveLaser, each: eachOnLaser, apply: e => hit(e, w, d.damage, undefined, true),
     });
@@ -244,33 +237,87 @@ FIRE.firetornado = function (w) {
 // ---- Fire Trail ----
 
 // A patch of burning ground for every `every` units walked. Standing still leaves nothing.
-TICK.firetrail = function (w, dt) {
-  const d = w.cfg;
-  if (w.lastX === undefined) {
-    w.lastX = hero.x;
-    w.lastY = hero.y;
-    w.walked = 0;
-  }
-  const step = Math.hypot(hero.x - w.lastX, hero.y - w.lastY);
-  w.lastX = hero.x;
-  w.lastY = hero.y;
-  if (step > 60) return; // a Flash is not a walk
-  w.walked += step;
-  if (w.walked < d.every) return;
-  w.walked %= d.every;
+// One patch of burning ground, `t` as in a Fire Trail. The oldest of a weapon's patches gives
+// way past MAX_TRAIL.
+function layPatch(w, x, y, t, heat = 1) {
   const mine = zones.filter(z => z.look === 'trail' && z.w === w && !z.dead);
-  if (mine.length >= MAX_TRAIL) mine[0].dead = true; // the oldest patch gives way
-  // Comet Tail: the faster the hero moves, the hotter the patch.
-  const heat = d.cometGain ? 1 + Math.max(0, step / dt / HERO.speed - 1) * d.cometGain : 1;
+  if (mine.length >= MAX_TRAIL) mine[0].dead = true;
   const patch = {
-    look: 'trail', pen: d.pen, x: hero.x, y: hero.y, r: d.radius * weaponSize(w), life: d.life * weaponDuration(w),
-    tick: d.tick, timer: d.tick, w,
+    look: 'trail', pen: w.cfg.pen, x, y, r: t.radius * weaponSize(w), life: t.life * weaponDuration(w),
+    tick: t.tick, timer: t.tick, w,
     apply: e => {
-      hit(e, w, d.damage * heat, undefined, true);
-      if (d.afterburn) ignite(e, w, d.damage, d.afterburn, 1, d.spread);
+      hit(e, w, t.damage * heat, undefined, true);
+      if (t.afterburn) ignite(e, w, t.damage, t.afterburn, 1, t.spread);
     },
   };
   addZone(Object.assign({}, patch));
   // Echo Stone: the same patch once more, on the same spot.
   if (gearValue('echo') && rand() < gearValue('echo')) later(0.5, () => addZone(Object.assign({}, patch)));
+}
+
+// A patch for every `t.every` units that `pos` (the hero, or a copy) walks; `state` keeps the
+// count. Comet Tail: the faster the walk, the hotter the patch.
+function walkTrail(w, dt, t, pos, state) {
+  if (state.lastX === undefined) {
+    state.lastX = pos.x;
+    state.lastY = pos.y;
+    state.walked = 0;
+  }
+  const step = Math.hypot(pos.x - state.lastX, pos.y - state.lastY);
+  state.lastX = pos.x;
+  state.lastY = pos.y;
+  if (step > 60) return; // a Flash is not a walk
+  state.walked += step;
+  if (state.walked < t.every) return;
+  state.walked %= t.every;
+  const heat = t.cometGain ? 1 + Math.max(0, step / dt / HERO.speed - 1) * t.cometGain : 1;
+  layPatch(w, pos.x, pos.y, t, heat);
+}
+
+TICK.firetrail = function (w, dt) {
+  walkTrail(w, dt, w.cfg, hero, w);
+};
+
+// ---- Ember Step ----
+
+// The Phase Dash and a Fire Trail; while the phase lasts, fire on the four diagonals.
+TICK.emberstep = function (w, dt) {
+  const d = w.cfg;
+  TICK.phase(w, dt);
+  walkTrail(w, dt, d.trail, hero, w);
+  if (hero.phaseLeft <= 0) return;
+  w.ember = (w.ember || 0) - dt;
+  if (w.ember > 0) return;
+  w.ember += d.ember.every;
+  for (let k = 0; k < 4; k++) {
+    const a = TAU / 8 + k * TAU / 4;
+    layPatch(w, hero.x + Math.cos(a) * d.ember.distance, hero.y + Math.sin(a) * d.ember.distance, d.ember);
+  }
+};
+
+// ---- Storm Lance ----
+
+// Whirlwinds like the Hurricane's, each with beams fixed to it that slowly turn around.
+FIRE.stormlance = function (w) {
+  const d = w.cfg;
+  return castWhirlwinds(w, (weapon, spot, turn) => addZone({
+    look: 'stormlance', pen: d.pen, x: spot.x, y: spot.y, r: d.radius * weaponSize(w), life: d.life * weaponDuration(w),
+    tick: d.tick, timer: 0, w, think: 0, turn, beamA: rand() * TAU,
+    length: d.beamLength * weaponSize(w), half: d.beamWidth * weaponSize(w) / 2,
+    move: (z, dt) => {
+      (d.eye ? moveEye : moveWhirlwind)(z, dt);
+      z.beamA += d.beamTurn * dt;
+    },
+    each: (z, fn) => {
+      const struck = new Set();
+      const once = e => {
+        if (struck.has(e)) return;
+        struck.add(e);
+        fn(e);
+      };
+      eachEnemyNear(z.x, z.y, z.r, once);
+      for (let i = 0; i < d.beams; i++) eachEnemyOnLance(z.x, z.y, z.beamA + i * TAU / d.beams, z.length, z.half, once);
+    },
+    apply: e => hit(e, w, d.damage, undefined, true),
+  }));
 };

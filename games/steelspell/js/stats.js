@@ -111,6 +111,7 @@ function refreshHero() {
 function takeItem(item) {
   items.push(item);
   for (const key of Object.keys(item.gives)) gear[key] = gearValue(key) + item.gives[key];
+  if (item.gives.pocketMagnet) pocketLeft = item.gives.pocketMagnet;
   hero.lives += item.gives.lives || 0;
   rerolls += item.gives.rerolls || 0;
   for (let i = 0; i < (item.gives.levels || 0); i++) addLevel();

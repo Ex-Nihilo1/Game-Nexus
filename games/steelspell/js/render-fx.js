@@ -19,10 +19,11 @@ function drawRoundZone(z, fade) {
   ctx.beginPath();
   ctx.arc(z.x, z.y, z.r, 0, TAU);
   ctx.globalAlpha = (z.look === 'trail' ? 0.07 : fire ? 0.14 + 0.05 * Math.sin(z.life * 11) : 0.16) * fade * HERO_FILL;
-  ctx.fillStyle = pal[fire ? 'red-pencil' : 'ink-muted'];
+  const frost = z.look === 'frost';
+  ctx.fillStyle = pal[fire ? 'red-pencil' : frost ? 'ice' : 'ink-muted'];
   ctx.fill();
   ctx.globalAlpha = (z.look === 'trail' ? 0.45 : 0.8) * fade;
-  ctx.strokeStyle = pal[fire ? 'red-pencil' : 'orange-pen'];
+  ctx.strokeStyle = pal[fire ? 'red-pencil' : frost ? 'ice-edge' : 'orange-pen'];
   ctx.lineWidth = fire ? (z.look === 'trail' ? 1 : 2) : 1.5;
   ctx.setLineDash(fire ? [10, 7] : []);
   ctx.stroke();
@@ -104,7 +105,19 @@ function drawFlame(z, fade) {
 }
 
 // Beams and cones start at the hero and are drawn over the horde; the rest lies under it.
-const BEAM_DRAW = { laser: drawLaser, flame: drawFlame };
+// Storm Lance: the whirlwind, and its turning beams.
+function drawStormLance(z, fade) {
+  drawGale(z, fade);
+  ctx.lineCap = 'round';
+  const beams = z.w.cfg.beams;
+  for (let i = 0; i < beams; i++) {
+    const a = z.beamA + i * TAU / beams;
+    strokeBeam(z.x, z.y, z.x + Math.cos(a) * z.length, z.y + Math.sin(a) * z.length, z.half * 2, fade, z.pen);
+  }
+  ctx.lineCap = 'butt';
+}
+
+const BEAM_DRAW = { laser: drawLaser, flame: drawFlame, stormlance: drawStormLance };
 const GROUND_DRAW = { gale: drawGale, tornado: drawGale };
 
 function drawZones() {

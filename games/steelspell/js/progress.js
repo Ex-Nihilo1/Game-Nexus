@@ -142,13 +142,26 @@ function updateMagnets(dt) {
   for (const m of magnets) {
     if (Math.hypot(hero.x - m.x, hero.y - m.y) >= HERO.r + 14) continue;
     m.dead = true;
-    for (const o of orbs) {
-      o.pulled = true;
-      o.rush = true;
-    }
+    pullEveryOrb();
     say('Every orb comes to you');
   }
   sweep(magnets);
+  // Pocket Magnet: the same, on a timer of its own.
+  if (gearValue('pocketMagnet')) {
+    pocketLeft -= dt;
+    if (pocketLeft <= 0) {
+      pocketLeft += gearValue('pocketMagnet');
+      pullEveryOrb();
+      say('Pocket Magnet: every orb comes to you');
+    }
+  }
+}
+
+function pullEveryOrb() {
+  for (const o of orbs) {
+    o.pulled = true;
+    o.rush = true;
+  }
 }
 
 function updateChests() {
@@ -358,15 +371,17 @@ function weaponCards() {
   const merged = SYNERGIES.filter(s => owned(s.id)).flatMap(s => s.needs);
   const free = WEAPONS.filter(d => !owned(d.id) && !merged.includes(d.id));
   const chosen = [];
-  const partners = free.filter(d => synergyPartner(d.id));
+  const partners = free.filter(d => synergyPartners(d.id).length);
   if (partners.length) chosen.push(pickOne(partners));
   while (chosen.length < 4 && chosen.length < free.length) {
     const d = pickOne(free);
     if (!chosen.includes(d)) chosen.push(d);
   }
   return chosen.map(d => {
-    const s = synergyPartner(d.id);
-    const partner = s && WEAPONS.find(o => s.needs.includes(o.id) && o !== d);
+    const merges = synergyPartners(d.id).map(s => {
+      const partner = WEAPONS.find(o => s.needs.includes(o.id) && o !== d);
+      return `with ${partner.name} into ${s.name}`;
+    });
     return {
       type: 'weapon',
       id: d.id,
@@ -375,7 +390,7 @@ function weaponCards() {
       name: d.name,
       value: '',
       note: `${d.blurb} Uses: ${d.scales.map(k => STATS[k].name).join(', ')}.`,
-      synergy: s ? `Merges with ${partner.name} into ${s.name} once both are at Lv ${MAX_WEAPON_LEVEL} and evolved.` : '',
+      synergy: merges.length ? `Merges ${merges.join(', or ')} once both are at Lv ${MAX_WEAPON_LEVEL} and evolved.` : '',
       pick: () => addWeapon(d.id),
     };
   });

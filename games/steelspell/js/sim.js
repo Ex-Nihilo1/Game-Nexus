@@ -356,7 +356,7 @@ function simDummy(job) {
   for (let i = 0; i < SIM_DUMMY_SECONDS / SIM_DT; i++) {
     hero.hp = hero.maxHp;
     // A weapon that works only on the move (Fire Trail) gets a walk to and fro through the rings.
-    stick.active = !!w.def.every;
+    stick.active = !!(w.def.every || w.def.trail);
     simWalk(Math.floor(i * SIM_DT / 2) % 2 ? Math.PI : 0);
     update(SIM_DT);
     while (phase === 'choosing') chooseCard(0);

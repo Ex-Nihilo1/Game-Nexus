@@ -3,6 +3,7 @@
 
 function owned(id) { return hero.weapons.find(w => w.def.id === id); }
 function chargedWeapon() { return hero.weapons.find(w => w.def.charges); }
+function phaseWeapon() { return hero.weapons.find(w => w.def.phases); }
 
 // ---- Levels and evolutions ----
 
@@ -106,7 +107,7 @@ function newWeapon(id) {
     w.charges = 1;
     setCooldown(w, cooldownOf(w));
   }
-  if (id === 'phase') {
+  if (def.phases) {
     w.locked = false;
     setCooldown(w, cooldownOf(w));
   }
@@ -132,9 +133,9 @@ function readyMerges() {
   return SYNERGIES.filter(s => s.needs.every(id => fullyGrown(owned(id))));
 }
 
-// The merge a weapon would take part in with something the hero already has.
-function synergyPartner(id) {
-  return SYNERGIES.find(s => s.needs.includes(id) && s.needs.some(n => n !== id && owned(n)));
+// The merges a weapon would take part in with something the hero already has.
+function synergyPartners(id) {
+  return SYNERGIES.filter(s => s.needs.includes(id) && s.needs.some(n => n !== id && owned(n)));
 }
 
 // The two weapons leave, the merged one arrives at full strength, and the freed slot is

@@ -56,7 +56,7 @@ function hurtHero(amount, kind = 'phys', source = 'touch') {
     eraseEnemyShots(hero.x, hero.y, auraRadius(shield)); // the blast clears the air too
     return;
   }
-  const dash = owned('phase');
+  const dash = phaseWeapon();
   if (dash && !dash.locked) {
     startPhase(dash, true);
     return;
@@ -138,7 +138,7 @@ function moveHero(dt) {
   }
   let pace = HERO.speed * stat('speed');
   if (hero.phaseLeft > 0) {
-    const dash = owned('phase');
+    const dash = phaseWeapon();
     pace *= 1 + (dash.cfg.moveBoost - 1) * weaponStat(dash, 'speed');
   }
   if (hero.ghostLeft > 0) pace *= activeDef.speedBoost;

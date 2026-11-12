@@ -12,6 +12,7 @@ function pulseAura(w, dt, damage) {
   eachEnemyNear(hero.x, hero.y, auraRadius(w), e => {
     hit(e, w, damage, undefined, true);
     if (d.chill) slow(e, d.chill, d.tick * 1.5);
+    if (d.emp) empTouch(e, d.emp, d.tick);
   });
 }
 
@@ -45,7 +46,8 @@ function strikeLance(w, dt, touching) {
     if (struck.has(e)) return;
     struck.add(e);
     hit(e, w, d.damage);
-    if (d.chill) slow(e, d.chill, d.tick * 1.5); // Radiant Lance, from Frost Aura
+    if (d.chill) slow(e, d.chill, d.tick * 1.5);
+    if (d.emp) empTouch(e, d.emp, d.tick / weaponStat(w, 'speed')); // Radiant Lance, from EMP Aura
     if (e.speared) return;
     e.speared = true;
     knockBack(e, a, d.push, d.pushTime);
@@ -82,7 +84,45 @@ function lanceOvals(w) {
   return w.cfg.back ? [lanceOval(w), lanceOval(w, w.angle + Math.PI)] : [lanceOval(w)];
 }
 
+// Bastion: a shield that recharges, and sword swings on a timer of their own that hit harder
+// with Armor. A swing that lands brings the next charge closer, once however many it hits.
+function tickBastion(w, dt) {
+  const d = w.cfg;
+  rechargeShield(w, dt);
+  w.swingTimer = (w.swingTimer === undefined ? 0.3 : w.swingTimer) - dt;
+  if (w.swingTimer > 0) return;
+  const reach = d.reach * weaponSize(w);
+  const target = nearestEnemies(hero.x, hero.y, reach * 1.3, 1)[0];
+  if (!target) {
+    w.swingTimer = 0;
+    return;
+  }
+  w.swingTimer = d.swingCooldown / (1 + weaponStat(w, 'haste') + w.bonus.haste);
+  const aim = aimAt(target);
+  const damage = d.swingDamage * (1 + heroArmor() * d.armorScale);
+  for (let i = 0; i < shotCount(w); i++) {
+    let landed = false;
+    const closer = () => {
+      if (landed || w.charges >= maxCharges(w)) return;
+      landed = true;
+      w.timer -= d.recharge;
+    };
+    later(i * d.swingGap, () => swing(w, aim + i * Math.PI, reach, damage, closer));
+  }
+}
+
 const TICK = {
+  bastion: tickBastion,
+
+  // Frost Halo: the Aura, and a flash of cold over all of it on a timer.
+  frosthalo(w, dt) {
+    pulseAura(w, dt, w.cfg.damage);
+    w.timer -= dt;
+    if (w.timer > 0) return;
+    iceFlash(w, auraRadius(w), w.cfg.flashDamage, w.cfg.slow);
+    setCooldown(w, cooldownOf(w));
+  },
+
   aura(w, dt) {
     pulseAura(w, dt, w.cfg.damage);
   },
