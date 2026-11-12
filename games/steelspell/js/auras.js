@@ -13,6 +13,7 @@ function pulseAura(w, dt, damage) {
     hit(e, w, damage, undefined, true);
     if (d.chill) slow(e, d.chill, d.tick * 1.5);
     if (d.emp) empTouch(e, d.emp, d.tick);
+    if (d.wardShred) shred(e, 'ward', d.wardShred, d.tick * 2, false); // Frost Halo
   });
 }
 

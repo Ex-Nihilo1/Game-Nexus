@@ -209,6 +209,23 @@ function codexStats(p) {
     windowLines(box, lines);
     p.appendChild(box);
   }
+  p.appendChild(el('h3', 'section-title', 'Enemy armor'));
+  windowLines(p, [
+    'Armor blunts physical hits and ward blunts magic ones: a hit does 100 / (100 + armor) of its damage, so 100 halves it and damage never vanishes. A hybrid hit meets the average of the two.',
+    'Penetration lowers armor (physical) or ward (magic) before a hit; past zero the hit does more, up to twice. Railgun and Frost Halo take armor or ward off enemies, never more than half.',
+    'Burning also takes 2% of an enemy\'s max health per second for every stack, half on elites.',
+    'Tanks come from minute 20: Iron Tanks need magic, Ward Tanks need physical damage, and the Colossus has a lot of health.',
+  ]);
+  p.appendChild(el('h3', 'section-title', 'Active skills'));
+  for (const a of ACTIVES) {
+    const box = el('div', 'codex-entry');
+    const head = el('div', 'codex-head');
+    head.appendChild(el('span', 'codex-name', a.name));
+    head.appendChild(el('span', 'stamp hero', `${a.cooldown} s`));
+    box.appendChild(head);
+    windowLines(box, [a.blurb, a.passive ? `Passive: ${a.passive}` : '']);
+    p.appendChild(box);
+  }
 }
 
 // `from` is 'start' or 'pause'.

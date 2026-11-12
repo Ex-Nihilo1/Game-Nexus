@@ -39,6 +39,10 @@ const CHESTS = {
 //   enemyHp              share of health added to every enemy that arrives from now on
 //   echo                 chance that a lasting attack (beam, cone, whirlwind, patch) repeats
 //   ricochet             share of a gun's bullet damage that bounces on to one more enemy
+//   armorPen, magicPen   flat penetration: armor (ward) taken off before a physical (magic) hit;
+//                        past zero the hit does more
+//   armorPenPct, magicPenPct   the same as a share of the target's armor (ward)
+//   weakSpot             every WEAK_SPOT.every-th hit on one enemy makes it take this much more damage
 //   pocketMagnet         seconds between pulls of every XP orb on the map
 const ITEMS = [
   { id: 'vest', name: 'Leather Vest', rarity: 'grey', gives: { vitality: 0.15 }, text: '+15% Vitality' },
@@ -57,6 +61,8 @@ const ITEMS = [
   { id: 'banner', name: 'War Banner', rarity: 'blue', gives: { damage: 0.3, count: 1 }, text: '+30% Damage, +1 Count' },
   { id: 'sand', name: 'Slow Sand', rarity: 'blue', gives: { duration: 0.25 }, text: '+25% Duration' },
   { id: 'oil', name: 'Lamp Oil', rarity: 'blue', gives: { duration: 0.15, size: 0.1 }, text: '+15% Duration, +10% Size' },
+  { id: 'piercer', name: 'Armor Piercer', rarity: 'blue', gives: { armorPen: 30 }, text: 'Physical hits ignore 30 armor; past zero they hit harder' },
+  { id: 'needle', name: 'Spell Needle', rarity: 'blue', gives: { magicPen: 30 }, text: 'Magic hits ignore 30 ward; past zero they hit harder' },
   { id: 'thorned', name: 'Thorned Mail', rarity: 'blue', gives: { thorns: 1 }, text: 'An enemy that touches you takes its own contact damage, as pure damage' },
   { id: 'clover', name: 'Four-leaf Clover', rarity: 'blue', gives: { chestLuck: 0.25 }, text: '25% chance that an elite drops a chest one step better' },
 
@@ -70,6 +76,9 @@ const ITEMS = [
   { id: 'kindling', name: 'Kindling', rarity: 'purple', gives: { fireDamage: 0.4 }, text: '+40% damage from weapons of fire: fireballs, meteors, flames, trails, tornadoes' },
   { id: 'wind', name: 'Second Wind', rarity: 'purple', gives: { secondWind: 60 }, text: 'Once a minute, a hit that would leave you under 20% Health is cancelled and you cannot be hurt for 2 s' },
   { id: 'fang', name: 'Vampire Fang', rarity: 'purple', gives: { killsPerHeal: 8 }, text: 'Every 8 kills give 1 Health back' },
+  { id: 'siege', name: 'Siege Edge', rarity: 'purple', gives: { armorPenPct: 0.3 }, text: 'Physical hits ignore 30% of armor' },
+  { id: 'hexlens', name: 'Hex Lens', rarity: 'purple', gives: { magicPenPct: 0.3 }, text: 'Magic hits ignore 30% of ward' },
+  { id: 'weakspot', name: 'Weak Spot', rarity: 'purple', gives: { weakSpot: 0.25 }, text: 'Every 10th hit on one enemy makes it take 25% more damage from everything for 4 s' },
   { id: 'rubber', name: 'Rubber Bullets', rarity: 'purple', gives: { ricochet: 0.6 }, text: 'Bullets of guns (Pistol, Shotgun, Railgun, ElectroGun, a copy\'s pistol) bounce on to one more enemy for 60% damage' },
   { id: 'plate', name: 'Bulwark Plate', rarity: 'purple', gives: { charges: 1, plateArmor: 25 }, text: '+1 charge for a Shield. Without a Shield: +25 Armor' },
 

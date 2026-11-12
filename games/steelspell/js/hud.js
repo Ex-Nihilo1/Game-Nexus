@@ -209,14 +209,21 @@ function addPickRows(parent, rows, current, describe, onPick) {
   parent.appendChild(detail);
 }
 
-function showStart() {
+// The weapons a run can start with: an active skill that brings a weapon for free rules it out.
+function startersFor(active) { return WEAPONS.filter(d => !d.defense && d.id !== active.freeWeapon); }
+
+// `keep` keeps the loadout picked on this screen instead of the last run's.
+function showStart(keep = false) {
   phase = 'start';
   activeBtn.hidden = true;
   pauseBtn.hidden = true;
-  const last = loadJson(LAST_KEY) || {};
-  loadout.active = ACTIVES.find(a => a.id === last.active) || ACTIVES[0];
-  loadout.weapon = WEAPONS.find(d => d.id === last.weapon && !d.defense) || WEAPONS[0];
-  const starters = WEAPONS.filter(d => !d.defense);
+  if (!keep) {
+    const last = loadJson(LAST_KEY) || {};
+    loadout.active = ACTIVES.find(a => a.id === last.active) || ACTIVES[0];
+    loadout.weapon = WEAPONS.find(d => d.id === last.weapon && !d.defense) || WEAPONS[0];
+  }
+  const starters = startersFor(loadout.active);
+  if (!starters.includes(loadout.weapon)) loadout.weapon = starters[0];
   showPanel(p => {
     p.appendChild(el('h2', 'panel-title', 'Choose your loadout'));
     p.appendChild(el('p', 'panel-note',
@@ -227,7 +234,11 @@ function showStart() {
       label: group,
       items: ACTIVES.filter(a => a.group === group),
       note: a => `${a.cooldown} s`,
-    })), loadout.active, a => a.blurb, a => { loadout.active = a; });
+    })), loadout.active, a => a.blurb + (a.passive ? ` Passive: ${a.passive}` : ''), a => {
+      const before = loadout.active;
+      loadout.active = a;
+      if (before.freeWeapon !== a.freeWeapon) showStart(true); // the weapons on offer change
+    });
 
     p.appendChild(el('h3', 'section-title', 'First weapon'));
     addPickRows(p, ['magic', 'phys'].map(kind => ({
@@ -258,7 +269,7 @@ function showStart() {
     hints.innerHTML =
       '<kbd>WASD</kbd> or arrows, or drag on the field, to walk &middot; <kbd>Space</kbd> active skill &middot; ' +
       '<kbd>1</kbd>&ndash;<kbd>4</kbd> pick a card &middot; <kbd>R</kbd> reroll the cards &middot; <kbd>X</kbd> skip a level-up &middot; <kbd>P</kbd> pause<br>' +
-      'An orange outline is armor that blunts physical damage, a violet outline is a ward that blunts magic. Pure damage ignores both.<br>' +
+      'An orange outline is armor that blunts physical damage, a violet outline is a ward that blunts magic: 100 of either halves a hit, and damage never vanishes. A double outline is a tank: hit it with the other kind, set it on fire, or pierce its armor. Pure damage ignores both.<br>' +
       'Enemies with a dot in the middle fight from a distance. Everything the horde throws at you is bright cyan: shots, and dashed outlines on the ground for strikes about to land. Step out of them.<br>' +
       'Red orbs heal. Walking turns them up, and elites drop them along with a chest: pick 1 item of 3. A blue chest is better than a grey one, a yellow one better still.<br>' +
       'A blue horseshoe is a magnet: it pulls in every XP orb on the map.' +
@@ -350,6 +361,10 @@ function addStatReport(p) {
   if (levelHealth()) addRow(self, 'From levels', `+${levelHealth()} HP`);
   if (gearValue('regen')) addRow(self, 'Health regen', `${Math.round(gearValue('regen') * 100)}% per s`);
   addRow(arms, 'Base attack', String(Math.round(hero.baseAttack)));
+  if (activeDef.passive) addRow(self, `${activeDef.name} passive`, activeDef.passive);
+  for (const [key, label] of [['armorPen', 'Armor pierced'], ['magicPen', 'Ward pierced'], ['armorPenPct', 'Armor pierced'], ['magicPenPct', 'Ward pierced']]) {
+    if (gearValue(key)) addRow(arms, label, key.endsWith('Pct') ? `${Math.round(gearValue(key) * 100)}%` : String(gearValue(key)));
+  }
   for (const key of Object.keys(STATS)) {
     const def = STATS[key];
     const picks = upgrades[key];

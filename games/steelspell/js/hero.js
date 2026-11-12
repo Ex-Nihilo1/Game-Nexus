@@ -9,6 +9,7 @@ const CAST = {
     hero.x += hero.faceX * def.distance;
     hero.y += hero.faceY * def.distance;
     hero.iframes = Math.max(hero.iframes, 0.2);
+    hero.critBoostLeft = def.critTime; // the passive
     addFx({ type: 'tracer', x0, y0, x: hero.x, y: hero.y, life: 0.25, pen: 'highlighter' });
   },
   ghost(def) {
@@ -150,5 +151,9 @@ function moveHero(dt) {
   hero.iframes = Math.max(0, hero.iframes - dt);
   hero.ghostLeft = Math.max(0, hero.ghostLeft - dt);
   hero.hurtFlash = Math.max(0, hero.hurtFlash - dt);
-  hero.hp = Math.min(hero.maxHp, hero.hp + (stat('recovery') + hero.maxHp * gearValue('regen')) * dt);
+  hero.critBoostLeft = Math.max(0, hero.critBoostLeft - dt);
+  // Berserk's passive heals faster for the first `rageTime` seconds of Berserk.
+  const raging = activeDef.rageRegen && berserkLeft > activeDef.duration - activeDef.rageTime;
+  const rage = raging ? activeDef.rageRegen - gearValue('regen') : 0;
+  hero.hp = Math.min(hero.maxHp, hero.hp + (stat('recovery') + hero.maxHp * (gearValue('regen') + Math.max(0, rage))) * dt);
 }

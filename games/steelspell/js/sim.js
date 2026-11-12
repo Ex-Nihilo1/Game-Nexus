@@ -11,6 +11,7 @@
 //   god=1    a death does not end the run: deaths are counted, three in a minute end it
 //   meta     0 (default) | max: Camp upgrades for the run
 //   patch    a line of code run before each run, to try other numbers: patch=XP.curve=0.1
+//   only     phys | magic: the bot takes weapons of that kind only, while it can
 // index.html?sim=dummy&weapon=<id>&level=<n>&evo=<0|1> measures one weapon's damage per second
 // against rings of dummies that neither move nor die. For a merged weapon, parts=<0|1>,<0|1>
 // picks the evolutions of its two parts that it keeps.
@@ -20,7 +21,8 @@ const SIM_IN_WORKER = typeof importScripts === 'function';
 const SIM_VIEW = { w: 960, h: 560 }; // world units: a fixed screen keeps runs repeatable
 const SIM_DT = 1 / 60;
 const SIM_BOTS = ['afk', 'orbit', 'kite', 'brawl'];
-const SIM_DUMMY = { name: 'Dummy', shape: 'circle', pen: 'ink-muted', r: 11, hp: 1e12, speed: 0, damage: 0, armor: 0, ward: 0, xp: 0 };
+// `dummy: true`: burning takes no share of a dummy's (endless) health.
+const SIM_DUMMY = { name: 'Dummy', shape: 'circle', pen: 'ink-muted', r: 11, hp: 1e12, speed: 0, damage: 0, armor: 0, ward: 0, xp: 0, dummy: true };
 const SIM_DUMMY_RINGS = [[70, 10], [140, 18], [220, 26]]; // radius, how many
 const SIM_DUMMY_SECONDS = 30;
 
@@ -60,6 +62,7 @@ function simScore(card, job) {
   if (card.type === 'evolve') return 100 + simRand();
   if (card.type === 'weapon') {
     const def = WEAPON_DEFS.find(d => d.id === card.id);
+    if (job.only && def.kind !== job.only) return -100;
     return 60 + (card.synergy ? 20 : 0) - (def.defense ? 15 : 0) + simRand() * 10;
   }
   if (card.type === 'upgrade') return 55 + simRand() * 5;
@@ -324,7 +327,7 @@ function simRun(job) {
 
 function simDummyAt(x, y, r) {
   enemies.push({
-    def: SIM_DUMMY, x, y, r, hp: SIM_DUMMY.hp, maxHp: SIM_DUMMY.hp, slowLeft: 0, slowBy: 0, flash: 0,
+    def: SIM_DUMMY, x, y, r, hp: SIM_DUMMY.hp, maxHp: SIM_DUMMY.hp, armor: 0, ward: 0, slowLeft: 0, slowBy: 0, flash: 0,
     pushLeft: 0, pushX: 0, pushY: 0, speared: false, dead: false, freezeLeft: 0, rootLeft: 0, dash: null, side: 1, cool: null,
   });
   return enemies[enemies.length - 1];
@@ -386,7 +389,8 @@ function simJobs(params) {
       parts: params.has('parts') ? params.get('parts').split(',').map(Number) : undefined,
     }));
   }
-  const starters = WEAPONS.filter(d => !d.defense).map(d => d.id);
+  const only = params.get('only') || '';
+  const starters = WEAPONS.filter(d => !d.defense && (!only || d.kind === only)).map(d => d.id);
   const jobs = [];
   for (let i = 0; i < runs; i++) {
     jobs.push({
@@ -395,7 +399,7 @@ function simJobs(params) {
       weapon: params.get('weapon') || starters[i % starters.length],
       active: params.get('active') || ACTIVES[i % ACTIVES.length].id,
       god: params.get('god') === '1', meta: params.get('meta') || '0', after: Number(params.get('after')) || 0,
-      patch: params.get('patch') || '',
+      patch: params.get('patch') || '', only,
     });
   }
   return jobs;

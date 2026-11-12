@@ -26,7 +26,8 @@ function canPick(key) { return key !== 'count' || upgrades.count < COUNT.cap; }
 function weaponStat(w, key) {
   const def = STATS[key];
   if (!w.cfg.scales.includes(key)) return def.off !== undefined ? def.off : def.base;
-  const value = stat(key);
+  let value = stat(key);
+  if (key === 'critChance' && hero.critBoostLeft > 0) value += activeDef.critBoost; // Flash's passive
   const buff = berserkLeft > 0 ? BERSERK.buff[key] : undefined;
   if (buff === undefined) return value;
   return key === 'haste' || key === 'count' ? value + buff : value * buff;
