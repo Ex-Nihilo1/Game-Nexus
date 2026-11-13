@@ -6,9 +6,9 @@ import (
 	"regexp"
 )
 
-// Steel & Spell: a run lasts until the horde wins; its time is the score. Runs are
-// compared only within one balance version (BALANCE_VERSION in
-// web/games/steelspell/js/data/config.js), so the version is the variant.
+// Steel & Spell: a run lasts until the horde wins; its time is the score. Runs of
+// every balance version share one list; each keeps its version (BALANCE_VERSION in
+// web/games/steelspell/js/data/config.js), shown with the run.
 //
 // A run carries most of its end screen, with the names the game used at that
 // version, so the leaderboard can show the build without the game's data files.
@@ -25,8 +25,7 @@ var steelSpell = &Game{
 		{ID: "kills", Title: "Most kills", Metric: "kills", Unit: "kills", Desc: true,
 			Filter: "start", FilterLabel: "startName", FilterTitle: "Starting weapon"},
 	},
-	VariantTitle: "Version",
-	Check:        checkSteelSpell,
+	Check: checkSteelSpell,
 }
 
 var (
@@ -157,5 +156,5 @@ func checkSteelSpell(raw json.RawMessage) (Outcome, error) {
 	if s.Picks == nil {
 		s.Picks = []ssPick{}
 	}
-	return Outcome{Variant: s.Version, Seconds: s.Time, Stats: s}, nil
+	return Outcome{Seconds: s.Time, Stats: s}, nil
 }

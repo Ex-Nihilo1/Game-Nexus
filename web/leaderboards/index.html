@@ -179,7 +179,6 @@
         const m = /^(\d+)x(\d+)-(\d+)-(\w+)$/.exec(value);
         if (m) return `${m[1]} x ${m[2]}, ${m[3]}% mines, ${MODES[m[4]] || m[4]}`;
       }
-      if (game === 'steelspell') return `Version ${value}`;
       return words(value);
     }
 
@@ -426,6 +425,7 @@
 
       const side = el('div');
       const stats = section('Stats');
+      if (s.version) statRow(stats, 'Balance version', s.version);
       statRow(stats, 'Health', number(s.health));
       statRow(stats, 'Elites killed', number(s.elites));
       statRow(stats, 'Merges', number(s.merges));

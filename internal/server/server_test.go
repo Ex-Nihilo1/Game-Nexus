@@ -306,7 +306,7 @@ func TestRunsAndBoards(t *testing.T) {
 	}
 	play(cy, "steelspell", ss("sword", "Sword", 4), 200)
 	play(di, "steelspell", ss("icearrow", "Ice Arrow", 3), 200)
-	byIce := newClient(t, base).call("GET", "/api/boards/steelspell/time?variant=0.2.3&filter=icearrow", nil, 200)["rows"].([]any)
+	byIce := newClient(t, base).call("GET", "/api/boards/steelspell/time?filter=icearrow", nil, 200)["rows"].([]any)
 	if len(byIce) != 1 || byIce[0].(map[string]any)["displayName"] != "Dina" {
 		t.Fatalf("filtered: %v", byIce)
 	}

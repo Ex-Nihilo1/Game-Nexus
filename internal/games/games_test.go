@@ -127,7 +127,7 @@ func ssRun(field, value string) string {
 
 func TestSteelSpell(t *testing.T) {
 	out := check(t, steelSpell, ssRun("", ""), true)
-	if out.Variant != "0.2.3" || out.Seconds != 912.4 {
+	if out.Variant != "" || out.Seconds != 912.4 {
 		t.Errorf("outcome %+v", out)
 	}
 	check(t, steelSpell, ssRun("weapons", `[]`), true)
