@@ -46,12 +46,13 @@ type Outcome struct {
 type Board struct {
 	ID          string `json:"id"`
 	Title       string `json:"title"`
-	Metric      string `json:"metric"`           // a numeric stats key
-	Unit        string `json:"unit"`             // how the page shows it: seconds, points, lines, lives, waves, kills, wins
-	Desc        bool   `json:"desc"`             // higher is better
-	OnlyWon     bool   `json:"onlyWon"`          // only results with "won": true
-	Count       bool   `json:"count"`            // the number of results instead of the best one
-	Filter      string `json:"filter,omitempty"` // a stats key the board can be narrowed by
+	Metric      string `json:"metric"`                // a numeric stats key
+	Unit        string `json:"unit"`                  // how the page shows it: seconds, points, lines, lives, waves, kills, wins
+	Desc        bool   `json:"desc"`                  // higher is better
+	OnlyWon     bool   `json:"onlyWon"`               // only results with "won": true
+	Count       bool   `json:"count"`                 // the number of results instead of the best one
+	Filter      string `json:"filter,omitempty"`      // a stats key the board can be narrowed by
+	FilterLabel string `json:"filterLabel,omitempty"` // a stats key with a name for each Filter value
 	FilterTitle string `json:"filterTitle,omitempty"`
 }
 
@@ -135,18 +136,6 @@ var idPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_:.-]{0,47}$`)
 func checkID(name, v string) error {
 	if !idPattern.MatchString(v) {
 		return invalid("%s %q", name, v)
-	}
-	return nil
-}
-
-func checkIDs(name string, list []string, max int) error {
-	if len(list) > max {
-		return invalid("%s has %d entries, more than %d", name, len(list), max)
-	}
-	for _, v := range list {
-		if err := checkID(name, v); err != nil {
-			return err
-		}
 	}
 	return nil
 }

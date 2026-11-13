@@ -271,36 +271,55 @@ func TestRunsAndBoards(t *testing.T) {
 	newClient(t, base).call("GET", "/api/boards/tetris/nope", nil, 404)
 	newClient(t, base).call("GET", "/api/boards/tetris/score?period=year", nil, 400)
 
-	// Variants and wins.
-	mine := func(won bool, seconds float64) map[string]any {
-		return map[string]any{"won": won, "seconds": seconds, "cols": 9, "rows": 9, "minePct": 12, "mode": "classic"}
+	// Every Minesweeper board shares one list, ranked by 3BV a second; rows carry the board.
+	mine := func(won bool, seconds float64, cols, rows, bbbv int, mode string) map[string]any {
+		return map[string]any{"won": won, "seconds": seconds, "cols": cols, "rows": rows, "minePct": 16, "mode": mode, "bbbv": bbbv}
 	}
-	play(cy, "minesweeper", mine(true, 3), 200)
-	play(cy, "minesweeper", mine(true, 2), 200)
-	play(cy, "minesweeper", mine(false, 1), 200)
-	fastest := newClient(t, base).call("GET", "/api/boards/minesweeper/fastest?variant=9x9-12-classic", nil, 200)["rows"].([]any)
-	if len(fastest) != 1 || fastest[0].(map[string]any)["value"] != 2.0 {
-		t.Fatalf("fastest: %v", fastest)
+	play(cy, "minesweeper", mine(true, 3, 9, 9, 6, "classic"), 200)    // 2 clicks a second
+	play(cy, "minesweeper", mine(true, 4, 9, 9, 6, "classic"), 200)    // 1.5: not Cyd's best
+	play(cy, "minesweeper", mine(false, 1, 9, 9, 0, "classic"), 200)   // a loss
+	play(di, "minesweeper", mine(true, 4, 30, 16, 10, "noguess"), 200) // 2.5, on a big board
+	speed := newClient(t, base).call("GET", "/api/boards/minesweeper/speed", nil, 200)["rows"].([]any)
+	if len(speed) != 2 || speed[0].(map[string]any)["displayName"] != "Dina" || speed[1].(map[string]any)["value"] != 2.0 {
+		t.Fatalf("speed: %v", speed)
 	}
-	wins := newClient(t, base).call("GET", "/api/boards/minesweeper/wins?variant=9x9-12-classic", nil, 200)["rows"].([]any)
-	if wins[0].(map[string]any)["value"] != 2.0 {
+	if board := speed[0].(map[string]any)["stats"].(map[string]any); board["cols"] != 30.0 || board["mode"] != "noguess" {
+		t.Fatalf("row stats: %v", board)
+	}
+	classic := newClient(t, base).call("GET", "/api/boards/minesweeper/speed?filter=classic", nil, 200)["rows"].([]any)
+	if len(classic) != 1 || classic[0].(map[string]any)["displayName"] != "Cyd" {
+		t.Fatalf("classic only: %v", classic)
+	}
+	wins := newClient(t, base).call("GET", "/api/boards/minesweeper/wins", nil, 200)["rows"].([]any)
+	if wins[0].(map[string]any)["value"] != 2.0 || wins[0].(map[string]any)["stats"] != nil {
 		t.Fatalf("wins: %v", wins)
 	}
-	opts := newClient(t, base).call("GET", "/api/boards/minesweeper", nil, 200)
-	if v := opts["variants"].([]any); len(v) != 1 || v[0].(map[string]any)["value"] != "9x9-12-classic" {
-		t.Fatalf("variants: %v", opts)
-	}
 
-	// Steel & Spell boards filter by starting weapon.
-	ss := func(start string, time float64) map[string]any {
+	// Steel & Spell boards filter by starting weapon, named as the game named it.
+	ss := func(start, name string, time float64) map[string]any {
 		return map[string]any{"version": "0.2.3", "time": time, "level": 3, "kills": 40, "elites": 0, "merges": 0,
-			"active": "dash", "start": start, "weapons": []string{start}, "items": []string{}}
+			"active": "flash", "activeName": "Flash", "start": start, "startName": name, "health": 120,
+			"weapons": []map[string]any{{"id": start, "name": name, "evo": "", "evoName": "", "level": 2, "kind": "Physical", "dealt": 500}},
+			"items":   []map[string]any{{"id": "vest", "name": "Padded Vest", "rarity": "grey"}},
+			"hurt":    map[string]any{"touch": 10, "shot": 0, "strike": 0},
+			"picks":   []map[string]any{{"name": "Damage", "strong": 1, "weak": 0}}}
 	}
-	play(cy, "steelspell", ss("sword", 4), 200)
-	play(di, "steelspell", ss("bow", 3), 200)
-	byBow := newClient(t, base).call("GET", "/api/boards/steelspell/time?variant=0.2.3&filter=bow", nil, 200)["rows"].([]any)
-	if len(byBow) != 1 || byBow[0].(map[string]any)["displayName"] != "Dina" {
-		t.Fatalf("filtered: %v", byBow)
+	play(cy, "steelspell", ss("sword", "Sword", 4), 200)
+	play(di, "steelspell", ss("icearrow", "Ice Arrow", 3), 200)
+	byIce := newClient(t, base).call("GET", "/api/boards/steelspell/time?variant=0.2.3&filter=icearrow", nil, 200)["rows"].([]any)
+	if len(byIce) != 1 || byIce[0].(map[string]any)["displayName"] != "Dina" {
+		t.Fatalf("filtered: %v", byIce)
+	}
+	if run := byIce[0].(map[string]any)["stats"].(map[string]any); run["items"].([]any)[0].(map[string]any)["name"] != "Padded Vest" {
+		t.Fatalf("row stats: %v", run)
+	}
+	starts := newClient(t, base).call("GET", "/api/boards/steelspell", nil, 200)["filters"].(map[string]any)["start"].([]any)
+	labels := map[string]any{}
+	for _, o := range starts {
+		labels[o.(map[string]any)["value"].(string)] = o.(map[string]any)["label"]
+	}
+	if labels["icearrow"] != "Ice Arrow" || labels["sword"] != "Sword" {
+		t.Fatalf("filter labels: %v", starts)
 	}
 
 	// Chronomancer's records come from its save.
@@ -349,5 +368,39 @@ func TestEmptyListsAreArrays(t *testing.T) {
 		if bytes.Contains(raw, []byte("null")) && !bytes.Contains(raw, []byte(`"me":null`)) {
 			t.Errorf("%s: %s", path, raw)
 		}
+	}
+}
+
+// With many players tied, more than 100 share a rank of 100 or better; the asking
+// player's row must still come back, after the first 100.
+func TestMyRowAmongTies(t *testing.T) {
+	base, mails := setup(t)
+	me := signUp(t, base, mails, "me@example.com", "Latecomer", true)
+	ctx := context.Background()
+	pool, err := db.Open(ctx, os.Getenv("NEXUS_TEST_DATABASE_URL"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	_, err = pool.Exec(ctx, `
+		WITH made AS (
+		  INSERT INTO users (email, display_name, password_hash, email_verified_at)
+		  SELECT 'tie' || n || '@example.com', 'Tie ' || n, 'x', now() FROM generate_series(1, 120) n
+		  RETURNING id)
+		INSERT INTO results (user_id, game, stats, source, created_at)
+		SELECT id, 'minesweeper', '{"won":true}', 'played', now() - interval '1 day' FROM made`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := me.call("POST", "/api/runs", map[string]string{"game": "minesweeper"}, 200)["id"].(string)
+	me.call("POST", "/api/runs/"+id+"/finish", map[string]any{"stats": map[string]any{
+		"won": true, "seconds": 2, "cols": 9, "rows": 9, "minePct": 16, "mode": "classic", "bbbv": 4}}, 200)
+	out := me.call("GET", "/api/boards/minesweeper/wins", nil, 200)
+	if rows := out["rows"].([]any); len(rows) != 100 {
+		t.Fatalf("%d rows", len(rows))
+	}
+	mine, _ := out["me"].(map[string]any)
+	if mine == nil || mine["rank"] != 1.0 || mine["displayName"] != "Latecomer" {
+		t.Fatalf("my row: %v", out["me"])
 	}
 }

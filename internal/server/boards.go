@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -32,6 +33,7 @@ func (s *Server) listBoards(w http.ResponseWriter, r *http.Request) {
 
 type option struct {
 	Value   string `json:"value"`
+	Label   string `json:"label,omitempty"` // a name to show for the value, when the game sends one
 	Results int64  `json:"results"`
 }
 
@@ -44,7 +46,7 @@ func (s *Server) boardOptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	variants, err := s.options(ctx, `variant`, g.ID)
+	variants, err := s.options(ctx, `variant`, ``, g.ID)
 	if err != nil {
 		failInternal(w, "board options", err)
 		return
@@ -54,7 +56,11 @@ func (s *Server) boardOptions(w http.ResponseWriter, r *http.Request) {
 		if b.Filter == "" || filters[b.Filter] != nil {
 			continue
 		}
-		if filters[b.Filter], err = s.options(ctx, `stats->>'`+safeKey(b.Filter)+`'`, g.ID); err != nil {
+		label := ``
+		if b.FilterLabel != "" {
+			label = `stats->>'` + safeKey(b.FilterLabel) + `'`
+		}
+		if filters[b.Filter], err = s.options(ctx, `stats->>'`+safeKey(b.Filter)+`'`, label, g.ID); err != nil {
 			failInternal(w, "board options", err)
 			return
 		}
@@ -62,16 +68,21 @@ func (s *Server) boardOptions(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"variants": variants, "filters": filters})
 }
 
-func (s *Server) options(ctx context.Context, expr, game string) ([]option, error) {
+// options lists the values of `expr` in a game's results, most common first, each
+// with the latest `label` it was shown with (none when label is empty).
+func (s *Server) options(ctx context.Context, expr, label, game string) ([]option, error) {
+	if label == "" {
+		label = `NULL`
+	}
 	rows, err := s.db.Query(ctx,
-		`SELECT coalesce(`+expr+`, ''), count(*) FROM results WHERE game = $1
-		  GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 40`, game)
+		`SELECT coalesce(`+expr+`, ''), coalesce(max(`+label+`), ''), count(*) FROM results WHERE game = $1
+		  GROUP BY 1 ORDER BY 3 DESC, 1 LIMIT 40`, game)
 	if err != nil {
 		return nil, err
 	}
 	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (option, error) {
 		var o option
-		err := row.Scan(&o.Value, &o.Results)
+		err := row.Scan(&o.Value, &o.Label, &o.Results)
 		return o, err
 	})
 	return orEmpty(list), err
@@ -102,7 +113,11 @@ type boardRow struct {
 	Value       float64   `json:"value"`
 	At          time.Time `json:"at"`
 	Me          bool      `json:"me"`
-	resultID    int64
+	// What the game reported for the result this row ranks by, for pages that show
+	// more than the value. None on boards that count results.
+	Stats    json.RawMessage `json:"stats,omitempty"`
+	resultID int64
+	position int64 // place in the list; ties share a rank but not a place
 }
 
 var keyPattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,40}$`)
@@ -140,25 +155,32 @@ func (s *Server) boardRows(ctx context.Context, q boardQuery) ([]boardRow, *boar
 		         WHERE ` + where + ` GROUP BY r.user_id`
 	} else {
 		metric := `(r.stats->>'` + safeKey(b.Metric) + `')::float8`
+		// Results without the metric (stored before a game reported it) are left out.
 		best = `SELECT DISTINCT ON (r.user_id) r.user_id, ` + metric + ` AS value, r.created_at, r.id AS result_id
 		          FROM results r JOIN users u ON u.id = r.user_id
-		         WHERE ` + where + `
+		         WHERE ` + where + ` AND ` + metric + ` IS NOT NULL
 		         ORDER BY r.user_id, value ` + order + `, r.created_at`
 	}
 	sql := `WITH best AS (` + best + `),
-	        ranked AS (SELECT *, rank() OVER (ORDER BY value ` + order + `) AS rank FROM best)
-	        SELECT k.rank, u.display_name::text, k.value, k.created_at, k.user_id = $4, k.result_id
+	        ranked AS (SELECT *, rank() OVER (ORDER BY value ` + order + `) AS rank,
+	                          row_number() OVER (ORDER BY value ` + order + `, created_at, user_id) AS position
+	                     FROM best)
+	        SELECT k.rank, u.display_name::text, k.value, k.created_at, k.user_id = $4, k.result_id, res.stats, k.position
 	          FROM ranked k JOIN users u ON u.id = k.user_id
-	         WHERE k.rank <= 100 OR k.user_id = $4
-	         ORDER BY k.rank, k.created_at
-	         LIMIT 101`
+	          LEFT JOIN results res ON res.id = k.result_id
+	         WHERE k.position <= 100 OR k.user_id = $4
+	         ORDER BY k.position`
 	rows, err := s.db.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, nil, err
 	}
 	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (boardRow, error) {
 		var br boardRow
-		err := row.Scan(&br.Rank, &br.DisplayName, &br.Value, &br.At, &br.Me, &br.resultID)
+		var stats []byte
+		err := row.Scan(&br.Rank, &br.DisplayName, &br.Value, &br.At, &br.Me, &br.resultID, &stats, &br.position)
+		if len(stats) > 0 {
+			br.Stats = stats
+		}
 		return br, err
 	})
 	if err != nil {
@@ -171,7 +193,7 @@ func (s *Server) boardRows(ctx context.Context, q boardQuery) ([]boardRow, *boar
 			row := list[i]
 			mine = &row
 		}
-		if list[i].Rank <= 100 && len(top) < 100 {
+		if list[i].position <= 100 {
 			top = append(top, list[i])
 		}
 	}

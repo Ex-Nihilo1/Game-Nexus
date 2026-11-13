@@ -746,9 +746,35 @@ function lose(hit) {
 function report(won) {
   const seconds = (Date.now() - startTime) / 1000;
   const game = state;
-  Nexus.finishRun({ won, seconds, cols, rows, minePct, mode: mode.id }).then(answer => {
+  const stats = { won, seconds, cols, rows, minePct, mode: mode.id };
+  if (won) stats.bbbv = threeBV();
+  Nexus.finishRun(stats).then(answer => {
     if (state === game && won) setStatus(Nexus.rankLines(answer).join(' · '));
   });
+}
+
+// The board's 3BV: the fewest clicks that clear it. Every opening (a connected
+// patch of empty cells, with the numbers around it) takes one click, and every
+// number outside an opening takes one more. The leaderboard ranks wins by 3BV a
+// second, which is fair across board sizes and mine counts.
+function threeBV() {
+  const done = new Uint8Array(total);
+  let clicks = 0;
+  for (let i = 0; i < total; i++) {
+    if (mine[i] || count[i] || done[i]) continue;
+    clicks++;
+    done[i] = 1;
+    const stack = [i];
+    while (stack.length) {
+      forNeighbors(stack.pop(), j => {
+        if (done[j] || mine[j]) return;
+        done[j] = 1;
+        if (!count[j]) stack.push(j);
+      });
+    }
+  }
+  for (let i = 0; i < total; i++) if (!mine[i] && !done[i]) clicks++;
+  return clicks;
 }
 
 // ---- Rendering ----

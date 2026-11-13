@@ -3,6 +3,7 @@ package games
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -10,7 +11,7 @@ import (
 func TestEveryBoardMetricIsAStatsKey(t *testing.T) {
 	samples := map[string]any{
 		"tetris":       tetrisStats{},
-		"minesweeper":  minesweeperStats{},
+		"minesweeper":  minesweeperStats{Speed: 1},
 		"towerdefense": towerDefenseStats{},
 		"steelspell":   steelSpellStats{},
 		"chronomancer": chronomancerStats{},
@@ -73,13 +74,24 @@ func TestTetris(t *testing.T) {
 }
 
 func TestMinesweeper(t *testing.T) {
-	out := check(t, minesweeper, `{"won":true,"seconds":41.5,"cols":16,"rows":16,"minePct":16,"mode":"noguess"}`, true)
-	if out.Variant != "16x16-16-noguess" {
-		t.Errorf("variant %q", out.Variant)
+	out := check(t, minesweeper, `{"won":true,"seconds":40,"cols":16,"rows":16,"minePct":16,"mode":"noguess","bbbv":60}`, true)
+	if s := out.Stats.(minesweeperStats); out.Variant != "" || s.Speed != 1.5 {
+		t.Errorf("outcome %+v", out)
 	}
-	check(t, minesweeper, `{"won":true,"seconds":41,"cols":60,"rows":16,"minePct":16,"mode":"classic"}`, false)
-	check(t, minesweeper, `{"won":true,"seconds":41,"cols":16,"rows":16,"minePct":16,"mode":"easy"}`, false)
-	check(t, minesweeper, `{"won":true,"seconds":0.1,"cols":16,"rows":16,"minePct":16,"mode":"classic"}`, false)
+	// The server works out the speed; one sent along is replaced.
+	out = check(t, minesweeper, `{"won":true,"seconds":40,"cols":16,"rows":16,"minePct":16,"mode":"noguess","bbbv":60,"speed":99}`, true)
+	if out.Stats.(minesweeperStats).Speed != 1.5 {
+		t.Errorf("speed taken from the client: %+v", out)
+	}
+	check(t, minesweeper, `{"won":false,"seconds":12,"cols":9,"rows":9,"minePct":16,"mode":"classic"}`, true)
+	check(t, minesweeper, `{"won":true,"seconds":41,"cols":60,"rows":16,"minePct":16,"mode":"classic","bbbv":60}`, false)
+	check(t, minesweeper, `{"won":true,"seconds":41,"cols":16,"rows":16,"minePct":16,"mode":"easy","bbbv":60}`, false)
+	check(t, minesweeper, `{"won":true,"seconds":0.1,"cols":16,"rows":16,"minePct":16,"mode":"classic","bbbv":60}`, false)
+	// No 3BV; more than the 68 safe cells of a 9x9; 150 clicks a second; 3BV on a loss.
+	check(t, minesweeper, `{"won":true,"seconds":40,"cols":16,"rows":16,"minePct":16,"mode":"classic"}`, false)
+	check(t, minesweeper, `{"won":true,"seconds":40,"cols":9,"rows":9,"minePct":16,"mode":"classic","bbbv":69}`, false)
+	check(t, minesweeper, `{"won":true,"seconds":2,"cols":30,"rows":24,"minePct":10,"mode":"classic","bbbv":300}`, false)
+	check(t, minesweeper, `{"won":false,"seconds":20,"cols":9,"rows":9,"minePct":16,"mode":"classic","bbbv":30}`, false)
 }
 
 func TestTowerDefense(t *testing.T) {
@@ -90,18 +102,47 @@ func TestTowerDefense(t *testing.T) {
 	check(t, towerDefense, `{"map":"moon","won":true,"lives":10,"wave":12,"seconds":600}`, false)
 }
 
+// ssRun is a valid Steel & Spell run with one field replaced, or left out when value is "".
+func ssRun(field, value string) string {
+	run := map[string]string{
+		"version": `"0.2.3"`, "time": `912.4`, "level": `31`, "kills": `4100`, "elites": `6`, "merges": `1`,
+		"active": `"berserk"`, "activeName": `"Berserk"`, "start": `"sword"`, "startName": `"Sword"`, "health": `340`,
+		"weapons": `[{"id":"sword","name":"Sword","evo":"great","evoName":"Great Sword","level":8,"kind":"Physical","dealt":51234.5},
+			{"id":"fireball","name":"Fireball","evo":"","evoName":"","level":3,"kind":"Magic","dealt":9000}]`,
+		"items": `[{"id":"vest","name":"Padded Vest","rarity":"grey"},{"id":"clover","name":"Four-leaf Clover","rarity":"legendary"}]`,
+		"hurt":  `{"touch":120.5,"shot":40,"strike":0}`,
+		"picks": `[{"name":"Damage","strong":5,"weak":2},{"name":"Haste","strong":1,"weak":0}]`,
+	}
+	if field != "" {
+		run[field] = value
+	}
+	parts := []string{}
+	for k, v := range run {
+		if v != "" {
+			parts = append(parts, `"`+k+`":`+v)
+		}
+	}
+	return "{" + strings.Join(parts, ",") + "}"
+}
+
 func TestSteelSpell(t *testing.T) {
-	out := check(t, steelSpell, `{"version":"0.2.3","time":912.4,"level":31,"kills":4100,"elites":6,"merges":1,
-		"active":"berserk","start":"sword","weapons":["sword:storm","bow"],"items":["ring"]}`, true)
+	out := check(t, steelSpell, ssRun("", ""), true)
 	if out.Variant != "0.2.3" || out.Seconds != 912.4 {
 		t.Errorf("outcome %+v", out)
 	}
-	check(t, steelSpell, `{"version":"latest","time":9,"level":1,"kills":0,"elites":0,"merges":0,
-		"active":"a","start":"b","weapons":[],"items":[]}`, false)
-	check(t, steelSpell, `{"version":"0.2.3","time":60,"level":5,"kills":900000,"elites":0,"merges":0,
-		"active":"a","start":"b","weapons":[],"items":[]}`, false)
-	check(t, steelSpell, `{"version":"0.2.3","time":60,"level":5,"kills":9,"elites":0,"merges":0,
-		"active":"<script>","start":"b","weapons":[],"items":[]}`, false)
+	check(t, steelSpell, ssRun("weapons", `[]`), true)
+	check(t, steelSpell, ssRun("version", `"latest"`), false)
+	check(t, steelSpell, ssRun("kills", `900000000`), false)
+	check(t, steelSpell, ssRun("active", `"<script>"`), false)
+	check(t, steelSpell, ssRun("startName", `"<b>Sword</b>"`), false)
+	check(t, steelSpell, ssRun("startName", `""`), false)
+	check(t, steelSpell, ssRun("items", `[{"id":"vest","name":"Vest","rarity":"gold"}]`), false)
+	check(t, steelSpell, ssRun("weapons", `[{"id":"sword","name":"Sword","evo":"great","evoName":"","level":8,"kind":"Physical","dealt":1}]`), false)
+	check(t, steelSpell, ssRun("hurt", `{"touch":-1,"shot":0,"strike":0}`), false)
+	check(t, steelSpell, ssRun("picks", `[{"name":"Damage","strong":5,"weak":2,"extra":1}]`), false)
+	check(t, steelSpell, ssRun("health", ""), false) // a missing field reads as zero, and no health is no run
+	many := strings.TrimSuffix(strings.Repeat(`{"id":"a","name":"A","evo":"","evoName":"","level":1,"kind":"Pure","dealt":0},`, 31), ",")
+	check(t, steelSpell, ssRun("weapons", "["+many+"]"), false)
 }
 
 func TestChronomancer(t *testing.T) {

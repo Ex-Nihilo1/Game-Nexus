@@ -47,10 +47,45 @@
     .player-game h3 { margin: 0 0 6px; font-size: 15px; }
     .player-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
     .player-head h2 { margin: 0; font-size: 20px; }
+    td.board { color: var(--ink-muted); font: 13px var(--font-condensed); }
+    th.toggle, td.toggle { width: 1%; text-align: right; }
+    .toggle button { height: 26px; padding: 0 9px; font-size: 12px; gap: 6px; }
+    .toggle svg { transition: transform .15s; }
+    .toggle button[aria-expanded="true"] svg { transform: rotate(180deg); }
+    tr.has-detail { cursor: pointer; }
+    tr.has-detail:hover { background: var(--hover); }
+    tr.detail > td { padding: 0 8px 4px; background: var(--paper); }
+
+    /* A Steel & Spell run, opened from its row */
+    .run-detail {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+      gap: 18px 32px;
+      padding: 14px 8px 18px;
+    }
+    .run-detail h4 { margin: 0 0 6px; font: 600 12px var(--font-condensed); color: var(--ink-muted); letter-spacing: .3px; }
+    .run-detail .row { padding: 4px 0; font-size: 13px; }
+    .run-detail .row .figure { font-size: 14px; }
+    .weapon { padding: 5px 0; border-bottom: 1px solid var(--rule); }
+    .weapon-line { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+    .weapon-name { font-weight: 600; }
+    .weapon-meta { color: var(--ink-muted); font: 12px var(--font-condensed); white-space: nowrap; }
+    .share { height: 3px; margin-top: 4px; background: var(--rule); }
+    .share i { display: block; height: 100%; }
+    .items { display: flex; flex-wrap: wrap; gap: 6px; }
+    .item {
+      padding: 2px 8px;
+      border-radius: 2px;
+      font: 12px var(--font-condensed);
+      background: color-mix(in srgb, var(--rarity) 30%, transparent);
+      border-left: 3px solid var(--rarity);
+    }
+    .run-detail .none { color: var(--ink-muted); font: 12px var(--font-condensed); }
     [hidden] { display: none !important; }
-    @media (max-width: 560px) {
-      .when { display: none; }
+    @media (max-width: 640px) {
+      .when, .wide { display: none; }
       .periods { margin-left: 0; }
+      .run-detail { grid-template-columns: minmax(0, 1fr); }
     }
   </style>
 </head>
@@ -82,7 +117,7 @@
           </div>
         </div>
         <table>
-          <thead><tr><th class="num">Rank</th><th>Player</th><th class="num" id="value-head"></th><th class="when">Date</th></tr></thead>
+          <thead><tr id="head"></tr></thead>
           <tbody id="rows"></tbody>
         </table>
       </div>
@@ -106,7 +141,34 @@
 
     const UNIT_HEAD = {
       seconds: 'Time', points: 'Score', lines: 'Lines', lives: 'Lives left', waves: 'Wave',
-      shards: 'Shards', loops: 'Loops', kills: 'Kills', wins: 'Wins',
+      shards: 'Shards', loops: 'Loops', kills: 'Kills', wins: 'Wins', speed: 'Clicks/s',
+    };
+    const UNIT_TITLE = {
+      speed: "3BV per second: the fewest clicks that clear the board, divided by the time it took. Fair across board sizes.",
+    };
+    const fmt = (value, unit) => (unit === 'speed' ? value.toFixed(2) : Nexus.formatValue(value, unit));
+    const number = n => Math.round(n || 0).toLocaleString('en-US');
+
+    // What a game shows beyond rank, player and value: more columns, and for some a
+    // detail panel under the row. `key` is the stats key a column shows, so a column
+    // is left out on the board that already ranks by it. `wide` columns hide on phones.
+    const EXTRA = {
+      minesweeper: {
+        columns: [
+          { head: 'Board', className: 'board', cell: s => `${s.cols} x ${s.rows}, ${s.minePct}%, ${MODES[s.mode] || s.mode}` },
+          { head: 'Time', key: 'seconds', num: true, wide: true, cell: s => Nexus.formatValue(s.seconds, 'seconds') },
+        ],
+      },
+      steelspell: {
+        columns: [
+          { head: 'Time', key: 'time', num: true, cell: s => Nexus.formatValue(s.time, 'seconds') },
+          { head: 'Level', key: 'level', num: true, wide: true, cell: s => String(s.level) },
+          { head: 'Kills', key: 'kills', num: true, wide: true, cell: s => number(s.kills) },
+          { head: 'Start', wide: true, cell: s => s.startName || words(s.start || '') },
+          { head: 'Skill', wide: true, cell: s => s.activeName || words(s.active || '') },
+        ],
+        detail: steelSpellDetail,
+      },
     };
     const MODES = { classic: 'Classic', noguess: 'No guess', forgiving: 'Forgiving' };
     const words = id => id.replace(/[-_:]+/g, ' ').replace(/^./, c => c.toUpperCase());
@@ -184,12 +246,12 @@
         $('filter').textContent = '';
         $('filter').add(new Option('All', ''));
         for (const o of game.filterOptions[board.filter] || []) {
-          $('filter').add(new Option(words(o.value), o.value, false, o.value === state.filter));
+          const label = o.label || (state.game === 'minesweeper' ? MODES[o.value] : '') || words(o.value);
+          $('filter').add(new Option(label, o.value, false, o.value === state.filter));
         }
       } else {
         state.filter = '';
       }
-      $('value-head').textContent = UNIT_HEAD[board.unit] || words(board.unit);
       load();
     }
 
@@ -210,24 +272,57 @@
       }
       fail('');
       const rows = r.data.rows || [];
+      const layout = layoutFor(board);
+      buildHead(layout, board);
       if (!rows.length) {
         const tr = body.insertRow();
         const td = tr.insertCell();
-        td.colSpan = 4;
+        td.colSpan = layout.span;
         td.className = 'empty';
         td.textContent = state.period === 'all' ? 'No results here yet.' : 'No results in this period.';
         return;
       }
-      for (const row of rows) addRow(body, row, board);
+      for (const row of rows) addRow(body, row, board, layout);
       const me = r.data.me;
       if (me && !rows.some(row => row.me)) {
         body.insertRow().className = 'gap';
-        body.rows[body.rows.length - 1].insertCell().colSpan = 4;
-        addRow(body, me, board);
+        body.rows[body.rows.length - 1].insertCell().colSpan = layout.span;
+        addRow(body, me, board, layout);
       }
     }
 
-    function addRow(body, row, board) {
+    // The columns of this board: the game's extras, minus the one it ranks by. Boards
+    // that count results have no single result to describe, so no extras.
+    function layoutFor(board) {
+      const extra = board.count ? {} : EXTRA[state.game] || {};
+      const columns = (extra.columns || []).filter(c => c.key !== board.metric);
+      const detail = extra.detail || null;
+      return { columns, detail, span: 4 + columns.length + (detail ? 1 : 0) };
+    }
+
+    function buildHead(layout, board) {
+      const head = $('head');
+      head.textContent = '';
+      const th = (text, className, title) => {
+        const el = document.createElement('th');
+        el.textContent = text;
+        if (className) el.className = className;
+        if (title) el.title = title;
+        head.appendChild(el);
+      };
+      th('Rank', 'num');
+      th('Player');
+      th(UNIT_HEAD[board.unit] || words(board.unit), 'num', UNIT_TITLE[board.unit]);
+      for (const c of layout.columns) th(c.head, [c.num ? 'num' : '', c.wide ? 'wide' : ''].join(' ').trim());
+      th('Date', 'when');
+      if (layout.detail) th('', 'toggle');
+    }
+
+    const CHEVRON = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg>';
+    let detailCount = 0;
+
+    function addRow(body, row, board, layout) {
       const tr = body.insertRow();
       if (row.me) tr.className = 'me';
       const cell = (text, className) => {
@@ -235,14 +330,129 @@
         if (className) td.className = className;
         if (text instanceof Node) td.appendChild(text);
         else td.textContent = text;
+        return td;
       };
       cell(String(row.rank), 'num rank');
       const a = document.createElement('a');
       a.href = '?player=' + encodeURIComponent(row.displayName);
       a.textContent = row.displayName;
       cell(a);
-      cell(Nexus.formatValue(row.value, board.unit), 'num figure');
+      cell(fmt(row.value, board.unit), 'num figure');
+      const s = row.stats || {};
+      for (const c of layout.columns) {
+        let text = '';
+        try { text = row.stats ? c.cell(s) : ''; } catch (e) { /* an older result without this field */ }
+        cell(text, [c.num ? 'num' : '', c.wide ? 'wide' : '', c.className || ''].join(' ').trim());
+      }
       cell(new Date(row.at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }), 'when');
+      if (!layout.detail) return;
+
+      // The detail opens under the row, from its button or a click anywhere on the row.
+      const id = 'detail-' + (++detailCount);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.innerHTML = 'Details ' + CHEVRON;
+      button.setAttribute('aria-expanded', 'false');
+      button.setAttribute('aria-controls', id);
+      button.setAttribute('aria-label', `Details of ${row.displayName}'s run`);
+      cell(button, 'toggle');
+      tr.classList.add('has-detail');
+      let open = null;
+      const toggle = () => {
+        if (open) {
+          open.remove();
+          open = null;
+        } else {
+          open = document.createElement('tr');
+          open.className = 'detail' + (row.me ? ' me' : '');
+          open.id = id;
+          const td = open.insertCell();
+          td.colSpan = layout.span;
+          td.appendChild(layout.detail(s));
+          tr.after(open);
+        }
+        button.setAttribute('aria-expanded', String(!!open));
+      };
+      button.addEventListener('click', e => { e.stopPropagation(); toggle(); });
+      tr.addEventListener('click', e => { if (!e.target.closest('a, button')) toggle(); });
+    }
+
+    // ---- Steel & Spell: the run behind a row ----
+
+    const KIND_PEN = { Physical: '--orange-pen', Magic: '--violet', Hybrid: '--green-ink', Pure: '--ink' };
+    const RARITY_PEN = { grey: '--ink-muted', blue: '--blue-pen', purple: '--violet', legendary: '--highlighter' };
+
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+    function section(title) {
+      const box = el('section');
+      box.appendChild(el('h4', '', title));
+      return box;
+    }
+    function statRow(parent, label, value) {
+      const row = el('div', 'row');
+      row.append(el('span', 'label', label), el('span', 'figure', value));
+      parent.appendChild(row);
+    }
+
+    function steelSpellDetail(s) {
+      const box = el('div', 'run-detail');
+
+      const build = section('Build and damage dealt');
+      const weapons = [...(s.weapons || [])].sort((a, b) => b.dealt - a.dealt);
+      const total = weapons.reduce((sum, w) => sum + w.dealt, 0) || 1;
+      for (const w of weapons) {
+        const line = el('div', 'weapon');
+        const top = el('div', 'weapon-line');
+        const name = el('span');
+        name.appendChild(el('span', 'weapon-name', w.evoName || w.name));
+        if (w.evoName) name.appendChild(el('span', 'weapon-meta', `, was ${w.name}`));
+        const share = Math.round(w.dealt / total * 100);
+        const meta = [w.level ? `Lv ${w.level}` : '', w.kind, `${number(w.dealt)} (${share}%)`].filter(Boolean).join(' · ');
+        top.append(name, el('span', 'weapon-meta', meta));
+        const bar = el('div', 'share');
+        const fill = el('i');
+        fill.style.width = share + '%';
+        fill.style.background = `var(${KIND_PEN[w.kind] || '--ink'})`;
+        bar.appendChild(fill);
+        line.append(top, bar);
+        build.appendChild(line);
+      }
+      if (!weapons.length) build.appendChild(el('p', 'none', 'No weapons recorded.'));
+
+      const side = el('div');
+      const stats = section('Stats');
+      statRow(stats, 'Health', number(s.health));
+      statRow(stats, 'Elites killed', number(s.elites));
+      statRow(stats, 'Merges', number(s.merges));
+      for (const p of s.picks || []) {
+        statRow(stats, p.name, `${p.strong} strong${p.weak ? ` + ${p.weak} weak` : ''}`);
+      }
+      const hurt = section('Damage taken');
+      const h = s.hurt || {};
+      statRow(hurt, 'Touches', number(h.touch));
+      statRow(hurt, 'Shots', number(h.shot));
+      statRow(hurt, 'Strikes on the ground', number(h.strike));
+      side.append(stats, hurt);
+
+      const items = section('Items');
+      const list = el('div', 'items');
+      for (const it of s.items || []) {
+        const chip = el('span', 'item', it.name);
+        chip.style.setProperty('--rarity', `var(${RARITY_PEN[it.rarity] || '--ink-muted'})`);
+        list.appendChild(chip);
+      }
+      items.appendChild((s.items || []).length ? list : el('p', 'none', 'No items.'));
+      const left = el('div');
+      left.append(build, items);
+      items.style.marginTop = '16px';
+
+      box.append(left, side);
+      return box;
     }
 
     $('variant').addEventListener('change', e => { state.variant = e.target.value; load(); });

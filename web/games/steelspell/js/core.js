@@ -133,12 +133,33 @@ function endRun() {
 
 // Sends the run to the account (nothing happens for guests) and adds where it
 // landed on the leaderboards to the end screen.
+// It carries most of the end screen, with the names of this version, so the
+// leaderboard can show the build without the game's data.
 function reportRun() {
+  const picks = [];
+  for (const key of Object.keys(STATS)) {
+    const n = upgrades[key];
+    if (n) picks.push({ name: STATS[key].name, strong: Math.min(n, STRONG_PICKS), weak: Math.max(0, n - STRONG_PICKS) });
+  }
   Nexus.finishRun({
     version: runVersionNow, time: elapsed, level, kills, elites: elitesKilled, merges,
-    active: activeDef.id, start: startWeapon,
-    weapons: hero.weapons.map(w => (w.evo ? `${w.def.id}:${w.evo}` : w.def.id)),
-    items: items.map(item => item.id),
+    active: activeDef.id, activeName: activeDef.name,
+    start: startWeapon, startName: WEAPONS.find(d => d.id === startWeapon).name,
+    health: Math.round(hero.maxHp),
+    weapons: hero.weapons.map(w => ({
+      id: w.def.id,
+      name: w.evo ? w.def.name : weaponName(w),
+      evo: w.evo || '',
+      evoName: w.evo ? weaponName(w) : '',
+      level: w.level || 0,
+      kind: KINDS[w.def.kind].name,
+      dealt: Math.round(w.dealt),
+    })),
+    items: items.map(item => ({ id: item.id, name: item.name, rarity: item.rarity })),
+    hurt: {
+      touch: Math.round(hero.hurtBy.touch), shot: Math.round(hero.hurtBy.shot), strike: Math.round(hero.hurtBy.strike),
+    },
+    picks,
   }).then(answer => {
     const lines = Nexus.rankLines(answer);
     const note = panelEl.querySelector('.panel-note');

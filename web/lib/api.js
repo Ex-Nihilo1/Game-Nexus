@@ -109,6 +109,7 @@ const Nexus = (function () {
   // ---- End screens ----
 
   function formatValue(value, unit) {
+    if (unit === 'speed') return `${value.toFixed(2)} clicks/s`;
     if (unit === 'seconds') {
       if (value < 60) return `${value.toFixed(1)} s`;
       const s = Math.floor(value);
