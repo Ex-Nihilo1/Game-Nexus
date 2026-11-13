@@ -199,12 +199,13 @@ func TestSaves(t *testing.T) {
 	newClient(t, base).call("GET", "/api/saves", nil, 401)
 	bo.call("PUT", "/api/saves/not.a.key", map[string]any{"value": "1", "baseRev": 0}, 400)
 
-	if out := bo.call("PUT", "/api/saves/games.tetris.best", map[string]any{"value": "100", "baseRev": 0}, 200); out["rev"] != 1.0 {
+	if out := bo.call("PUT", "/api/saves/games.tetris.best", map[string]any{"value": "100", "baseRev": 0, "device": "laptop"}, 200); out["rev"] != 1.0 {
 		t.Fatalf("first write: %v", out)
 	}
-	// The other device has not seen rev 1: it gets the account's copy back.
-	out := other.call("PUT", "/api/saves/games.tetris.best", map[string]any{"value": "50", "baseRev": 0}, 409)
-	if out["value"] != "100" || out["rev"] != 1.0 {
+	// The other device has not seen rev 1: it gets the account's copy back, and which
+	// device wrote it.
+	out := other.call("PUT", "/api/saves/games.tetris.best", map[string]any{"value": "50", "baseRev": 0, "device": "phone"}, 409)
+	if out["value"] != "100" || out["rev"] != 1.0 || out["device"] != "laptop" {
 		t.Fatalf("conflict: %v", out)
 	}
 	// Choosing this device's copy is writing again on top of what the account has.
@@ -215,7 +216,7 @@ func TestSaves(t *testing.T) {
 	if len(list) != 2 {
 		t.Fatalf("list: %v", list)
 	}
-	if got := bo.call("GET", "/api/saves/games.tetris.best", nil, 200); got["value"] != "50" || got["rev"] != 2.0 {
+	if got := bo.call("GET", "/api/saves/games.tetris.best", nil, 200); got["value"] != "50" || got["rev"] != 2.0 || got["device"] != "" {
 		t.Fatalf("get: %v", got)
 	}
 	if got := bo.call("GET", "/api/saves/games.scheme", nil, 200); got["value"] != nil {
@@ -333,6 +334,20 @@ func TestStatic(t *testing.T) {
 		res.Body.Close()
 		if res.StatusCode != want {
 			t.Errorf("%s: %d, want %d", path, res.StatusCode, want)
+		}
+	}
+}
+
+// Empty lists are lists: the pages call .map and .length on them.
+func TestEmptyListsAreArrays(t *testing.T) {
+	base, mails := setup(t)
+	ed := signUp(t, base, mails, "ed@example.com", "Eddy", true)
+	for _, path := range []string{"/api/saves", "/api/boards/tetris/score", "/api/boards/steelspell"} {
+		res, _ := ed.http.Get(base + path)
+		raw, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		if bytes.Contains(raw, []byte("null")) && !bytes.Contains(raw, []byte(`"me":null`)) {
+			t.Errorf("%s: %s", path, raw)
 		}
 	}
 }

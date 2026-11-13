@@ -9,8 +9,8 @@ import (
 )
 
 // static serves the game files. Files in the Nix store all carry the same old
-// modification time, so the server's start time stands in for it: a deploy
-// restarts the server, and browsers then fetch everything anew.
+// modification time, so the server's start time stands in for anything older: a
+// deploy restarts the server, and browsers then fetch everything anew.
 func (s *Server) static() http.Handler {
 	root := http.Dir(s.cfg.WebRoot)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +49,13 @@ func (s *Server) static() http.Handler {
 			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
 			return
 		}
+		// The later of the file's own time and the server's start: files edited while
+		// the server runs still count as new.
+		modified := info.ModTime()
+		if modified.Before(s.started) {
+			modified = s.started
+		}
 		w.Header().Set("Cache-Control", "no-cache")
-		http.ServeContent(w, r, filepath.Base(name), s.started, f)
+		http.ServeContent(w, r, filepath.Base(name), modified, f)
 	})
 }

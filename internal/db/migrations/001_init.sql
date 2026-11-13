@@ -41,6 +41,7 @@ CREATE TABLE saves (
   key        text NOT NULL,
   value      text,
   rev        bigint NOT NULL,
+  device     text NOT NULL DEFAULT '', -- the browser that wrote it (sync.js)
   updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (user_id, key)
 );

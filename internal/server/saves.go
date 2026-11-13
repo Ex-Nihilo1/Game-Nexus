@@ -27,6 +27,7 @@ type saveInfo struct {
 	Key       string    `json:"key"`
 	Rev       int64     `json:"rev"`
 	Removed   bool      `json:"removed"`
+	Device    string    `json:"device"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
@@ -36,21 +37,21 @@ func (s *Server) listSaves(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, err := s.db.Query(r.Context(),
-		`SELECT key, rev, value IS NULL, updated_at FROM saves WHERE user_id = $1 ORDER BY key`, u.ID)
+		`SELECT key, rev, value IS NULL, device, updated_at FROM saves WHERE user_id = $1 ORDER BY key`, u.ID)
 	if err != nil {
 		failInternal(w, "saves", err)
 		return
 	}
 	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (saveInfo, error) {
 		var info saveInfo
-		err := row.Scan(&info.Key, &info.Rev, &info.Removed, &info.UpdatedAt)
+		err := row.Scan(&info.Key, &info.Rev, &info.Removed, &info.Device, &info.UpdatedAt)
 		return info, err
 	})
 	if err != nil {
 		failInternal(w, "saves", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"saves": list, "keys": allSaveKeys()})
+	writeJSON(w, http.StatusOK, map[string]any{"saves": orEmpty(list), "keys": allSaveKeys()})
 }
 
 // allSaveKeys is every key that syncs, so pages need not keep their own list.
@@ -70,8 +71,9 @@ func (s *Server) getSave(w http.ResponseWriter, r *http.Request) {
 	key := r.PathValue("key")
 	var value *string
 	var rev int64
-	err := s.db.QueryRow(r.Context(), `SELECT value, rev FROM saves WHERE user_id = $1 AND key = $2`, u.ID, key).
-		Scan(&value, &rev)
+	var device string
+	err := s.db.QueryRow(r.Context(), `SELECT value, rev, device FROM saves WHERE user_id = $1 AND key = $2`, u.ID, key).
+		Scan(&value, &rev, &device)
 	if errors.Is(err, pgx.ErrNoRows) {
 		fail(w, http.StatusNotFound, "Nothing is saved under that name.")
 		return
@@ -80,7 +82,7 @@ func (s *Server) getSave(w http.ResponseWriter, r *http.Request) {
 		failInternal(w, "save", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"key": key, "value": value, "rev": rev})
+	writeJSON(w, http.StatusOK, map[string]any{"key": key, "value": value, "rev": rev, "device": device})
 }
 
 func (s *Server) putSave(w http.ResponseWriter, r *http.Request) {
@@ -100,6 +102,7 @@ func (s *Server) putSave(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Value   *string `json:"value"` // null removes the key
 		BaseRev int64   `json:"baseRev"`
+		Device  string  `json:"device"` // which browser writes, so it knows its own writes later
 	}
 	if !readJSON(w, r, &req, maxSaveValue*2) {
 		return
@@ -107,6 +110,10 @@ func (s *Server) putSave(w http.ResponseWriter, r *http.Request) {
 	size := 0
 	if req.Value != nil {
 		size = len(*req.Value)
+	}
+	if len(req.Device) > 64 {
+		fail(w, http.StatusBadRequest, "The device name is too long.")
+		return
 	}
 	if size > maxSaveValue {
 		fail(w, http.StatusRequestEntityTooLarge, "That save is too big to keep on the server.")
@@ -129,19 +136,21 @@ func (s *Server) putSave(w http.ResponseWriter, r *http.Request) {
 	// happens when the stored revision is the one the device started from.
 	var rev int64
 	err := s.db.QueryRow(ctx,
-		`INSERT INTO saves (user_id, key, value, rev) VALUES ($1, $2, $3, 1)
-		 ON CONFLICT (user_id, key) DO UPDATE SET value = EXCLUDED.value, rev = saves.rev + 1, updated_at = now()
+		`INSERT INTO saves (user_id, key, value, rev, device) VALUES ($1, $2, $3, 1, $5)
+		 ON CONFLICT (user_id, key) DO UPDATE
+		   SET value = EXCLUDED.value, rev = saves.rev + 1, device = EXCLUDED.device, updated_at = now()
 		   WHERE saves.rev = $4
-		 RETURNING rev`, u.ID, key, req.Value, req.BaseRev).Scan(&rev)
+		 RETURNING rev`, u.ID, key, req.Value, req.BaseRev, req.Device).Scan(&rev)
 	if errors.Is(err, pgx.ErrNoRows) {
 		var value *string
-		if err := s.db.QueryRow(ctx, `SELECT value, rev FROM saves WHERE user_id = $1 AND key = $2`, u.ID, key).
-			Scan(&value, &rev); err != nil {
+		var device string
+		if err := s.db.QueryRow(ctx, `SELECT value, rev, device FROM saves WHERE user_id = $1 AND key = $2`, u.ID, key).
+			Scan(&value, &rev, &device); err != nil {
 			failInternal(w, "save", err)
 			return
 		}
 		writeJSON(w, http.StatusConflict, map[string]any{
-			"error": "The account has a newer copy of this save.", "key": key, "value": value, "rev": rev,
+			"error": "The account has a newer copy of this save.", "key": key, "value": value, "rev": rev, "device": device,
 		})
 		return
 	}

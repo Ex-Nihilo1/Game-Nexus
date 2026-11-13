@@ -51,6 +51,9 @@ func chronomancerFromSave(value string, prev map[string]float64, since time.Dura
 		return nil, err
 	}
 	s.Best, s.EternityRecord, s.Loop = math.Floor(s.Best), math.Floor(s.EternityRecord), math.Floor(s.Loop)
+	if s.Best == 0 && s.EternityRecord == 0 {
+		return nil, nil // a fresh save: nothing played yet
+	}
 	if prev != nil && s.Best <= prev["best"] && s.EternityRecord <= prev["eternityRecord"] && s.Loop <= prev["loop"] {
 		return nil, nil
 	}

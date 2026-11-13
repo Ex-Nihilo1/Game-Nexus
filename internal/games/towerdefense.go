@@ -54,7 +54,7 @@ func checkTowerDefense(raw json.RawMessage) (Outcome, error) {
 		return Outcome{}, invalid("lost with %d lives", s.Lives)
 	}
 	// A wave takes a while to walk the road.
-	if s.Seconds < float64(s.Wave)*5 {
+	if s.Seconds < float64(s.Wave)*3 {
 		return Outcome{}, invalid("%d waves in %.1f s", s.Wave, s.Seconds)
 	}
 	return Outcome{Variant: s.Map, Seconds: s.Seconds, Stats: s}, nil

@@ -69,11 +69,20 @@ func (s *Server) options(ctx context.Context, expr, game string) ([]option, erro
 	if err != nil {
 		return nil, err
 	}
-	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (option, error) {
+	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (option, error) {
 		var o option
 		err := row.Scan(&o.Value, &o.Results)
 		return o, err
 	})
+	return orEmpty(list), err
+}
+
+// orEmpty keeps an empty list a list in JSON ([] rather than null).
+func orEmpty[T any](list []T) []T {
+	if list == nil {
+		return []T{}
+	}
+	return list
 }
 
 // ---- One board ----
@@ -156,7 +165,7 @@ func (s *Server) boardRows(ctx context.Context, q boardQuery) ([]boardRow, *boar
 		return nil, nil, err
 	}
 	var mine *boardRow
-	top := list[:0:0]
+	top := []boardRow{}
 	for i := range list {
 		if list[i].Me {
 			row := list[i]
