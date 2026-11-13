@@ -6,6 +6,9 @@
   <title>Tetris</title>
   <link rel="stylesheet" href="../../lib/theme.css">
   <script src="../../lib/theme.js"></script>
+  <script src="../../lib/api.js"></script>
+  <script src="../../lib/sync.js" data-game="tetris"></script>
+  <script src="../../lib/account.js"></script>
   <style>
     .tetris-layout {
       display: flex;
@@ -70,6 +73,7 @@
           <div class="row"><span class="label">Score</span><span class="figure" id="score">0</span></div>
           <div class="row"><span class="label">Lines</span><span class="figure" id="lines">0</span></div>
           <div class="row"><span class="label">Level</span><span class="figure" id="level">1</span></div>
+          <div class="row"><span class="label">Best</span><span class="figure" id="best">0</span></div>
         </section>
 
         <section>

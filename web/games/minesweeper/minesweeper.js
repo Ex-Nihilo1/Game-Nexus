@@ -720,6 +720,7 @@ function win() {
   resultEl.className = 'stamp good';
   updateHud();
   setStatus(''); // the stamp and timer already say it
+  report(true);
 }
 
 function lose(hit) {
@@ -737,6 +738,17 @@ function lose(hit) {
   resultEl.textContent = 'BOOM';
   resultEl.className = 'stamp bad';
   setStatus('');
+  report(false);
+}
+
+// Sends a finished game to the account (nothing happens for guests). Where a win
+// lands on the leaderboards shows in the status line.
+function report(won) {
+  const seconds = (Date.now() - startTime) / 1000;
+  const game = state;
+  Nexus.finishRun({ won, seconds, cols, rows, minePct, mode: mode.id }).then(answer => {
+    if (state === game && won) setStatus(Nexus.rankLines(answer).join(' · '));
+  });
 }
 
 // ---- Rendering ----
@@ -767,6 +779,7 @@ function elapsed() {
 
 function startTimer() {
   startTime = Date.now();
+  Nexus.startRun('minesweeper');
   timer = setInterval(() => { timeEl.textContent = elapsed(); }, 1000);
 }
 

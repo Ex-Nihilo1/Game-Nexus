@@ -222,6 +222,8 @@ let armed = null; // tower type about to be built
 let selected = null; // built tower shown in the side panel
 let hover = null; // { c, r } under the mouse
 let notice = '';
+let startedAt = 0; // when the first wave of this game began (performance.now())
+let overNotes = []; // what the server says about a finished game, under the result
 let noticeTime = 0;
 let lastTime = 0;
 let dirty = true; // true when the screen needs a redraw
@@ -314,6 +316,7 @@ function newGame() {
   armed = null;
   selected = null;
   notice = '';
+  overNotes = [];
   resultEl.textContent = '';
   resultEl.className = 'stamp';
   drawMap();
@@ -434,6 +437,10 @@ function damageTower(t, amount) {
 function startWave() {
   if (phase !== 'build' || paused) return;
   wave++;
+  if (wave === 1) {
+    startedAt = performance.now();
+    Nexus.startRun('towerdefense');
+  }
   spawnQueue = buildWave(wave, map);
   waveTime = 0;
   phase = 'wave';
@@ -473,6 +480,7 @@ function finishWave() {
     resultEl.className = 'stamp good';
     saveBest();
     markMapTabs();
+    report(true);
   } else {
     phase = 'build';
   }
@@ -487,6 +495,20 @@ function lose() {
   resultEl.className = 'stamp bad';
   markMapTabs();
   dirty = true;
+  report(false);
+}
+
+// Sends a finished game to the account (nothing happens for guests). The ranks it
+// brings back show under the result.
+function report(won) {
+  overNotes = [];
+  const seconds = (performance.now() - startedAt) / 1000;
+  const game = map;
+  Nexus.finishRun({ map: map.id, won, lives: Math.max(0, lives), wave, seconds }).then(answer => {
+    if (map !== game || (phase !== 'won' && phase !== 'lost')) return;
+    overNotes = Nexus.rankLines(answer);
+    dirty = true;
+  });
 }
 
 // The simulation stops when a game ends, so nothing in flight would ever finish.
@@ -1041,14 +1063,14 @@ function drawShot(s, color) {
 }
 
 // A paper slip with an ink outline in the middle of the board.
-function drawOverlay(title, subtitle, titleColor, stamped) {
+function drawOverlay(title, subtitle, titleColor, stamped, notes = []) {
   ctx.globalAlpha = 0.6;
   ctx.fillStyle = pal.desk;
   ctx.fillRect(0, 0, W, H);
   ctx.globalAlpha = 1;
 
   const w = 300;
-  const h = 110;
+  const h = 110 + notes.length * 18;
   const x = (W - w) / 2;
   const y = (H - h) / 2;
   ctx.fillStyle = pal.paper;
@@ -1071,6 +1093,9 @@ function drawOverlay(title, subtitle, titleColor, stamped) {
   ctx.font = '13px ' + FONT_CONDENSED;
   ctx.fillStyle = pal['ink-muted'];
   ctx.fillText(subtitle, W / 2, y + 84);
+  ctx.font = '12px ' + FONT_CONDENSED;
+  ctx.fillStyle = pal.ink;
+  notes.forEach((note, i) => ctx.fillText(note, W / 2, y + 106 + i * 18));
 }
 
 function draw() {
@@ -1097,9 +1122,9 @@ function draw() {
   drawGhost();
 
   if (phase === 'won') {
-    drawOverlay('CLEARED', `${lives} of ${map.lives} lives left · Enter to play again`, pal['green-ink'], true);
+    drawOverlay('CLEARED', `${lives} of ${map.lives} lives left · Enter to play again`, pal['green-ink'], true, overNotes);
   } else if (phase === 'lost') {
-    drawOverlay('OVERRUN', `Fell on wave ${wave} of ${map.waves} · Enter to try again`, pal['red-pencil'], true);
+    drawOverlay('OVERRUN', `Fell on wave ${wave} of ${map.waves} · Enter to try again`, pal['red-pencil'], true, overNotes);
   } else if (paused) {
     drawOverlay('Paused', 'Press P to resume', pal.ink, false);
   }

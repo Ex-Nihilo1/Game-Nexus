@@ -24,6 +24,10 @@ self.document = {
 };
 self.Theme = { palette: () => new Proxy({}, { get: () => '#000' }) };
 self.requestAnimationFrame = () => 0;
+// Simulated runs never reach the account.
+self.Nexus = {
+  startRun() {}, resumeRun() {}, runId: () => null, finishRun: () => Promise.resolve(null), rankLines: () => [],
+};
 
 self.onmessage = e => {
   try {

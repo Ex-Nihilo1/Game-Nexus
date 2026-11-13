@@ -3,7 +3,7 @@
 
 // Game Nexus version, MAJOR.MINOR.PATCH: major = big overhaul or lost saves,
 // minor = a new game or feature, patch = fixes and tweaks. Tag releases vX.Y.Z.
-const NEXUS_VERSION = '1.0.1';
+const NEXUS_VERSION = '1.1.0';
 
 const GAMES = [
   {

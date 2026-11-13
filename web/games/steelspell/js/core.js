@@ -105,6 +105,7 @@ function startRun(activeId, weaponId, runSeed = Date.now()) {
   if (activeDef.freeWeapon && weaponId !== activeDef.freeWeapon) addWeapon(activeDef.freeWeapon);
   for (let i = 0; i < (activeDef.startLevels || 0); i++) addLevel();
   saveJson(LAST_KEY, { active: activeId, weapon: weaponId });
+  if (!simulating) Nexus.startRun('steelspell');
   setText(activeNameEl, activeDef.name);
   activeBtn.title = activeDef.blurb;
   lastCdShare = -1;
@@ -126,7 +127,24 @@ function endRun() {
   const result = recordRun();
   showBest();
   showEnd(result);
+  reportRun();
   dirty = true;
+}
+
+// Sends the run to the account (nothing happens for guests) and adds where it
+// landed on the leaderboards to the end screen.
+function reportRun() {
+  Nexus.finishRun({
+    version: runVersionNow, time: elapsed, level, kills, elites: elitesKilled, merges,
+    active: activeDef.id, start: startWeapon,
+    weapons: hero.weapons.map(w => (w.evo ? `${w.def.id}:${w.evo}` : w.def.id)),
+    items: items.map(item => item.id),
+  }).then(answer => {
+    const lines = Nexus.rankLines(answer);
+    const note = panelEl.querySelector('.panel-note');
+    if (phase !== 'over' || !note || !lines.length) return;
+    note.textContent += ' ' + lines.map(line => line.replace(/\.$/, '')).join('. ') + '.';
+  });
 }
 
 // ---- Small helpers ----

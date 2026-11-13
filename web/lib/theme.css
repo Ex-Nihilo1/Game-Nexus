@@ -247,3 +247,68 @@ kbd {
   padding: 6px 0;
   border-bottom: 1px solid var(--rule);
 }
+
+/* ---- Account corner of the header (lib/account.js) ---- */
+.account-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+.text-link {
+  font: 13px var(--font-condensed);
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+.text-link:hover { color: var(--red-pencil); }
+.account-menu { position: relative; }
+.account-button { gap: 8px; }
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 50;
+  min-width: 200px;
+  padding: 4px 0;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+}
+.menu[hidden] { display: none; }
+.menu a, .menu button {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  height: auto;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 0;
+  font: 13px var(--font-text);
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.menu a:hover, .menu button:hover { background: var(--hover); opacity: 1; }
+
+/* ---- Forms ---- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+input[type="text"], input[type="email"], input[type="password"], select {
+  height: 32px;
+  padding: 0 10px;
+  font: 14px var(--font-text);
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+input:focus-visible, select:focus-visible { outline-offset: 1px; border-color: var(--ink); }
+.message { margin: 0 0 14px; font: 13px var(--font-condensed); }
+.message:empty { display: none; }
+.message.bad { color: var(--red-pencil); }
+.message.good { color: var(--green-ink); }

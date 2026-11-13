@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leaderboards - Game Nexus</title>
+  <link rel="stylesheet" href="../lib/theme.css">
+  <script src="../lib/theme.js"></script>
+  <script src="../lib/api.js"></script>
+  <script src="../lib/sync.js"></script>
+  <script src="../lib/account.js"></script>
+  <style>
+    .game-tabs { flex-wrap: wrap; margin-bottom: 14px; }
+    .board-tabs { flex-wrap: wrap; margin-bottom: 16px; }
+    .board-tabs .tab { font-size: 12px; }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 14px 20px;
+      margin-bottom: 16px;
+    }
+    .controls .field { margin: 0; }
+    .periods { display: flex; gap: 6px; margin-left: auto; }
+    .periods button { height: 28px; padding: 0 10px; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th {
+      padding: 6px 8px;
+      text-align: left;
+      font: 12px var(--font-condensed);
+      color: var(--ink-muted);
+      border-bottom: 1px solid var(--ink);
+    }
+    td { padding: 8px; border-bottom: 1px solid var(--rule); }
+    .num { text-align: right; white-space: nowrap; }
+    .rank { width: 56px; font: 15px var(--font-figure); }
+    .when { width: 110px; color: var(--ink-muted); font: 12px var(--font-condensed); }
+    tr.me { background: var(--hover); }
+    tr.me td { font-weight: 600; }
+    tr.gap td { padding: 2px; border-bottom: 1px dashed var(--rule); }
+    td a { text-decoration: none; }
+    td a:hover { color: var(--red-pencil); }
+    .empty { padding: 26px 8px; color: var(--ink-muted); }
+    .player-games { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+    .player-game { padding: 14px 16px; background: var(--paper); border: 1px solid var(--rule); border-radius: 2px; }
+    .player-game .rank-of { margin-left: 8px; font: 12px var(--font-condensed); color: var(--ink-muted); }
+    .player-game h3 { margin: 0 0 6px; font-size: 15px; }
+    .player-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+    .player-head h2 { margin: 0; font-size: 20px; }
+    [hidden] { display: none !important; }
+    @media (max-width: 560px) {
+      .when { display: none; }
+      .periods { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="app-header">
+      <div>
+        <a class="back-link" href="../index.html">&larr; Game Nexus</a>
+        <h1 class="app-title">Leaderboards</h1>
+      </div>
+      <div class="theme-controls"></div>
+    </header>
+
+    <main>
+      <p class="message bad" id="error" role="alert"></p>
+
+      <div id="boards-view">
+        <div class="tabs game-tabs" role="tablist" id="game-tabs"></div>
+        <div class="tabs board-tabs" role="tablist" id="board-tabs"></div>
+        <div class="controls">
+          <label class="field" id="variant-field" hidden><span class="label" id="variant-label"></span>
+            <select id="variant"></select></label>
+          <label class="field" id="filter-field" hidden><span class="label" id="filter-label"></span>
+            <select id="filter"></select></label>
+          <div class="periods" id="periods">
+            <button type="button" data-period="all" aria-pressed="true">All time</button>
+            <button type="button" data-period="month" aria-pressed="false">Past month</button>
+            <button type="button" data-period="week" aria-pressed="false">Past week</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th class="num">Rank</th><th>Player</th><th class="num" id="value-head"></th><th class="when">Date</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <div id="player-view" hidden>
+        <p><a class="text-link" href="./">&larr; All leaderboards</a></p>
+        <div class="player-head"><h2 id="player-name"></h2><span class="label" id="player-joined"></span></div>
+        <div class="player-games" id="player-games"></div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const params = new URLSearchParams(location.search);
+    const state = {
+      game: params.get('game'), board: params.get('board'), variant: params.get('variant'),
+      filter: params.get('filter') || '', period: params.get('period') || 'all',
+    };
+    let games = [];
+
+    const UNIT_HEAD = {
+      seconds: 'Time', points: 'Score', lines: 'Lines', lives: 'Lives left', waves: 'Wave',
+      shards: 'Shards', loops: 'Loops', kills: 'Kills', wins: 'Wins',
+    };
+    const MODES = { classic: 'Classic', noguess: 'No guess', forgiving: 'Forgiving' };
+    const words = id => id.replace(/[-_:]+/g, ' ').replace(/^./, c => c.toUpperCase());
+
+    // How a variant or filter value reads on the page.
+    function variantName(game, value) {
+      if (game === 'minesweeper') {
+        const m = /^(\d+)x(\d+)-(\d+)-(\w+)$/.exec(value);
+        if (m) return `${m[1]} x ${m[2]}, ${m[3]}% mines, ${MODES[m[4]] || m[4]}`;
+      }
+      if (game === 'steelspell') return `Version ${value}`;
+      return words(value);
+    }
+
+    function fail(text) { $('error').textContent = text || ''; }
+
+    function tab(label, selected, onClick) {
+      const b = document.createElement('button');
+      b.className = 'tab';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(selected));
+      b.textContent = label;
+      b.addEventListener('click', onClick);
+      return b;
+    }
+
+    function keepURL() {
+      const p = new URLSearchParams();
+      for (const [k, v] of Object.entries(state)) if (v && !(k === 'period' && v === 'all')) p.set(k, v);
+      history.replaceState(null, '', '?' + p);
+    }
+
+    const currentGame = () => games.find(g => g.id === state.game);
+    const currentBoard = () => currentGame().boards.find(b => b.id === state.board);
+
+    async function pickGame(id) {
+      state.game = id;
+      const game = currentGame();
+      if (!game.boards.some(b => b.id === state.board)) state.board = game.boards[0].id;
+      $('game-tabs').textContent = '';
+      for (const g of games) $('game-tabs').appendChild(tab(g.name, g.id === id, () => {
+        state.variant = null;
+        state.filter = '';
+        pickGame(g.id);
+      }));
+      const r = await Nexus.call('GET', 'boards/' + id);
+      const options = r.ok ? r.data : { variants: [], filters: {} };
+
+      $('variant-field').hidden = !game.variantTitle;
+      $('variant-label').textContent = game.variantTitle || '';
+      const variants = (options.variants || []).map(o => o.value);
+      if (game.variantTitle) {
+        if (!variants.includes(state.variant)) state.variant = variants[0] || '';
+        $('variant').textContent = '';
+        for (const v of variants) $('variant').add(new Option(variantName(id, v), v, false, v === state.variant));
+        $('variant').disabled = !variants.length;
+      } else {
+        state.variant = '';
+      }
+      game.filterOptions = options.filters || {};
+      pickBoard(state.board);
+    }
+
+    function pickBoard(id) {
+      state.board = id;
+      const game = currentGame();
+      const board = currentBoard();
+      $('board-tabs').textContent = '';
+      for (const b of game.boards) $('board-tabs').appendChild(tab(b.title, b.id === id, () => pickBoard(b.id)));
+      $('board-tabs').hidden = game.boards.length < 2;
+
+      $('filter-field').hidden = !board.filter;
+      if (board.filter) {
+        $('filter-label').textContent = board.filterTitle;
+        $('filter').textContent = '';
+        $('filter').add(new Option('All', ''));
+        for (const o of game.filterOptions[board.filter] || []) {
+          $('filter').add(new Option(words(o.value), o.value, false, o.value === state.filter));
+        }
+      } else {
+        state.filter = '';
+      }
+      $('value-head').textContent = UNIT_HEAD[board.unit] || words(board.unit);
+      load();
+    }
+
+    let loading = 0;
+    async function load() {
+      keepURL();
+      const ticket = ++loading;
+      const board = currentBoard();
+      const q = new URLSearchParams({ variant: state.variant || '', period: state.period });
+      if (state.filter) q.set('filter', state.filter);
+      const r = await Nexus.call('GET', `boards/${state.game}/${state.board}?${q}`);
+      if (ticket !== loading) return;
+      const body = $('rows');
+      body.textContent = '';
+      if (!r.ok) {
+        fail(r.data.error);
+        return;
+      }
+      fail('');
+      const rows = r.data.rows || [];
+      if (!rows.length) {
+        const tr = body.insertRow();
+        const td = tr.insertCell();
+        td.colSpan = 4;
+        td.className = 'empty';
+        td.textContent = state.period === 'all' ? 'No results here yet.' : 'No results in this period.';
+        return;
+      }
+      for (const row of rows) addRow(body, row, board);
+      const me = r.data.me;
+      if (me && !rows.some(row => row.me)) {
+        body.insertRow().className = 'gap';
+        body.rows[body.rows.length - 1].insertCell().colSpan = 4;
+        addRow(body, me, board);
+      }
+    }
+
+    function addRow(body, row, board) {
+      const tr = body.insertRow();
+      if (row.me) tr.className = 'me';
+      const cell = (text, className) => {
+        const td = tr.insertCell();
+        if (className) td.className = className;
+        if (text instanceof Node) td.appendChild(text);
+        else td.textContent = text;
+      };
+      cell(String(row.rank), 'num rank');
+      const a = document.createElement('a');
+      a.href = '?player=' + encodeURIComponent(row.displayName);
+      a.textContent = row.displayName;
+      cell(a);
+      cell(Nexus.formatValue(row.value, board.unit), 'num figure');
+      cell(new Date(row.at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }), 'when');
+    }
+
+    $('variant').addEventListener('change', e => { state.variant = e.target.value; load(); });
+    $('filter').addEventListener('change', e => { state.filter = e.target.value; load(); });
+    $('periods').addEventListener('click', e => {
+      const b = e.target.closest('[data-period]');
+      if (!b) return;
+      state.period = b.dataset.period;
+      $('periods').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      load();
+    });
+
+    // ---- One player ----
+
+    function formatDuration(seconds) {
+      if (seconds < 60) return 'under a minute';
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor(seconds / 60) % 60;
+      return h ? `${h} h ${m} min` : `${m} min`;
+    }
+
+    async function showPlayer(name) {
+      $('boards-view').hidden = true;
+      $('player-view').hidden = false;
+      document.title = `${name} - Game Nexus`;
+      const r = await Nexus.call('GET', 'profile/' + encodeURIComponent(name));
+      if (!r.ok) {
+        fail(r.data.error);
+        return;
+      }
+      const p = r.data;
+      $('player-name').textContent = p.displayName;
+      $('player-joined').textContent = 'Playing since ' +
+        new Date(p.joined).toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+      const box = $('player-games');
+      if (!p.games.length) {
+        box.innerHTML = '<p class="empty">No games played with this account yet.</p>';
+        return;
+      }
+      for (const g of p.games) {
+        const card = document.createElement('section');
+        card.className = 'player-game';
+        const h = document.createElement('h3');
+        h.textContent = g.name;
+        card.appendChild(h);
+        const row = (label, value, href, rank) => {
+          const div = document.createElement('div');
+          div.className = 'row';
+          const l = document.createElement('span');
+          l.className = 'label';
+          l.textContent = label;
+          const v = document.createElement(href ? 'a' : 'span');
+          v.className = 'figure';
+          v.textContent = value;
+          if (href) { v.href = href; v.style.textDecoration = 'none'; }
+          if (rank) {
+            const r = document.createElement('span');
+            r.className = 'rank-of';
+            r.textContent = '#' + rank;
+            v.appendChild(r);
+          }
+          div.append(l, v);
+          card.appendChild(div);
+        };
+        row('Games', String(g.played));
+        if (g.seconds > 0) row('Time played', formatDuration(g.seconds));
+        for (const b of g.boards) {
+          const label = b.variant ? `${b.title}, ${variantName(g.id, b.variant)}` : b.title;
+          const q = new URLSearchParams({ game: g.id, board: b.board });
+          if (b.variant) q.set('variant', b.variant);
+          row(label, Nexus.formatValue(b.value, b.unit), '?' + q, b.rank);
+        }
+        box.appendChild(card);
+      }
+    }
+
+    // ---- Start ----
+
+    (async () => {
+      if (!Nexus.online) {
+        fail('Leaderboards work when Game Nexus is opened from its server, not from a file.');
+        return;
+      }
+      if (params.get('player')) return showPlayer(params.get('player'));
+      const r = await Nexus.call('GET', 'boards');
+      if (!r.ok) {
+        fail(r.data.error);
+        return;
+      }
+      games = r.data.games;
+      $('periods').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.period === state.period)));
+      pickGame(games.some(g => g.id === state.game) ? state.game : games[0].id);
+    })();
+  </script>
+</body>
+</html>

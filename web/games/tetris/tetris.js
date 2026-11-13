@@ -43,6 +43,7 @@ const nextCtx = nextCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
+const bestEl = document.getElementById('best');
 
 const gridCanvas = document.createElement('canvas');
 const gridCtx = gridCanvas.getContext('2d');
@@ -111,6 +112,12 @@ let lastTime = 0;
 let clearRows = []; // full rows currently being animated away
 let clearElapsed = 0;
 let state = 'start'; // 'start' | 'playing' | 'clearing' | 'paused' | 'over'
+let startedAt = 0; // when this game began (performance.now())
+let overNotes = []; // what the server says about a finished game, under GAME OVER
+
+// The best score on this device; it syncs with the account like any save.
+const BEST_KEY = 'games.tetris.best';
+let best = loadBest();
 let dirty = true; // true when the screen needs a redraw
 
 // ---- Theme ----
@@ -277,7 +284,7 @@ function finishClear() {
 function spawn() {
   piece = nextPiece;
   nextPiece = nextFromBag();
-  if (collides(piece.matrix, piece.x, piece.y)) state = 'over';
+  if (collides(piece.matrix, piece.x, piece.y)) gameOver();
   dirty = true;
 }
 
@@ -291,6 +298,32 @@ function updateHud() {
   scoreEl.textContent = score;
   linesEl.textContent = lines;
   levelEl.textContent = level;
+  bestEl.textContent = best.score;
+}
+
+function loadBest() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(BEST_KEY));
+    if (saved && saved.score >= 0) return saved;
+  } catch (e) { /* none yet, or private mode */ }
+  return { score: 0, lines: 0 };
+}
+
+// The game ends: keep the best score, and report the game to the account (which
+// does nothing for guests). The ranks it brings back show under GAME OVER.
+function gameOver() {
+  state = 'over';
+  overNotes = [];
+  if (score > best.score) {
+    best = { score, lines };
+    try { localStorage.setItem(BEST_KEY, JSON.stringify(best)); } catch (e) { /* private mode */ }
+  }
+  updateHud();
+  const seconds = (performance.now() - startedAt) / 1000;
+  Nexus.finishRun({ score, lines, level, seconds }).then(answer => {
+    overNotes = Nexus.rankLines(answer);
+    dirty = true;
+  });
 }
 
 function reset() {
@@ -304,6 +337,9 @@ function reset() {
   clearRows = [];
   nextPiece = nextFromBag();
   state = 'playing';
+  startedAt = performance.now();
+  overNotes = [];
+  Nexus.startRun('tetris');
   spawn();
   updateHud();
 }
@@ -389,13 +425,13 @@ function drawClearing() {
 }
 
 // A paper slip with an ink outline in the middle of the board.
-function drawOverlay(title, subtitle, titleColor, stamped) {
+function drawOverlay(title, subtitle, titleColor, stamped, notes = []) {
   ctx.globalAlpha = 0.6;
   ctx.fillStyle = pal.desk;
   ctx.fillRect(0, 0, BOARD_W, BOARD_H);
   ctx.globalAlpha = 1;
 
-  const w = 230, h = 110;
+  const w = 250, h = 110 + notes.length * 18;
   const x = (BOARD_W - w) / 2, y = (BOARD_H - h) / 2;
   ctx.fillStyle = pal.paper;
   ctx.fillRect(snap(ctx, x), snap(ctx, y), snap(ctx, x + w) - snap(ctx, x), snap(ctx, y + h) - snap(ctx, y));
@@ -415,6 +451,9 @@ function drawOverlay(title, subtitle, titleColor, stamped) {
   ctx.font = '13px ' + FONT_CONDENSED;
   ctx.fillStyle = pal['ink-muted'];
   ctx.fillText(subtitle, BOARD_W / 2, y + 84);
+  ctx.font = '12px ' + FONT_CONDENSED;
+  ctx.fillStyle = pal.ink;
+  notes.forEach((note, i) => ctx.fillText(note, BOARD_W / 2, y + 106 + i * 18));
 }
 
 function draw() {
@@ -431,7 +470,7 @@ function draw() {
 
   if (state === 'start') drawOverlay('Tetris', 'Press Enter to start', pal.ink, false);
   else if (state === 'paused') drawOverlay('Paused', 'Press P to resume', pal.ink, false);
-  else if (state === 'over') drawOverlay('GAME OVER', 'Press Enter to restart', pal['red-pencil'], true);
+  else if (state === 'over') drawOverlay('GAME OVER', 'Press Enter to restart', pal['red-pencil'], true, overNotes);
 }
 
 // ---- Game loop ----

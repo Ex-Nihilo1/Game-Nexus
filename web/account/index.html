@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account - Game Nexus</title>
+  <link rel="stylesheet" href="../lib/theme.css">
+  <script src="../lib/theme.js"></script>
+  <script src="../lib/api.js"></script>
+  <script src="../lib/sync.js"></script>
+  <script src="../lib/account.js"></script>
+  <style>
+    .account-page { max-width: 440px; }
+    .account-page section { padding: 18px 0; border-bottom: 1px solid var(--rule); }
+    .account-page section:first-child { padding-top: 0; }
+    .account-page .tabs { margin-bottom: 18px; }
+    .account-page form .button-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .account-page .row .figure { font-size: 15px; overflow-wrap: anywhere; text-align: right; }
+    .linkish {
+      height: auto;
+      padding: 0;
+      border: 0;
+      font: 13px var(--font-condensed);
+      color: var(--ink-muted);
+      text-decoration: underline;
+    }
+    .danger { border-color: var(--red-pencil); color: var(--red-pencil); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="app-header">
+      <div>
+        <a class="back-link" href="../index.html">&larr; Game Nexus</a>
+        <h1 class="app-title">Account</h1>
+      </div>
+      <div class="theme-controls"></div>
+    </header>
+
+    <main class="account-page">
+      <p class="message" id="page-message" role="status"></p>
+
+      <!-- A link from an email: confirm an address -->
+      <section id="verify-view" hidden>
+        <p class="message" id="verify-message" role="status">Confirming your email...</p>
+        <a class="button" href="./">Go to your account</a>
+      </section>
+
+      <!-- A link from an email: choose a new password -->
+      <section id="reset-view" hidden>
+        <h2 class="section-title">Choose a new password</h2>
+        <form id="reset-form">
+          <p class="message bad" data-message></p>
+          <label class="field"><span class="label">New password, at least 10 characters</span>
+            <input type="password" name="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+          <div class="button-row"><button class="primary" type="submit">Save and sign in</button></div>
+        </form>
+      </section>
+
+      <!-- Guests -->
+      <div id="guest-view" hidden>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" data-tab="signin" aria-selected="true">Sign in</button>
+          <button class="tab" role="tab" data-tab="signup" aria-selected="false">Create account</button>
+        </div>
+
+        <form id="signin-form" data-panel="signin">
+          <p class="message bad" data-message></p>
+          <label class="field"><span class="label">Email</span>
+            <input type="email" name="email" autocomplete="email" required></label>
+          <label class="field"><span class="label">Password</span>
+            <input type="password" name="password" autocomplete="current-password" required></label>
+          <div class="button-row">
+            <button class="primary" type="submit">Sign in</button>
+            <button class="linkish" type="button" id="show-forgot">Forgot your password?</button>
+          </div>
+        </form>
+
+        <form id="forgot-form" hidden>
+          <p class="message" data-message></p>
+          <label class="field"><span class="label">Email of your account</span>
+            <input type="email" name="email" autocomplete="email" required></label>
+          <div class="button-row">
+            <button class="primary" type="submit">Email me a link</button>
+            <button class="linkish" type="button" id="hide-forgot">Back to sign in</button>
+          </div>
+        </form>
+
+        <form id="signup-form" data-panel="signup" hidden>
+          <p class="message bad" data-message></p>
+          <label class="field"><span class="label">Email</span>
+            <input type="email" name="email" autocomplete="email" required></label>
+          <label class="field"><span class="label">Display name, shown on the leaderboards</span>
+            <input type="text" name="displayName" autocomplete="nickname" minlength="3" maxlength="24" required></label>
+          <label class="field"><span class="label">Password, at least 10 characters</span>
+            <input type="password" name="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+          <p class="label">Progress already on this device moves into the new account.</p>
+          <div class="button-row"><button class="primary" type="submit">Create account</button></div>
+        </form>
+      </div>
+
+      <!-- Signed in -->
+      <div id="user-view" hidden>
+        <section>
+          <div class="row"><span class="label">Display name</span><span class="figure" id="me-name"></span></div>
+          <div class="row"><span class="label">Email</span><span class="figure" id="me-email"></span></div>
+          <div class="row"><span class="label">Leaderboards</span><span id="me-status"></span></div>
+          <p class="message" id="resend-message" role="status"></p>
+          <div class="button-row" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+            <button type="button" id="resend" hidden>Send the confirmation link again</button>
+            <a class="button" id="my-stats" href="../leaderboards/">Your stats</a>
+          </div>
+        </section>
+
+        <section>
+          <h2 class="section-title">Display name</h2>
+          <form id="name-form">
+            <p class="message" data-message></p>
+            <label class="field"><span class="label">New display name</span>
+              <input type="text" name="displayName" minlength="3" maxlength="24" required></label>
+            <div class="button-row"><button type="submit">Save</button></div>
+          </form>
+        </section>
+
+        <section>
+          <h2 class="section-title">Email</h2>
+          <form id="email-form">
+            <p class="message" data-message></p>
+            <label class="field"><span class="label">New email</span>
+              <input type="email" name="email" autocomplete="email" required></label>
+            <label class="field"><span class="label">Your password</span>
+              <input type="password" name="password" autocomplete="current-password" required></label>
+            <div class="button-row"><button type="submit">Send a link to the new address</button></div>
+          </form>
+        </section>
+
+        <section>
+          <h2 class="section-title">Password</h2>
+          <form id="password-form">
+            <p class="message" data-message></p>
+            <label class="field"><span class="label">Current password</span>
+              <input type="password" name="current" autocomplete="current-password" required></label>
+            <label class="field"><span class="label">New password, at least 10 characters</span>
+              <input type="password" name="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+            <div class="button-row"><button type="submit">Change password</button></div>
+          </form>
+        </section>
+
+        <section>
+          <h2 class="section-title">Sign out</h2>
+          <div class="button-row" style="display:flex;gap:10px;flex-wrap:wrap">
+            <button type="button" id="signout">Sign out</button>
+            <button type="button" id="signout-all">Sign out on every device</button>
+          </div>
+        </section>
+
+        <section>
+          <h2 class="section-title">Delete account</h2>
+          <form id="delete-form">
+            <p class="message bad" data-message></p>
+            <p class="label">Your saves, results and leaderboard places are deleted for good. Progress on this device stays here.</p>
+            <label class="field"><span class="label">Your password</span>
+              <input type="password" name="password" autocomplete="current-password" required></label>
+            <div class="button-row"><button class="danger" type="submit">Delete my account</button></div>
+          </form>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const views = ['verify-view', 'reset-view', 'guest-view', 'user-view'];
+    const show = id => views.forEach(v => { $(v).hidden = v !== id; });
+
+    function say(el, text, good) {
+      el.textContent = text || '';
+      el.classList.toggle('good', !!good);
+      el.classList.toggle('bad', !good);
+    }
+    const formMessage = form => form.querySelector('[data-message]');
+    const values = form => Object.fromEntries(new FormData(form));
+
+    // Run a form: disable it while the request is out, show the server's message on failure.
+    function bind(form, send) {
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const buttons = form.querySelectorAll('button');
+        buttons.forEach(b => { b.disabled = true; });
+        say(formMessage(form), '');
+        try {
+          await send(values(form), form);
+        } finally {
+          buttons.forEach(b => { b.disabled = false; });
+        }
+      });
+    }
+    async function request(form, method, path, body) {
+      const r = await Nexus.call(method, path, body);
+      if (!r.ok) say(formMessage(form), r.data.error || 'That did not work. Try again.');
+      return r;
+    }
+
+    // Where to go after signing in: back to the page that sent the player here.
+    function backTarget() {
+      const back = new URLSearchParams(location.search).get('back');
+      return back && back.startsWith('/') && !back.startsWith('//') ? back : null;
+    }
+    async function signedIn(user) {
+      Nexus.setUser(user);
+      if (Nexus.sync) await Nexus.sync.now();
+      const back = backTarget();
+      if (back) location.href = back;
+      else render(user);
+    }
+
+    // ---- Guests ----
+
+    document.querySelectorAll('[data-tab]').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('[data-tab]').forEach(t => t.setAttribute('aria-selected', String(t === tab)));
+        document.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.tab; });
+        $('forgot-form').hidden = true;
+      });
+    });
+    $('show-forgot').addEventListener('click', () => {
+      $('signin-form').hidden = true;
+      $('forgot-form').hidden = false;
+      $('forgot-form').email.value = $('signin-form').email.value;
+    });
+    $('hide-forgot').addEventListener('click', () => {
+      $('forgot-form').hidden = true;
+      $('signin-form').hidden = false;
+    });
+
+    bind($('signin-form'), async (v, form) => {
+      const r = await request(form, 'POST', 'auth/login', { email: v.email, password: v.password });
+      if (r.ok) await signedIn(r.data.user);
+    });
+    bind($('signup-form'), async (v, form) => {
+      const r = await request(form, 'POST', 'auth/signup', { email: v.email, displayName: v.displayName, password: v.password });
+      if (r.ok) await signedIn(r.data.user);
+    });
+    bind($('forgot-form'), async (v, form) => {
+      const r = await request(form, 'POST', 'auth/forgot', { email: v.email });
+      if (r.ok) say(formMessage(form), 'If that email has an account, a link to reset the password is on its way.', true);
+    });
+
+    // ---- Links from emails ----
+
+    async function verify(token) {
+      show('verify-view');
+      const r = await Nexus.call('POST', 'auth/verify', { token });
+      if (r.ok) {
+        say($('verify-message'), `${r.data.email} is confirmed. Your results now count on the leaderboards.`, true);
+        const user = await Nexus.call('GET', 'me');
+        if (user.ok && user.data.user) Nexus.setUser(user.data.user);
+      } else {
+        say($('verify-message'), r.data.error || 'This link did not work.');
+      }
+    }
+
+    let resetToken = '';
+    bind($('reset-form'), async (v, form) => {
+      const r = await request(form, 'POST', 'auth/reset', { token: resetToken, password: v.password });
+      if (r.ok) {
+        history.replaceState(null, '', location.pathname);
+        await signedIn(r.data.user);
+        say($('page-message'), 'Your password is changed, and you are signed in.', true);
+      }
+    });
+
+    // ---- Signed in ----
+
+    function render(user) {
+      if (!user) {
+        show('guest-view');
+        return;
+      }
+      show('user-view');
+      $('me-name').textContent = user.displayName;
+      $('me-email').textContent = user.email;
+      $('me-status').innerHTML = user.verified
+        ? '<span class="stamp good">CONFIRMED</span>'
+        : '<span class="stamp bad">CONFIRM YOUR EMAIL</span>';
+      $('resend').hidden = user.verified;
+      $('my-stats').href = '../leaderboards/?player=' + encodeURIComponent(user.displayName);
+      $('name-form').displayName.value = user.displayName;
+    }
+
+    $('resend').addEventListener('click', async () => {
+      const r = await Nexus.call('POST', 'auth/resend', {});
+      say($('resend-message'), r.ok ? 'A new link is on its way. It works for 48 hours.' : r.data.error, r.ok);
+    });
+    bind($('name-form'), async (v, form) => {
+      const r = await request(form, 'PATCH', 'me', { displayName: v.displayName });
+      if (r.ok) {
+        Nexus.setUser(r.data.user);
+        render(r.data.user);
+        say(formMessage(form), 'Saved.', true);
+      }
+    });
+    bind($('email-form'), async (v, form) => {
+      const r = await request(form, 'POST', 'me/email', { email: v.email, password: v.password });
+      if (r.ok) {
+        form.reset();
+        say(formMessage(form), `A link is on its way to ${v.email}. Your account moves there when you open it.`, true);
+      }
+    });
+    bind($('password-form'), async (v, form) => {
+      const r = await request(form, 'POST', 'me/password', { current: v.current, password: v.password });
+      if (r.ok) {
+        form.reset();
+        say(formMessage(form), 'Password changed. Other devices are signed out.', true);
+      }
+    });
+    $('signout').addEventListener('click', async () => {
+      await Nexus.call('POST', 'auth/logout', {});
+      Nexus.setUser(null);
+    });
+    $('signout-all').addEventListener('click', async () => {
+      await Nexus.call('POST', 'auth/logout-all', {});
+      Nexus.setUser(null);
+    });
+    bind($('delete-form'), async (v, form) => {
+      if (!confirm('Delete your Game Nexus account for good? This cannot be undone.')) return;
+      const r = await request(form, 'DELETE', 'me', { password: v.password });
+      if (r.ok) {
+        if (Nexus.sync) Nexus.sync.forget();
+        Nexus.setUser(null);
+        say($('page-message'), 'Your account is deleted.', true);
+      }
+    });
+
+    document.addEventListener('nexususer', e => {
+      if (!$('verify-view').hidden || !$('reset-view').hidden) return;
+      render(e.detail);
+    });
+
+    // ---- Start ----
+
+    const hash = new URLSearchParams(location.hash.slice(1));
+    if (!Nexus.online) {
+      show('guest-view');
+      say($('page-message'), 'Accounts work when Game Nexus is opened from its server, not from a file.');
+    } else if (hash.get('verify')) {
+      history.replaceState(null, '', location.pathname);
+      verify(hash.get('verify'));
+    } else if (hash.get('reset')) {
+      resetToken = hash.get('reset');
+      history.replaceState(null, '', location.pathname);
+      show('reset-view');
+    } else {
+      Nexus.userReady.then(render);
+    }
+  </script>
+</body>
+</html>

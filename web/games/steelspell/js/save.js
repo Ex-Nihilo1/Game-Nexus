@@ -15,7 +15,7 @@ function snapshot() {
   const pending = phase === 'choosing' && choice ? [choice.kind, ...queue] : [...queue];
   return {
     version: runVersionNow, saved: new Date().toISOString().slice(0, 10),
-    seed, startWeapon, active: activeDef.id, activeCd, rerolls, merges, elitesKilled,
+    seed, startWeapon, active: activeDef.id, activeCd, rerolls, merges, elitesKilled, runId: Nexus.runId(),
     level, xp, xpNext, elapsed, kills, spawnBudget, nextElite, nextRing, wildOrbTimer, magnetTimer, walked,
     upgrades, gear, items: items.map(item => item.id), metaBonus, queue: pending,
     hero: { hp: hero.hp, lives: hero.lives, windAt: hero.windAt, hurtBy: hero.hurtBy },
@@ -59,6 +59,7 @@ function continueRun() {
   elapsed = save.elapsed; kills = save.kills; spawnBudget = save.spawnBudget; nextElite = save.nextElite;
   nextRing = save.nextRing; wildOrbTimer = save.wildOrbTimer; magnetTimer = save.magnetTimer; walked = save.walked;
   runVersionNow = save.version || BALANCE_VERSION;
+  Nexus.resumeRun('steelspell', save.runId); // the leaderboards count it under the token it began with
   activeDef = ACTIVES.find(a => a.id === save.active) || ACTIVES[0];
   for (const key of Object.keys(upgrades)) upgrades[key] = (save.upgrades || {})[key] || 0;
   gear = Object.assign({}, save.gear);
