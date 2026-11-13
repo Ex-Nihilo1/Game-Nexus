@@ -35,6 +35,13 @@ NEXUS_DATABASE_URL="postgres://postgres@127.0.0.1:5432/game-nexus" NEXUS_LISTEN=
 
 With no SMTP host set, emails (confirmation and reset links) are written to the log.
 
+To see the leaderboards full, fill the development database with 220 made-up players
+(they sign in with the password `seed-player-pass`; `-reset -players 0` removes them):
+
+```bash
+NEXUS_DATABASE_URL="postgres://postgres@127.0.0.1:5432/game-nexus" go run ./cmd/nexus-seed
+```
+
 ```bash
 go test ./...
 ```
