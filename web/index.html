@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Game Nexus</title>
-  <link rel="stylesheet" href="shared/theme.css">
-  <script src="shared/theme.js"></script>
+  <link rel="stylesheet" href="lib/theme.css">
+  <script src="lib/theme.js"></script>
   <style>
     .game-list {
       margin: 0;
@@ -68,11 +68,11 @@
 
     <main>
       <ul class="game-list" id="game-list"></ul>
-      <div class="coming-soon">More games coming. Add one in shared/games.js. <span id="version"></span></div>
+      <div class="coming-soon">More games coming. Add one in web/lib/games.js. <span id="version"></span></div>
     </main>
   </div>
 
-  <script src="shared/games.js"></script>
+  <script src="lib/games.js"></script>
   <script>
     const list = document.getElementById('game-list');
     for (const game of GAMES) {
