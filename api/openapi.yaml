@@ -1,0 +1,1397 @@
+openapi: 3.1.0
+info:
+  title: Game Nexus API
+  version: 1.1.0
+  description: |
+    The JSON API of Game Nexus (`cmd/nexus`): accounts, synced saves, reported games
+    and leaderboards. The site's own pages are its only client, so it is served from
+    the same origin as the games, under `/api`.
+
+    **Guests and players.** Health, leaderboards and player pages need no account.
+    Everything else needs the session cookie that signing up, signing in or resetting a
+    password sets.
+
+    **Changes come from the site only.** Every call other than GET or HEAD must send
+    `X-Nexus: 1`, and an `Origin` matching the site when the browser sends one. A page on
+    another site cannot add that header without the browser asking first, which the
+    server never allows. Calls without it get 403.
+
+    **Errors** are `{"error": "..."}`. The messages are written for players and the pages
+    show them as they are.
+
+    **Rate limits** answer 429. They are per IP address, per email or per player,
+    depending on the call, and are noted on each.
+servers:
+  - url: /
+    description: The site itself, same origin.
+tags:
+  - name: Health
+    description: Whether the server and its database answer.
+  - name: Auth
+    description: Creating accounts, signing in and out, and the links mailed out.
+  - name: Account
+    description: The signed-in player's own account.
+  - name: Saves
+    description: |
+      Game saves, synced key by key from the browser's localStorage (`web/lib/sync.js`).
+      Every write names the revision it was based on; when another device wrote in
+      between, the write is refused with the account's copy so the player can choose.
+  - name: Runs
+    description: |
+      Reported games. A game asks for a run token when it starts and sends its result
+      with the token when it ends. Only games reported this way reach the leaderboards.
+  - name: Leaderboards
+    description: Boards, their options, and player pages. Open to guests.
+
+paths:
+  /api/health:
+    get:
+      tags: [Health]
+      operationId: health
+      summary: Is the server up and the database answering
+      security: []
+      responses:
+        '200':
+          description: All well.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '503':
+          description: The database does not answer.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "The database is not answering." }
+
+  # ---- Auth ----
+
+  /api/auth/signup:
+    post:
+      tags: [Auth]
+      operationId: signup
+      summary: Create an account and sign in
+      description: |
+        Creates the account, signs this browser in (sets the session cookie) and mails a
+        link that confirms the address. Until it is confirmed the player can sync saves
+        and report games, but does not appear on the leaderboards. Limited to 5 new
+        accounts per IP address, then one every 10 minutes.
+      security: [{ siteHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email, displayName, password]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                displayName: { $ref: '#/components/schemas/DisplayName' }
+                password: { $ref: '#/components/schemas/Password' }
+            example: { email: ann@example.com, displayName: Graphite Fox, password: a long password }
+      responses:
+        '200':
+          description: Signed up and signed in.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserReply' }
+        '400':
+          description: |
+            One of: "That does not look like an email address.", "A display name is 3 to
+            24 characters long.", "A display name starts with a letter or a digit.",
+            "A display name may use letters, digits, spaces, dots, dashes and
+            underscores.", "A password needs at least 10 characters.", "A password can
+            have at most 128 characters.", or a body that could not be read.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403': { $ref: '#/components/responses/NotFromSite' }
+        '409':
+          description: The email or the display name is taken.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                email: { value: { error: "That email already has an account. Sign in, or reset the password." } }
+                name: { value: { error: "That display name is taken." } }
+        '429':
+          description: Too many new accounts from this address.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "Too many new accounts from here. Try again later." }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Sign in
+      description: |
+        Signs this browser in. Emails are matched without regard to case. A wrong
+        password and an unknown email answer alike, and take as long. Limited to 20 tries
+        per IP address (then one every 20 s) and 8 per email (then one a minute).
+      security: [{ siteHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Signed in.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserReply' }
+        '400': { $ref: '#/components/responses/BadBody' }
+        '401':
+          description: Wrong email or password.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "Wrong email or password." }
+        '403': { $ref: '#/components/responses/NotFromSite' }
+        '429': { $ref: '#/components/responses/TooManyTries' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Sign out this browser
+      description: Ends this browser's session, if it has one, and clears the cookie. Always succeeds.
+      security: [{ siteHeader: [] }]
+      responses:
+        '200':
+          description: Signed out.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/ClearCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '403': { $ref: '#/components/responses/NotFromSite' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/auth/logout-all:
+    post:
+      tags: [Auth]
+      operationId: logoutAll
+      summary: Sign out on every device
+      security: [{ session: [], siteHeader: [] }]
+      responses:
+        '200':
+          description: Every session of the player is ended, this one included.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/ClearCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '401': { $ref: '#/components/responses/SignInFirst' }
+        '403': { $ref: '#/components/responses/NotFromSite' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/auth/verify:
+    post:
+      tags: [Auth]
+      operationId: verify
+      summary: Confirm an email address from a mailed link
+      description: |
+        The token comes from a link `/account/#verify=<token>`. It confirms the account's
+        own address, or moves the account to the new address a player asked for
+        (`POST /api/me/email`). Needs no session: the link may be opened on another
+        device. A link works once, for 48 hours. Limited to 20 tries per IP address, then
+        one every 10 s.
+      security: [{ siteHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TokenBody' }
+      responses:
+        '200':
+          description: Confirmed; `email` is the account's address now.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, email]
+                properties:
+                  ok: { type: boolean, const: true }
+                  email: { type: string, format: email }
+        '400': { $ref: '#/components/responses/BadBody' }
+        '403': { $ref: '#/components/responses/NotFromSite' }
+        '409':
+          description: The new address has gained an account of its own since the link was sent.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "That email has an account of its own by now." }
+        '410': { $ref: '#/components/responses/LinkGone' }
+        '429': { $ref: '#/components/responses/TooManyTries' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/auth/resend:
+    post:
+      tags: [Auth]
+      operationId: resend
+      summary: Mail the confirmation link again
+      description: Replaces any earlier unused link. Limited to 3 mails per address, then one every 5 minutes.
+      security: [{ session: [], siteHeader: [] }]
+      responses:
+        '200':
+          description: A new link is on its way.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '400':
+          description: The address is already confirmed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "Your email is already confirmed." }
+        '401': { $ref: '#/components/responses/SignInFirst' }
+        '403': { $ref: '#/components/responses/NotFromSite' }
+        '429': { $ref: '#/components/responses/MailOnItsWay' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/auth/forgot:
+    post:
+      tags: [Auth]
+      operationId: forgot
+      summary: Mail a password-reset link
+      description: |
+        Mails `/account/#reset=<token>`, valid for one hour, when the email has an account.
+        Answers the same either way, so it cannot tell anyone which emails have accounts.
+        Limited per IP address and per email.
+      security: [{ siteHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email]
+              properties:
+                email: { type: string }
+      responses:
+        '200':
+          description: If the email has an account, a link is on its way.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '400': { $ref: '#/components/responses/BadBody' }
+        '403': { $ref: '#/components/responses/NotFromSite' }
+        '429':
+          description: Too many requests from this address or for this email.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "Too many tries. Wait a few minutes and try again." }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/auth/reset:
+    post:
+      tags: [Auth]
+      operationId: reset
+      summary: Set a new password from a mailed link
+      description: |
+        Sets the password, ends every session of the account, and signs this browser in.
+        Opening the link proves the address works, so it also counts as confirming it.
+      security: [{ siteHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token, password]
+              properties:
+                token: { type: string }
+                password: { $ref: '#/components/schemas/Password' }
+      responses:
+        '200':
+          description: Password changed; signed in.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserReply' }
+        '400':
+          description: The password breaks a rule, or the body could not be read.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "A password needs at least 10 characters." }
+        '403': { $ref: '#/components/responses/NotFromSite' }
+        '410': { $ref: '#/components/responses/LinkGone' }
+        '429': { $ref: '#/components/responses/TooManyTries' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ---- Account ----
+
+  /api/me:
+    get:
+      tags: [Account]
+      operationId: me
+      summary: Who is signed in
+      description: Answers 200 for guests too, with `user` null. A session in use is renewed for another 30 days.
+      security: [{}, { session: [] }]
+      responses:
+        '200':
+          description: The signed-in player, or null.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user:
+                    oneOf:
+                      - $ref: '#/components/schemas/User'
+                      - type: 'null'
+        '500': { $ref: '#/components/responses/ServerError' }
+    patch:
+      tags: [Account]
+      operationId: renameMe
+      summary: Change the display name
+      security: [{ session: [], siteHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [displayName]
+              properties:
+                displayName: { $ref: '#/components/schemas/DisplayName' }
+      responses:
+        '200':
+          description: Renamed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserReply' }
+        '400':
+          description: The name breaks a rule, or the body could not be read.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "A display name is 3 to 24 characters long." }
+        '401': { $ref: '#/components/responses/SignInFirst' }
+        '403': { $ref: '#/components/responses/NotFromSite' }
+        '409':
+          description: Another player has that name.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "That display name is taken." }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Account]
+      operationId: deleteMe
+      summary: Delete the account
+      description: |
+        Removes the account with its saves, results and sessions, for good. Progress
+        already in the player's browsers stays there.
+      security: [{ session: [], siteHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PasswordBody' }
+      responses:
+        '200':
+          description: Deleted; this browser is signed out.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/ClearCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '400': { $ref: '#/components/responses/BadBody' }
+        '401': { $ref: '#/components/responses/SignInFirst' }
+        '403': { $ref: '#/components/responses/WrongPassword' }
+        '429': { $ref: '#/components/responses/TooManyTries' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/me/password:
+    post:
+      tags: [Account]
+      operationId: changePassword
+      summary: Change the password
+      description: Every other session of the player ends; this one stays signed in.
+      security: [{ session: [], siteHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [current, password]
+              properties:
+                current: { type: string }
+                password: { $ref: '#/components/schemas/Password' }
+      responses:
+        '200':
+          description: Changed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '400':
+          description: The new password breaks a rule, or the body could not be read.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/SignInFirst' }
+        '403': { $ref: '#/components/responses/WrongPassword' }
+        '429': { $ref: '#/components/responses/TooManyTries' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/me/email:
+    post:
+      tags: [Account]
+      operationId: changeEmail
+      summary: Move the account to another email
+      description: |
+        Mails a confirmation link to the new address; the account moves there when it is
+        opened (`POST /api/auth/verify`). Until then nothing changes.
+      security: [{ session: [], siteHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [password, email]
+              properties:
+                password: { type: string }
+                email: { type: string, format: email, maxLength: 254 }
+      responses:
+        '200':
+          description: The link is on its way.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '400':
+          description: '"That does not look like an email address.", "That is already your email.", or a body that could not be read.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/SignInFirst' }
+        '403': { $ref: '#/components/responses/WrongPassword' }
+        '409':
+          description: The new email already has an account.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "That email already has an account. Sign in, or reset the password." }
+        '429': { $ref: '#/components/responses/MailOnItsWay' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ---- Saves ----
+
+  /api/saves:
+    get:
+      tags: [Saves]
+      operationId: listSaves
+      summary: The player's saves, without their values
+      description: Also lists every key that syncs, so pages need not keep their own list.
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: What the account holds.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [saves, keys]
+                properties:
+                  saves:
+                    type: array
+                    items: { $ref: '#/components/schemas/SaveInfo' }
+                  keys:
+                    type: array
+                    items: { $ref: '#/components/schemas/SaveKey' }
+        '401': { $ref: '#/components/responses/SignInFirst' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/saves/{key}:
+    parameters:
+      - name: key
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/SaveKey' }
+    get:
+      tags: [Saves]
+      operationId: getSave
+      summary: One save with its value
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: The account's copy.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Save' }
+        '401': { $ref: '#/components/responses/SignInFirst' }
+        '404':
+          description: Nothing is saved under that key.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "Nothing is saved under that name." }
+        '500': { $ref: '#/components/responses/ServerError' }
+    put:
+      tags: [Saves]
+      operationId: putSave
+      summary: Write a save
+      description: |
+        Writes the value only when the account's copy is still at `baseRev` (0 when the
+        device has never seen one); the revision then grows by one. Otherwise the answer
+        is 409 with the account's copy, and the player picks: keeping the device's copy is
+        writing again with `baseRev` set to the revision the 409 gave.
+
+        When the key is Chronomancer's save (`chronoguard-v2`), the server also reads its
+        records (`meta.best`, `meta.eternityRecord`, `meta.loop`) and, when one went up,
+        records a result for the Chronomancer boards; that game cannot report its own.
+
+        A value is at most 1 MiB and all of a player's saves together at most 8 MiB.
+        Limited to 60 writes at once per player, then one a second.
+      security: [{ session: [], siteHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [value, baseRev]
+              properties:
+                value:
+                  description: The localStorage value as it is (a string), or null to remove the key everywhere.
+                  type: [string, 'null']
+                  maxLength: 1048576
+                baseRev:
+                  description: The revision this device last had; 0 for none.
+                  type: integer
+                  minimum: 0
+                device:
+                  description: Which browser writes; it later recognises its own writes by it.
+                  type: string
+                  maxLength: 64
+            example: { value: '{"score":1840,"lines":9}', baseRev: 3, device: k2v9q7zt1mlx0c3a }
+      responses:
+        '200':
+          description: Written.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [key, rev]
+                properties:
+                  key: { $ref: '#/components/schemas/SaveKey' }
+                  rev: { type: integer, minimum: 1 }
+        '400':
+          description: '"That is not something Game Nexus saves.", "The device name is too long.", or a body that could not be read.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/SignInFirst' }
+        '403': { $ref: '#/components/responses/NotFromSite' }
+        '409':
+          description: Another device wrote since `baseRev`. The body is the account's copy.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SaveConflict' }
+              example:
+                error: The account has a newer copy of this save.
+                key: games.tetris.best
+                value: '{"score":999,"lines":9}'
+                rev: 4
+                device: x8f2k1pq0ar4n7wd
+        '413':
+          description: The value is over 1 MiB, or the account's saves would be over 8 MiB.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                value: { value: { error: "That save is too big to keep on the server." } }
+                account: { value: { error: "Your saves are using all the room an account has." } }
+        '429':
+          description: Saving too often.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "Saving too often. Wait a moment." }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ---- Runs ----
+
+  /api/runs:
+    post:
+      tags: [Runs]
+      operationId: startRun
+      summary: Start a game and get its run token
+      description: |
+        Call when a game starts. Chronomancer cannot report results (its records come from
+        its save) and is refused. Limited to 30 at once per player, then one every 2 s.
+      security: [{ session: [], siteHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [game]
+              properties:
+                game: { type: string, enum: [tetris, minesweeper, towerdefense, steelspell] }
+      responses:
+        '200':
+          description: The run token.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: { $ref: '#/components/schemas/RunId' }
+        '400':
+          description: The game does not report results, or the body could not be read.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "That game does not report results." }
+        '401': { $ref: '#/components/responses/SignInFirst' }
+        '403': { $ref: '#/components/responses/NotFromSite' }
+        '429':
+          description: Starting games too fast.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "Starting games too fast. Wait a moment." }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/runs/{id}/finish:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/RunId' }
+    post:
+      tags: [Runs]
+      operationId: finishRun
+      summary: Report a finished game
+      description: |
+        Sends the game's result under the token it started with. The stats must match the
+        game the token was issued for: `TetrisStats`, `MinesweeperStats`,
+        `TowerDefenseStats` or `SteelSpellStats`. Each is read strictly (unknown fields are
+        refused) and checked for plausibility; a game also cannot claim to have taken
+        longer than the token has existed, give or take 10 s.
+
+        A token counts once and only for its player, for 7 days. A run saved and continued
+        later (Steel & Spell) keeps its token.
+
+        The answer says where the player now stands on each of the game's boards, all
+        time. Players with an unconfirmed email get an empty list.
+      security: [{ session: [], siteHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [stats]
+              properties:
+                stats:
+                  oneOf:
+                    - $ref: '#/components/schemas/TetrisStats'
+                    - $ref: '#/components/schemas/MinesweeperStats'
+                    - $ref: '#/components/schemas/TowerDefenseStats'
+                    - $ref: '#/components/schemas/SteelSpellStats'
+            examples:
+              tetris:
+                value: { stats: { score: 1840, lines: 9, level: 1, seconds: 96.2 } }
+              minesweeper:
+                value: { stats: { won: true, seconds: 41.5, cols: 16, rows: 16, minePct: 16, mode: noguess, bbbv: 62 } }
+              steelspell:
+                value:
+                  stats:
+                    version: 0.2.3
+                    time: 912.4
+                    level: 31
+                    kills: 4100
+                    elites: 6
+                    merges: 1
+                    active: berserk
+                    activeName: Berserk
+                    start: sword
+                    startName: Sword
+                    health: 340
+                    weapons:
+                      - { id: sword, name: Sword, evo: great, evoName: Greatsword, level: 8, kind: Physical, dealt: 51234 }
+                      - { id: fireball, name: Fireball, evo: '', evoName: '', level: 3, kind: Magic, dealt: 9000 }
+                    items:
+                      - { id: coin, name: Lucky Coin, rarity: grey }
+                    hurt: { touch: 120, shot: 40, strike: 0 }
+                    picks:
+                      - { name: Damage, strong: 5, weak: 2 }
+      responses:
+        '200':
+          description: Counted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [verified, ranks]
+                properties:
+                  verified:
+                    type: boolean
+                    description: False while the player's email is unconfirmed; `ranks` is then empty.
+                  ranks:
+                    type: array
+                    items: { $ref: '#/components/schemas/Rank' }
+              example:
+                verified: true
+                ranks:
+                  - { board: score, title: High score, unit: points, variant: '', rank: 126, value: 1840, isNew: true }
+                  - { board: lines, title: Most lines, unit: lines, variant: '', rank: 133, value: 9, isNew: true }
+        '400':
+          description: '"The game sent results the server cannot accept.", "The game claims to have lasted longer than it has been running.", or a body that could not be read.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/SignInFirst' }
+        '403': { $ref: '#/components/responses/NotFromSite' }
+        '404':
+          description: No such token for this player.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "No such game." }
+        '409':
+          description: The token was already used.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "This game has already been counted." }
+        '410':
+          description: The token is over 7 days old.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "This game started too long ago to count." }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ---- Leaderboards ----
+
+  /api/boards:
+    get:
+      tags: [Leaderboards]
+      operationId: listBoards
+      summary: The games and their boards
+      security: []
+      responses:
+        '200':
+          description: Every game, in menu order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [games]
+                properties:
+                  games:
+                    type: array
+                    items: { $ref: '#/components/schemas/GameInfo' }
+
+  /api/boards/{game}:
+    parameters:
+      - $ref: '#/components/parameters/Game'
+    get:
+      tags: [Leaderboards]
+      operationId: boardOptions
+      summary: What a game's boards can be narrowed by
+      description: |
+        The variants its results have (for Tower Defense, the maps) and the values each
+        board filter can take (Minesweeper modes, Steel & Spell starting weapons), most
+        played first, at most 40 of each.
+      security: []
+      responses:
+        '200':
+          description: The options.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [variants, filters]
+                properties:
+                  variants:
+                    type: array
+                    items: { $ref: '#/components/schemas/Option' }
+                  filters:
+                    description: Keyed by the boards' `filter` field.
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items: { $ref: '#/components/schemas/Option' }
+              example:
+                variants: [{ value: '', results: 450 }]
+                filters:
+                  start:
+                    - { value: sword, label: Sword, results: 41 }
+                    - { value: icearrow, label: Ice Arrow, results: 30 }
+        '404': { $ref: '#/components/responses/NoSuchGame' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/boards/{game}/{board}:
+    parameters:
+      - $ref: '#/components/parameters/Game'
+      - name: board
+        in: path
+        required: true
+        description: A board `id` from `GET /api/boards`.
+        schema: { type: string }
+    get:
+      tags: [Leaderboards]
+      operationId: board
+      summary: One leaderboard
+      description: |
+        Each player once, with their best result by the board's metric (or their number
+        of results, on boards that count). Only players with a confirmed email appear.
+        Players who tie share a rank; the list stops after 100 places. When the asking
+        player is on the board, `me` is their row, which may lie beyond the first 100.
+      security: [{}, { session: [] }]
+      parameters:
+        - name: variant
+          in: query
+          description: For games with variants (those with a `variantTitle`), one of the variants `GET /api/boards/{game}` lists. Empty otherwise.
+          schema: { type: string, default: '' }
+        - name: filter
+          in: query
+          description: A value of the board's `filter` stats key; empty for all.
+          schema: { type: string, default: '' }
+        - name: period
+          in: query
+          description: Only results from the past week or month.
+          schema: { type: string, enum: [all, month, week], default: all }
+      responses:
+        '200':
+          description: The board.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [board, rows, me]
+                properties:
+                  board: { $ref: '#/components/schemas/Board' }
+                  rows:
+                    type: array
+                    maxItems: 100
+                    items: { $ref: '#/components/schemas/BoardRow' }
+                  me:
+                    oneOf:
+                      - $ref: '#/components/schemas/BoardRow'
+                      - type: 'null'
+        '400':
+          description: The period is not all, month or week.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "The period is all, month or week." }
+        '404':
+          description: No such game or board.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                game: { value: { error: "No such game." } }
+                board: { value: { error: "No such leaderboard." } }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/profile/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        description: A display name, matched without regard to case.
+        schema: { type: string }
+    get:
+      tags: [Leaderboards]
+      operationId: profile
+      summary: A player's page
+      description: |
+        Per game played: how many results, how long, and where the player stands on each
+        board in the (at most 3) variants they play most. Players with an unconfirmed
+        email are shown only to themselves.
+      security: [{}, { session: [] }]
+      responses:
+        '200':
+          description: The player.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [displayName, joined, verified, games]
+                properties:
+                  displayName: { type: string }
+                  joined: { type: string, format: date-time }
+                  verified: { type: boolean }
+                  games:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProfileGame' }
+        '404':
+          description: No such player, or one only they may see.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "No player has that name." }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: __Host-nexus
+      description: |
+        Set by signup, login and reset; HttpOnly, SameSite=Lax, 30 days, renewed while in
+        use. Named `__Host-nexus` when the site is served over HTTPS and `nexus` in
+        development over plain HTTP.
+    siteHeader:
+      type: apiKey
+      in: header
+      name: X-Nexus
+      description: Must be `1` on every call other than GET or HEAD.
+
+  headers:
+    SessionCookie:
+      description: The new session, e.g. `__Host-nexus=<token>; Path=/; Expires=...; HttpOnly; Secure; SameSite=Lax`.
+      schema: { type: string }
+    ClearCookie:
+      description: Clears the session cookie (`Max-Age=0`).
+      schema: { type: string }
+
+  parameters:
+    Game:
+      name: game
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/GameId' }
+
+  responses:
+    BadBody:
+      description: The body is not the expected JSON (unknown fields are refused too).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "The request could not be read." }
+    SignInFirst:
+      description: No valid session.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "Sign in first." }
+    NotFromSite:
+      description: '`X-Nexus: 1` is missing, or `Origin` is another site.'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "This request did not come from Game Nexus." }
+    WrongPassword:
+      description: The password given to confirm the change is not the player's.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "That is not your current password." }
+    LinkGone:
+      description: The link is unknown, used, or out of date.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "This link has been used or is out of date. Ask for a new one." }
+    TooManyTries:
+      description: Rate limited.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "Too many tries. Wait a minute and try again." }
+    MailOnItsWay:
+      description: An email to that address went out moments ago.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "An email is already on its way. Wait a few minutes before asking again." }
+    NoSuchGame:
+      description: No such game.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "No such game." }
+    ServerError:
+      description: Something failed on the server; the details are in its log.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "Something went wrong on the server. Try again in a moment." }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string, description: "A message to show the player as it is." }
+    Ok:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean, const: true }
+
+    # ---- Accounts ----
+
+    DisplayName:
+      description: |
+        3 to 24 letters, digits, spaces, dots, dashes and underscores, starting with a
+        letter or digit. Runs of spaces become one. Unique without regard to case.
+      type: string
+      minLength: 3
+      maxLength: 24
+      pattern: '^[\p{L}\p{N}][\p{L}\p{N} ._-]*$'
+    Password:
+      type: string
+      minLength: 10
+      maxLength: 128
+      format: password
+    TokenBody:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: { type: string, description: "The token from the mailed link." }
+    PasswordBody:
+      type: object
+      additionalProperties: false
+      required: [password]
+      properties:
+        password: { type: string }
+    User:
+      type: object
+      required: [id, email, displayName, verified, createdAt]
+      properties:
+        id: { type: integer }
+        email: { type: string, format: email }
+        displayName: { type: string }
+        verified: { type: boolean, description: "The email is confirmed; only then is the player on the boards." }
+        createdAt: { type: string, format: date-time }
+    UserReply:
+      type: object
+      required: [user]
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+
+    # ---- Saves ----
+
+    SaveKey:
+      description: A localStorage key that syncs. The list is in `internal/games` and `web/lib/sync.js`.
+      type: string
+      enum:
+        - games.scheme
+        - games.mode
+        - games.tetris.best
+        - games.minesweeper.size
+        - games.minesweeper.minePct
+        - games.minesweeper.mode
+        - games.towerdefense.best
+        - games.towerdefense.map
+        - chronoguard-v2
+        - games.steelspell.save
+        - games.steelspell.records
+        - games.steelspell.meta
+        - games.steelspell.last
+        - games.steelspell.best
+    SaveInfo:
+      type: object
+      required: [key, rev, removed, device, updatedAt]
+      properties:
+        key: { $ref: '#/components/schemas/SaveKey' }
+        rev: { type: integer, minimum: 1 }
+        removed: { type: boolean, description: "The key was removed; kept so the removal reaches other devices." }
+        device: { type: string, description: "The browser that wrote it last; empty when unknown." }
+        updatedAt: { type: string, format: date-time }
+    Save:
+      type: object
+      required: [key, value, rev, device]
+      properties:
+        key: { $ref: '#/components/schemas/SaveKey' }
+        value: { type: [string, 'null'], description: "The localStorage value; null when removed." }
+        rev: { type: integer, minimum: 1 }
+        device: { type: string }
+    SaveConflict:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - $ref: '#/components/schemas/Save'
+
+    # ---- Runs ----
+
+    RunId:
+      type: string
+      format: uuid
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    Rank:
+      type: object
+      required: [board, title, unit, variant, rank, value, isNew]
+      properties:
+        board: { type: string }
+        title: { type: string }
+        unit: { $ref: '#/components/schemas/Unit' }
+        variant: { type: string }
+        rank: { type: integer, minimum: 1 }
+        value: { type: number }
+        isNew: { type: boolean, description: "This game set the player's best on the board." }
+
+    TetrisStats:
+      title: Tetris
+      description: |
+        `level` must equal `floor(lines / 10) + 1`, and the score cannot pass what a game
+        of that many lines can earn. A game with lines cannot be faster than 0.25 s a line.
+      type: object
+      additionalProperties: false
+      required: [score, lines, level, seconds]
+      properties:
+        score: { type: integer, minimum: 0 }
+        lines: { type: integer, minimum: 0, maximum: 100000 }
+        level: { type: integer, minimum: 1 }
+        seconds: { type: number, minimum: 0, maximum: 604800 }
+
+    MinesweeperStats:
+      title: Minesweeper
+      description: |
+        A win needs `bbbv` (the board's 3BV: the fewest clicks that clear it), between 1
+        and the number of safe cells, and at least 1 s. The server works out
+        `speed = bbbv / seconds`, at most 20, which the Fastest solver board ranks by. A
+        loss sends no `bbbv`.
+      type: object
+      additionalProperties: false
+      required: [won, seconds, cols, rows, minePct, mode]
+      properties:
+        won: { type: boolean }
+        seconds: { type: number, minimum: 0, maximum: 604800 }
+        cols: { type: integer, minimum: 8, maximum: 30 }
+        rows: { type: integer, minimum: 8, maximum: 24 }
+        minePct: { type: integer, minimum: 10, maximum: 30 }
+        mode: { type: string, enum: [classic, noguess, forgiving] }
+        bbbv: { type: integer, minimum: 0 }
+        speed: { type: number, readOnly: true, description: "Worked out by the server; a sent value is replaced." }
+
+    TowerDefenseStats:
+      title: Tower Defense
+      description: |
+        Lives and waves are bounded by the map: switchback 20 lives and 10 waves, fork 20
+        and 12, spiral 15 and 12, crossfire 15 and 15. A win is on the last wave with a
+        life left; a loss has 0 lives. Each wave takes at least 3 s.
+      type: object
+      additionalProperties: false
+      required: [map, won, lives, wave, seconds]
+      properties:
+        map: { type: string, enum: [switchback, fork, spiral, crossfire] }
+        won: { type: boolean }
+        lives: { type: integer, minimum: 0, maximum: 20 }
+        wave: { type: integer, minimum: 1, maximum: 15 }
+        seconds: { type: number, minimum: 0, maximum: 604800 }
+
+    SteelSpellStats:
+      title: Steel & Spell
+      description: |
+        Most of the end screen, with the names the game used at that balance version, so
+        the leaderboard can show the build without the game's data. Kills are at most
+        5000 and elites 20 a minute. Runs of every version share one list.
+      type: object
+      additionalProperties: false
+      required: [version, time, level, kills, elites, merges, active, activeName, start, startName, health, weapons, items, hurt, picks]
+      properties:
+        version: { type: string, pattern: '^\d{1,3}\.\d{1,3}(\.\d{1,3})?$', examples: [0.2.3] }
+        time: { type: number, minimum: 0, maximum: 604800, description: "Seconds survived." }
+        level: { type: integer, minimum: 1, maximum: 1000 }
+        kills: { type: integer, minimum: 0 }
+        elites: { type: integer, minimum: 0 }
+        merges: { type: integer, minimum: 0, maximum: 100 }
+        active: { $ref: '#/components/schemas/GameItemId' }
+        activeName: { $ref: '#/components/schemas/GameName' }
+        start: { $ref: '#/components/schemas/GameItemId' }
+        startName: { $ref: '#/components/schemas/GameName' }
+        health: { type: integer, minimum: 1, maximum: 1000000 }
+        weapons:
+          type: array
+          maxItems: 30
+          items: { $ref: '#/components/schemas/SteelSpellWeapon' }
+        items:
+          type: array
+          maxItems: 60
+          items: { $ref: '#/components/schemas/SteelSpellItem' }
+        hurt:
+          type: object
+          additionalProperties: false
+          required: [touch, shot, strike]
+          properties:
+            touch: { $ref: '#/components/schemas/Amount' }
+            shot: { $ref: '#/components/schemas/Amount' }
+            strike: { $ref: '#/components/schemas/Amount' }
+        picks:
+          type: array
+          maxItems: 30
+          items: { $ref: '#/components/schemas/SteelSpellPick' }
+    SteelSpellWeapon:
+      type: object
+      additionalProperties: false
+      required: [id, name, evo, evoName, level, kind, dealt]
+      properties:
+        id: { $ref: '#/components/schemas/GameItemId' }
+        name: { $ref: '#/components/schemas/GameName' }
+        evo: { type: string, description: "The evolution's id, or empty until the weapon evolves." }
+        evoName: { type: string, description: "The evolution's name; set exactly when `evo` is." }
+        level: { type: integer, minimum: 0, maximum: 50, description: "0 for merged weapons, which have no levels." }
+        kind: { $ref: '#/components/schemas/GameName' }
+        dealt: { $ref: '#/components/schemas/Amount' }
+    SteelSpellItem:
+      type: object
+      additionalProperties: false
+      required: [id, name, rarity]
+      properties:
+        id: { $ref: '#/components/schemas/GameItemId' }
+        name: { $ref: '#/components/schemas/GameName' }
+        rarity: { type: string, enum: [grey, blue, purple, legendary] }
+    SteelSpellPick:
+      type: object
+      additionalProperties: false
+      required: [name, strong, weak]
+      properties:
+        name: { $ref: '#/components/schemas/GameName' }
+        strong: { type: integer, minimum: 0, maximum: 50 }
+        weak: { type: integer, minimum: 0, maximum: 500 }
+
+    ChronomancerStats:
+      title: Chronomancer
+      description: |
+        Not sent by the game: the server reads it from the `meta` of the `chronoguard-v2`
+        save and stores it when a record went up. It appears as `stats` on Chronomancer
+        board rows.
+      type: object
+      required: [best, eternityRecord, loop]
+      properties:
+        best: { type: number, minimum: 0, maximum: 10000, description: "The furthest wave reached." }
+        eternityRecord: { type: number, minimum: 0, maximum: 1000000000, description: "The whole shard pool ever earned." }
+        loop: { type: number, minimum: 0, maximum: 100000, description: "The time loop the player is in." }
+
+    GameItemId:
+      description: An id from a game's data (a weapon, item, skill, evolution).
+      type: string
+      pattern: '^[a-z0-9][a-z0-9_:.-]{0,47}$'
+    GameName:
+      description: A display name from a game's data.
+      type: string
+      pattern: '^[\p{L}\p{N} &''.,()-]{1,80}$'
+    Amount:
+      type: number
+      minimum: 0
+      maximum: 1000000000000
+
+    # ---- Leaderboards ----
+
+    GameId:
+      type: string
+      enum: [tetris, minesweeper, towerdefense, chronomancer, steelspell]
+    Unit:
+      description: How a board's value reads. `seconds` as a time, `speed` as clicks a second, the rest as counts.
+      type: string
+      enum: [points, lines, seconds, speed, wins, lives, waves, shards, loops, kills]
+    Board:
+      type: object
+      required: [id, title, metric, unit, desc, onlyWon, count]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        metric: { type: string, description: "The stats key ranked by; empty on boards that count results." }
+        unit: { $ref: '#/components/schemas/Unit' }
+        desc: { type: boolean, description: "Higher is better." }
+        onlyWon: { type: boolean, description: "Only won games count." }
+        count: { type: boolean, description: "Ranks by number of results instead of the best one." }
+        filter: { type: string, description: "A stats key the board can be narrowed by." }
+        filterLabel: { type: string, description: "A stats key holding a display name for each filter value." }
+        filterTitle: { type: string, description: "What the filter is called on the page." }
+    GameInfo:
+      type: object
+      required: [id, name, boards]
+      properties:
+        id: { $ref: '#/components/schemas/GameId' }
+        name: { type: string }
+        variantTitle:
+          type: string
+          description: What the variant is called ("Map"); absent when the game has one set of boards.
+        boards:
+          type: array
+          items: { $ref: '#/components/schemas/Board' }
+    Option:
+      type: object
+      required: [value, results]
+      properties:
+        value: { type: string }
+        label: { type: string, description: "A name to show for the value, when the game sends one." }
+        results: { type: integer }
+    BoardRow:
+      type: object
+      required: [rank, displayName, value, at, me]
+      properties:
+        rank: { type: integer, minimum: 1, description: "Players who tie share a rank." }
+        displayName: { type: string }
+        value: { type: number, description: "The best by the board's metric, or the number of results." }
+        at: { type: string, format: date-time, description: "When that result came in (the latest, on boards that count)." }
+        me: { type: boolean, description: "This is the asking player's row." }
+        stats:
+          description: What the game reported for that result. Absent on boards that count results.
+          oneOf:
+            - $ref: '#/components/schemas/TetrisStats'
+            - $ref: '#/components/schemas/MinesweeperStats'
+            - $ref: '#/components/schemas/TowerDefenseStats'
+            - $ref: '#/components/schemas/SteelSpellStats'
+            - $ref: '#/components/schemas/ChronomancerStats'
+      example:
+        rank: 1
+        displayName: QuietBeacon
+        value: 290245
+        at: '2026-11-10T18:22:04Z'
+        me: false
+        stats: { score: 290245, lines: 171, level: 18, seconds: 612.4 }
+    ProfileGame:
+      type: object
+      required: [id, name, played, seconds, last, boards]
+      properties:
+        id: { $ref: '#/components/schemas/GameId' }
+        name: { type: string }
+        played: { type: integer, minimum: 1 }
+        seconds: { type: number, description: "Time over all results that report one." }
+        last: { type: string, format: date-time }
+        boards:
+          type: array
+          items: { $ref: '#/components/schemas/ProfileBoard' }
+    ProfileBoard:
+      type: object
+      required: [board, title, unit, variant, value, rank]
+      properties:
+        board: { type: string }
+        title: { type: string }
+        unit: { $ref: '#/components/schemas/Unit' }
+        variant: { type: string }
+        value: { type: number }
+        rank: { type: integer, minimum: 1 }

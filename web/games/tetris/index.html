@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tetris</title>
+  <link rel="stylesheet" href="../../lib/theme.css">
+  <script src="../../lib/theme.js"></script>
+  <script src="../../lib/api.js"></script>
+  <script src="../../lib/sync.js" data-game="tetris"></script>
+  <script src="../../lib/account.js"></script>
+  <style>
+    .tetris-layout {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 32px;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    #board {
+      display: block;
+      box-sizing: content-box; /* the border must not eat into the 300px of drawing */
+      width: 300px;
+      height: auto;
+      max-width: 100%;
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+    }
+    .side {
+      width: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    #next {
+      display: block;
+      box-sizing: content-box;
+      width: 120px;
+      height: 120px;
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+    }
+    .keys {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      line-height: 2;
+      font-size: 13px;
+    }
+    .keys .label { display: inline-block; width: 92px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="app-header">
+      <div>
+        <a class="back-link" href="../../index.html">&larr; Game Nexus</a>
+        <h1 class="app-title">Tetris</h1>
+      </div>
+      <div class="theme-controls"></div>
+    </header>
+
+    <main class="tetris-layout">
+      <canvas id="board" width="300" height="600"></canvas>
+
+      <aside class="side">
+        <section>
+          <h2 class="section-title">Next</h2>
+          <canvas id="next" width="120" height="120"></canvas>
+        </section>
+
+        <section>
+          <div class="row"><span class="label">Score</span><span class="figure" id="score">0</span></div>
+          <div class="row"><span class="label">Lines</span><span class="figure" id="lines">0</span></div>
+          <div class="row"><span class="label">Level</span><span class="figure" id="level">1</span></div>
+          <div class="row"><span class="label">Best</span><span class="figure" id="best">0</span></div>
+        </section>
+
+        <section>
+          <h2 class="section-title">Controls</h2>
+          <ul class="keys">
+            <li><span class="label">Move</span><kbd>&larr;</kbd> <kbd>&rarr;</kbd></li>
+            <li><span class="label">Rotate right</span><kbd>&uarr;</kbd> <kbd>X</kbd></li>
+            <li><span class="label">Rotate left</span><kbd>Z</kbd></li>
+            <li><span class="label">Soft drop</span><kbd>&darr;</kbd></li>
+            <li><span class="label">Hard drop</span><kbd>Space</kbd></li>
+            <li><span class="label">Pause</span><kbd>P</kbd></li>
+            <li><span class="label">Start</span><kbd>Enter</kbd></li>
+          </ul>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script src="tetris.js"></script>
+</body>
+</html>

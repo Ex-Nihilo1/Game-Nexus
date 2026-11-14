@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minesweeper</title>
+  <link rel="stylesheet" href="../../lib/theme.css">
+  <script src="../../lib/theme.js"></script>
+  <script src="../../lib/api.js"></script>
+  <script src="../../lib/sync.js" data-game="minesweeper"></script>
+  <script src="../../lib/account.js"></script>
+  <style>
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 16px 36px;
+      margin-bottom: 12px;
+    }
+    .modes {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .mode-note { margin: 0; max-width: 520px; color: var(--ink-muted); font: 13px var(--font-condensed); }
+    .tabs { align-items: center; }
+    .hud {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 18px;
+    }
+    .hud .figure { display: inline-block; min-width: 34px; margin-left: 6px; }
+    #result:empty { display: none; }
+
+    /* Board settings: a caption, then its control */
+    .setting { display: inline-flex; align-items: center; gap: 10px; }
+    .setting + .setting { padding-left: 18px; border-left: 1px solid var(--rule); }
+    .setting-label {
+      font: 11px var(--font-condensed);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+    }
+    .setting .figure { margin-left: 0; min-width: 22px; }
+    .setting input[type="range"] { width: 120px; margin: 0; accent-color: var(--ink); cursor: pointer; }
+    .setting input[type="range"]:disabled { opacity: .35; cursor: default; }
+
+    .field-wrap { overflow-x: auto; padding-bottom: 8px; }
+    .field {
+      --cell: 28px;
+      display: grid;
+      width: max-content;
+      margin: 0 auto;
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      background: var(--paper);
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    .cell {
+      position: relative;
+      width: var(--cell);
+      height: var(--cell);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 1px solid var(--grid-major);
+      border-bottom: 1px solid var(--grid-major);
+      font: 600 15px var(--font-text);
+      cursor: pointer;
+    }
+    /* Unopened: raised desk-colored tile with a rule outline */
+    .cell.closed {
+      background: var(--desk);
+      box-shadow: inset 0 0 0 1px var(--rule), inset 2px 2px 0 var(--paper);
+    }
+    .cell.closed:hover { background: var(--hover); }
+    .field.done .cell { cursor: default; }
+    .field.done .cell.closed:hover { background: var(--desk); }
+
+    .n1 { color: var(--blue-pen); }
+    .n2 { color: var(--green-ink); }
+    .n3 { color: var(--red-pencil); }
+    .n4 { color: var(--violet); }
+    .n5 { color: var(--orange-pen); }
+    .n6 { color: var(--highlighter); }
+    .n7 { color: var(--ink); }
+    .n8 { color: var(--ink-muted); }
+
+    /* Flag: ink pole with a red-pencil pennant */
+    .flag::before {
+      content: '';
+      position: absolute;
+      left: 11px; top: 6px;
+      width: 1.5px; height: 16px;
+      background: var(--ink);
+    }
+    .flag::after {
+      content: '';
+      position: absolute;
+      left: 12px; top: 6px;
+      width: 9px; height: 8px;
+      background: var(--red-pencil);
+      clip-path: polygon(0 0, 100% 50%, 0 100%);
+    }
+
+    /* Mine: ink dot with four spikes */
+    .mine::after {
+      content: '';
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--ink);
+      box-shadow: 0 -5px 0 -3px var(--ink), 0 5px 0 -3px var(--ink),
+                  -5px 0 0 -3px var(--ink), 5px 0 0 -3px var(--ink);
+    }
+    .mine.hit { background: var(--red-pencil); }
+    .mine.hit::after { background: var(--paper); box-shadow: none; }
+
+    /* A flag that was not on a mine: crossed out in red pencil */
+    .wrong::before { opacity: .45; }
+    .wrong::after { opacity: .45; }
+    .cell.closed.wrong {
+      background-image:
+        linear-gradient(45deg, transparent 46%, var(--red-pencil) 46%, var(--red-pencil) 54%, transparent 54%),
+        linear-gradient(-45deg, transparent 46%, var(--red-pencil) 46%, var(--red-pencil) 54%, transparent 54%);
+    }
+
+    .hint { margin-top: 12px; text-align: center; color: var(--ink-muted); font: 13px var(--font-condensed); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="app-header">
+      <div>
+        <a class="back-link" href="../../index.html">&larr; Game Nexus</a>
+        <h1 class="app-title">Minesweeper</h1>
+        <div class="app-status" id="status"></div>
+      </div>
+      <div class="theme-controls"></div>
+    </header>
+
+    <main>
+      <div class="toolbar">
+        <div class="hud">
+          <label class="setting">
+            <span class="setting-label">Width</span>
+            <input type="range" id="width" min="8" max="30" step="1">
+            <span class="figure" id="width-value"></span>
+          </label>
+          <label class="setting">
+            <span class="setting-label">Height</span>
+            <input type="range" id="height" min="8" max="24" step="1">
+            <span class="figure" id="height-value"></span>
+          </label>
+          <label class="setting">
+            <span class="setting-label">Mines</span>
+            <input type="range" id="mine-pct" min="10" max="30" step="1">
+            <span class="figure" id="mine-pct-value"></span>
+          </label>
+        </div>
+        <div class="hud">
+          <span><span class="label">Mines</span><span class="figure" id="mines-left">0</span></span>
+          <span><span class="label">Time</span><span class="figure" id="time">0</span></span>
+          <span class="stamp" id="result"></span>
+          <button id="flag-mode" aria-pressed="false" title="Clicks place flags (for touch screens)">Flag mode</button>
+          <button class="primary" id="new-game">New game</button>
+        </div>
+      </div>
+
+      <div class="modes">
+        <div class="tabs" role="tablist" id="modes" aria-label="Mode"></div>
+        <p class="mode-note" id="mode-note"></p>
+      </div>
+
+      <div class="field-wrap">
+        <div class="field" id="field"></div>
+      </div>
+      <p class="hint">Click to open &middot; right-click to flag &middot; click a number with all its flags placed to open around it.</p>
+    </main>
+  </div>
+
+  <script src="minesweeper.js"></script>
+</body>
+</html>
