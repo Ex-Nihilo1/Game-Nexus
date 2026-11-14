@@ -336,7 +336,6 @@ func (s *Server) resend(w http.ResponseWriter, r *http.Request) {
 	ok(w)
 }
 
-// forgot always says the same, so it cannot tell anyone which emails have accounts.
 func (s *Server) forgot(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email string `json:"email"`
@@ -370,8 +369,6 @@ func (s *Server) forgot(w http.ResponseWriter, r *http.Request) {
 	ok(w)
 }
 
-// reset sets a new password from a mailed link, signs out every other browser and
-// signs this one in. Opening the link also proves the address works.
 func (s *Server) reset(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Token    string `json:"token"`
@@ -430,7 +427,7 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 		failInternal(w, "me", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"user": u}) // null for guests
+	writeJSON(w, http.StatusOK, map[string]any{"user": u})
 }
 
 func (s *Server) renameMe(w http.ResponseWriter, r *http.Request) {
@@ -480,7 +477,6 @@ func (s *Server) checkOwnPassword(w http.ResponseWriter, r *http.Request, u *Use
 	return true
 }
 
-// changePassword signs out every other browser.
 func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 	u := s.requireUser(w, r)
 	if u == nil {
@@ -520,7 +516,6 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 	ok(w)
 }
 
-// changeEmail mails a link to the new address; the account moves when it is opened.
 func (s *Server) changeEmail(w http.ResponseWriter, r *http.Request) {
 	u := s.requireUser(w, r)
 	if u == nil {
@@ -562,7 +557,6 @@ func (s *Server) changeEmail(w http.ResponseWriter, r *http.Request) {
 	ok(w)
 }
 
-// deleteMe removes the account with its saves, results and sessions.
 func (s *Server) deleteMe(w http.ResponseWriter, r *http.Request) {
 	u := s.requireUser(w, r)
 	if u == nil {

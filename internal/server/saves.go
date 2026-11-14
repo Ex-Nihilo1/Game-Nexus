@@ -19,10 +19,6 @@ const (
 	maxSaveTotal = 8 << 20 // all of a player's saves together
 )
 
-// Saves are localStorage values, synced key by key. Every write names the revision
-// it was based on; when another device wrote in between, the write is refused with
-// the account's copy so the player can choose.
-
 type saveInfo struct {
 	Key       string    `json:"key"`
 	Rev       int64     `json:"rev"`
@@ -54,7 +50,7 @@ func (s *Server) listSaves(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"saves": orEmpty(list), "keys": allSaveKeys()})
 }
 
-// allSaveKeys is every key that syncs, so pages need not keep their own list.
+// allSaveKeys is every key that syncs.
 func allSaveKeys() []string {
 	keys := append([]string{}, games.SharedKeys...)
 	for _, g := range games.All {

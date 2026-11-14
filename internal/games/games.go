@@ -23,7 +23,7 @@ type Game struct {
 	// when the game has a single set of boards.
 	VariantTitle string
 
-	// Check validates the stats a game sends when it ends (POST /api/runs/{id}/finish).
+	// Check validates the stats a game sends when it ends.
 	// Nil for games that cannot call the API.
 	Check func(raw json.RawMessage) (Outcome, error)
 

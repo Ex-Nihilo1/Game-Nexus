@@ -1,5 +1,4 @@
-// Package server is the HTTP side of Game Nexus: the JSON API under /api and the
-// game files for everything else.
+// Package server is the HTTP side of Game Nexus: the API and the game files.
 package server
 
 import (
@@ -105,10 +104,7 @@ func (s *Server) Handler() http.Handler {
 	return s.guard(mux)
 }
 
-// guard adds the headers every response gets, and turns away API calls that change
-// something unless they come from this site's own pages: those always send
-// X-Nexus: 1, which a form or a page on another site cannot do without the
-// browser asking first, and a matching Origin when the browser sends one.
+// guard adds the headers every response gets and the same-site check on changes.
 func (s *Server) guard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()

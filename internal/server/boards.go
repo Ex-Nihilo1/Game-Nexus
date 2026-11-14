@@ -37,8 +37,6 @@ type option struct {
 	Results int64  `json:"results"`
 }
 
-// boardOptions lists the variants a game's results have (most played first) and
-// the values its boards can be filtered by.
 func (s *Server) boardOptions(w http.ResponseWriter, r *http.Request) {
 	g := games.Get(r.PathValue("game"))
 	if g == nil {
@@ -266,9 +264,6 @@ type profileGame struct {
 	Boards  []profileBoard `json:"boards"`
 }
 
-// profile shows a player's games: how many, how long, and where they stand on each
-// board in the variants they play most. Players with an unconfirmed email are only
-// shown to themselves.
 func (s *Server) profile(w http.ResponseWriter, r *http.Request) {
 	viewer, err := s.currentUser(w, r)
 	if err != nil {

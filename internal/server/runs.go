@@ -20,9 +20,6 @@ const (
 
 var uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
-// startRun hands out a run token when a game starts. Only a game that began with
-// one can reach the leaderboards, and it cannot claim to have lasted longer than
-// the token has existed.
 func (s *Server) startRun(w http.ResponseWriter, r *http.Request) {
 	u := s.requireUser(w, r)
 	if u == nil {
@@ -142,8 +139,6 @@ func (s *Server) finishRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Where the player now stands on each of the game's boards (all time). Players
-	// with an unconfirmed email are not on the boards yet.
 	ranks := []rankInfo{}
 	if u.Verified {
 		for _, b := range g.Boards {

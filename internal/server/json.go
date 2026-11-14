@@ -33,7 +33,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	json.NewEncoder(w).Encode(v)
 }
 
-// fail answers with {"error": message}. Messages are shown to players as they are.
+// fail answers with an error. Players see the message as it is, so write it for them.
 func fail(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
 }

@@ -1,15 +1,6 @@
-// The Game Nexus API, for every page: who is signed in, and reporting finished games.
-// Load it after theme.js. Everything here does nothing for guests or when the page
-// is opened from a file, so the games work exactly as before without an account.
-//
-//   Nexus.call(method, path, body)  -> { ok, status, data }   (path is under /api/)
-//   Nexus.user()                    -> the signed-in user, or null
-//   Nexus.userReady                 -> a promise of the same
-//   Nexus.startRun(game)            when a game starts
-//   Nexus.finishRun(stats)          when it ends; resolves to the server's answer or null
-//   Nexus.runId() / resumeRun(game, id)   for games saved mid-run
-//   Nexus.rankLines(answer)         short lines for an end screen
-//   Nexus.root                      the site's root URL, for links
+// The pages' link to the server: who is signed in, and reporting finished games.
+// Load it after theme.js. It does nothing for guests or when the page is opened
+// from a file, so the games work exactly as before without an account.
 
 const Nexus = (function () {
   const root = new URL('../', document.currentScript.src).href;
