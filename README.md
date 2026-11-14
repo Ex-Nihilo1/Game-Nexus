@@ -12,6 +12,7 @@ progress stays in the browser and moves into an account on the first sign-in.
 | `web/` | The site: the menu, `account/`, `leaderboards/`, `games/<id>/` |
 | `web/lib/` | Shared by every page: `theme.*`, `api.js` (API client, run reports), `sync.js` (save sync), `account.js` (header menu) |
 | `cmd/nexus/` | The server |
+| `api/openapi.yaml` | The API, described in OpenAPI 3.1; a test keeps its routes in step with the server |
 | `internal/games/` | Per game: which localStorage keys sync, what a finished game reports, its leaderboards |
 | `internal/server/` | The HTTP API and the static files |
 | `internal/db/migrations/` | The schema, applied when the server starts |
