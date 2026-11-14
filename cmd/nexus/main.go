@@ -2,14 +2,16 @@
 //
 // Everything is configured through the environment:
 //
-//	NEXUS_LISTEN         address to listen on (default 127.0.0.1:8080)
-//	NEXUS_DATABASE_URL   PostgreSQL connection (default: unix socket, database game-nexus)
-//	NEXUS_WEB_ROOT       folder with the game files (default web)
-//	NEXUS_BASE_URL       public address, e.g. https://games.example.com (empty in development)
-//	NEXUS_TRUST_PROXY    1 behind a reverse proxy that sets X-Real-IP
-//	NEXUS_SMTP_HOST      mail server; unset, mail is written to the log instead
-//	NEXUS_SMTP_PORT      465 (TLS) or 587 (STARTTLS, the default)
-//	NEXUS_SMTP_USERNAME, NEXUS_SMTP_PASSWORD, NEXUS_SMTP_FROM
+//	NEXUS_LISTEN                address to listen on (default 127.0.0.1:8080)
+//	NEXUS_DATABASE_URL          PostgreSQL connection (default: unix socket, database game-nexus)
+//	NEXUS_WEB_ROOT              folder with the game files (default web)
+//	NEXUS_BASE_URL              public address, e.g. https://games.example.com (empty in development)
+//	NEXUS_TRUST_PROXY           1 behind a reverse proxy that sets X-Real-IP
+//	NEXUS_GOOGLE_CLIENT_ID      the Google OAuth client players sign in with
+//	NEXUS_GOOGLE_CLIENT_SECRET  its secret
+//	NEXUS_GOOGLE_AUTH_URL, NEXUS_GOOGLE_TOKEN_URL, NEXUS_GOOGLE_ISSUER
+//	                            other endpoints than Google's, for cmd/fake-google in
+//	                            development; refused when NEXUS_BASE_URL is https
 package main
 
 import (
@@ -19,12 +21,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
 	"game-nexus/internal/db"
-	"game-nexus/internal/mail"
 	"game-nexus/internal/server"
 )
 
@@ -38,6 +39,28 @@ func env(key, fallback string) string {
 func main() {
 	log.SetFlags(0) // journald adds the time
 
+	cfg := server.Config{
+		BaseURL:    os.Getenv("NEXUS_BASE_URL"),
+		WebRoot:    env("NEXUS_WEB_ROOT", "web"),
+		TrustProxy: os.Getenv("NEXUS_TRUST_PROXY") == "1",
+		Google: server.Google{
+			ClientID:     os.Getenv("NEXUS_GOOGLE_CLIENT_ID"),
+			ClientSecret: os.Getenv("NEXUS_GOOGLE_CLIENT_SECRET"),
+			AuthURL:      os.Getenv("NEXUS_GOOGLE_AUTH_URL"),
+			TokenURL:     os.Getenv("NEXUS_GOOGLE_TOKEN_URL"),
+			Issuer:       os.Getenv("NEXUS_GOOGLE_ISSUER"),
+		},
+	}
+	if cfg.Google.Custom() && strings.HasPrefix(cfg.BaseURL, "https://") {
+		log.Fatal("NEXUS_GOOGLE_AUTH_URL, NEXUS_GOOGLE_TOKEN_URL and NEXUS_GOOGLE_ISSUER are for development; " +
+			"a public site (NEXUS_BASE_URL https://...) signs in with Google itself")
+	}
+	if cfg.Google.ClientID == "" {
+		log.Print("NEXUS_GOOGLE_CLIENT_ID is not set: nobody can sign in")
+	} else if cfg.Google.Custom() {
+		log.Printf("signing in through %s, not Google: development only", cfg.Google.AuthURL)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -47,20 +70,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	port, _ := strconv.Atoi(env("NEXUS_SMTP_PORT", "587"))
-	mailer := mail.New(mail.Config{
-		Host:     os.Getenv("NEXUS_SMTP_HOST"),
-		Port:     port,
-		Username: os.Getenv("NEXUS_SMTP_USERNAME"),
-		Password: os.Getenv("NEXUS_SMTP_PASSWORD"),
-		From:     env("NEXUS_SMTP_FROM", "Game Nexus <games@localhost>"),
-	})
-
-	srv := server.New(server.Config{
-		BaseURL:    os.Getenv("NEXUS_BASE_URL"),
-		WebRoot:    env("NEXUS_WEB_ROOT", "web"),
-		TrustProxy: os.Getenv("NEXUS_TRUST_PROXY") == "1",
-	}, pool, mailer)
+	srv := server.New(cfg, pool)
 
 	go func() {
 		srv.Cleanup(ctx)

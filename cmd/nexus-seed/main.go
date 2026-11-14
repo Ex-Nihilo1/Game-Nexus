@@ -8,11 +8,12 @@
 //
 //	-players 220   how many players to make
 //	-seed 1        the same seed always makes the same players
-//	-reset         first delete the players an earlier run made (emails @seed.invalid)
+//	-reset         first delete the players an earlier run made (account ids seed:...)
 //	-force         run against a database that is not on this machine
 //
 // `-reset -players 0` removes the made-up players and leaves the database as it was.
-// Every made-up player signs in with the password "seed-player-pass".
+// In development, sign in as one of them by typing its account id, e.g. seed:042,
+// into the fake Google page (cmd/fake-google).
 package main
 
 import (
@@ -28,12 +29,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"game-nexus/internal/auth"
 	"game-nexus/internal/db"
 	"game-nexus/internal/games"
 )
-
-const password = "seed-player-pass"
 
 func main() {
 	log.SetFlags(0)
@@ -63,7 +61,7 @@ func main() {
 	defer pool.Close()
 
 	if *reset {
-		tag, err := pool.Exec(ctx, `DELETE FROM users WHERE email LIKE '%@seed.invalid'`)
+		tag, err := pool.Exec(ctx, `DELETE FROM users WHERE google_sub LIKE 'seed:%'`)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -73,32 +71,28 @@ func main() {
 		return
 	}
 	var existing int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM users WHERE email LIKE '%@seed.invalid'`).Scan(&existing); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM users WHERE google_sub LIKE 'seed:%'`).Scan(&existing); err != nil {
 		log.Fatal(err)
 	}
 	if existing > 0 {
 		log.Fatalf("There are already %d made-up players. Add -reset to replace them.", existing)
 	}
 
-	hash, err := auth.HashPassword(password)
-	if err != nil {
-		log.Fatal(err)
-	}
 	players := generate(*seed, *count, time.Now())
 	perGame := map[string]int{}
 	skipped := 0
 
 	err = pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		for _, p := range players {
-			var verifiedAt *time.Time
-			if p.verified {
-				verifiedAt = &p.joined
+			var name *string
+			if p.named {
+				name = &p.name
 			}
 			var id int64
 			if err := tx.QueryRow(ctx,
-				`INSERT INTO users (email, display_name, password_hash, email_verified_at, created_at)
-				 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-				p.email, p.name, hash, verifiedAt, p.joined).Scan(&id); err != nil {
+				`INSERT INTO users (google_sub, display_name, created_at)
+				 VALUES ($1, $2, $3) RETURNING id`,
+				p.googleID, name, p.joined).Scan(&id); err != nil {
 				return fmt.Errorf("player %s: %w", p.name, err)
 			}
 			batch := &pgx.Batch{}
@@ -124,13 +118,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	verified := 0
+	named := 0
 	for _, p := range players {
-		if p.verified {
-			verified++
+		if p.named {
+			named++
 		}
 	}
-	fmt.Printf("Made %d players (%d with a confirmed email, so on the boards).\n", len(players), verified)
+	fmt.Printf("Made %d players (%d with a display name, so on the boards).\n", len(players), named)
 	ids := make([]string, 0, len(perGame))
 	for id := range perGame {
 		ids = append(ids, id)
@@ -142,7 +136,8 @@ func main() {
 	if skipped > 0 {
 		fmt.Printf("  (%d made-up results did not pass the game's checks and were left out)\n", skipped)
 	}
-	fmt.Printf("They all sign in with the password %q. Remove them with -reset -players 0.\n", password)
+	fmt.Printf("Sign in as one by typing its account id (seed:001 to seed:%03d) on the fake Google page.\n"+
+		"Remove them with -reset -players 0.\n", len(players))
 }
 
 // outcome runs a made-up result through the game's own checks, as the server does.

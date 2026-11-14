@@ -115,7 +115,7 @@ const Nexus = (function () {
   // reminder to confirm the email. Empty for guests.
   function rankLines(answer) {
     if (!answer) return [];
-    if (!answer.verified) return ['Confirm your email to appear on the leaderboards.'];
+    if (!answer.named) return ['Choose a display name to appear on the leaderboards.'];
     return (answer.ranks || []).map(r =>
       `${r.isNew ? 'New best: ' : ''}#${r.rank} on ${r.title} (${formatValue(r.value, r.unit)})`);
   }

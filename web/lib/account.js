@@ -22,7 +22,7 @@
     if (!Nexus.online) return;
     if (!user) {
       if (!location.pathname.includes('/account/')) {
-        box.appendChild(link('account/?back=' + encodeURIComponent(here()), 'Sign in', 'button'));
+        box.appendChild(link('api/auth/google?back=' + encodeURIComponent(here()), 'Sign in', 'button'));
       }
       return;
     }
@@ -35,16 +35,15 @@
     button.setAttribute('aria-haspopup', 'menu');
     button.setAttribute('aria-expanded', 'false');
     button.innerHTML = CHEVRON;
-    button.prepend(document.createTextNode(user.displayName));
+    button.prepend(document.createTextNode(user.displayName || 'Choose a name'));
 
     const menu = document.createElement('div');
     menu.className = 'menu';
     menu.setAttribute('role', 'menu');
     menu.hidden = true;
-    const items = [
-      link('leaderboards/?player=' + encodeURIComponent(user.displayName), 'Your stats'),
-      link('account/', user.verified ? 'Account' : 'Account: confirm your email'),
-    ];
+    const items = user.displayName
+      ? [link('leaderboards/?player=' + encodeURIComponent(user.displayName), 'Your stats'), link('account/', 'Account')]
+      : [link('account/?back=' + encodeURIComponent(here()), 'Account: choose a name')];
     const signOut = document.createElement('button');
     signOut.type = 'button';
     signOut.textContent = 'Sign out';

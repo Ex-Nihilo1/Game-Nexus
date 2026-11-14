@@ -13,17 +13,16 @@
     .account-page { max-width: 440px; }
     .account-page section { padding: 18px 0; border-bottom: 1px solid var(--rule); }
     .account-page section:first-child { padding-top: 0; }
-    .account-page .tabs { margin-bottom: 18px; }
-    .account-page form .button-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .account-page form .button-row, .button-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     .account-page .row .figure { font-size: 15px; overflow-wrap: anywhere; text-align: right; }
-    .linkish {
-      height: auto;
-      padding: 0;
-      border: 0;
-      font: 13px var(--font-condensed);
-      color: var(--ink-muted);
-      text-decoration: underline;
+    .google {
+      gap: 10px;
+      height: 40px;
+      padding: 0 18px 0 14px;
+      font-size: 14px;
+      background: var(--paper);
     }
+    .google svg { flex: none; }
     .danger { border-color: var(--red-pencil); color: var(--red-pencil); }
     [hidden] { display: none !important; }
   </style>
@@ -41,74 +40,41 @@
     <main class="account-page">
       <p class="message" id="page-message" role="status"></p>
 
-      <!-- A link from an email: confirm an address -->
-      <section id="verify-view" hidden>
-        <p class="message" id="verify-message" role="status">Confirming your email...</p>
-        <a class="button" href="./">Go to your account</a>
-      </section>
-
-      <!-- A link from an email: choose a new password -->
-      <section id="reset-view" hidden>
-        <h2 class="section-title">Choose a new password</h2>
-        <form id="reset-form">
-          <p class="message bad" data-message></p>
-          <label class="field"><span class="label">New password, at least 10 characters</span>
-            <input type="password" name="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
-          <div class="button-row"><button class="primary" type="submit">Save and sign in</button></div>
-        </form>
-      </section>
-
-      <!-- Guests -->
-      <div id="guest-view" hidden>
-        <div class="tabs" role="tablist">
-          <button class="tab" role="tab" data-tab="signin" aria-selected="true">Sign in</button>
-          <button class="tab" role="tab" data-tab="signup" aria-selected="false">Create account</button>
+      <!-- Signed out -->
+      <section id="guest-view" hidden>
+        <p>Your progress, saves and leaderboard places live in your account, on every device.</p>
+        <p class="label">Progress already on this device moves into your account.</p>
+        <div class="button-row" style="margin-top:16px">
+          <a class="button google" id="google" href="#">
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            Sign in with Google
+          </a>
         </div>
+      </section>
 
-        <form id="signin-form" data-panel="signin">
+      <!-- First sign-in: a name for the leaderboards -->
+      <section id="choose-view" hidden>
+        <h2 class="section-title">Choose a display name</h2>
+        <form id="choose-form">
           <p class="message bad" data-message></p>
-          <label class="field"><span class="label">Email</span>
-            <input type="email" name="email" autocomplete="email" required></label>
-          <label class="field"><span class="label">Password</span>
-            <input type="password" name="password" autocomplete="current-password" required></label>
-          <div class="button-row">
-            <button class="primary" type="submit">Sign in</button>
-            <button class="linkish" type="button" id="show-forgot">Forgot your password?</button>
-          </div>
+          <p class="label">Shown on the leaderboards instead of your Google name. You can change it later.</p>
+          <label class="field"><span class="label">Display name, 3 to 24 characters</span>
+            <input type="text" name="displayName" minlength="3" maxlength="24" required autofocus></label>
+          <div class="button-row"><button class="primary" type="submit">Save</button></div>
         </form>
-
-        <form id="forgot-form" hidden>
-          <p class="message" data-message></p>
-          <label class="field"><span class="label">Email of your account</span>
-            <input type="email" name="email" autocomplete="email" required></label>
-          <div class="button-row">
-            <button class="primary" type="submit">Email me a link</button>
-            <button class="linkish" type="button" id="hide-forgot">Back to sign in</button>
-          </div>
-        </form>
-
-        <form id="signup-form" data-panel="signup" hidden>
-          <p class="message bad" data-message></p>
-          <label class="field"><span class="label">Email</span>
-            <input type="email" name="email" autocomplete="email" required></label>
-          <label class="field"><span class="label">Display name, shown on the leaderboards</span>
-            <input type="text" name="displayName" autocomplete="nickname" minlength="3" maxlength="24" required></label>
-          <label class="field"><span class="label">Password, at least 10 characters</span>
-            <input type="password" name="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
-          <p class="label">Progress already on this device moves into the new account.</p>
-          <div class="button-row"><button class="primary" type="submit">Create account</button></div>
-        </form>
-      </div>
+      </section>
 
       <!-- Signed in -->
       <div id="user-view" hidden>
         <section>
           <div class="row"><span class="label">Display name</span><span class="figure" id="me-name"></span></div>
-          <div class="row"><span class="label">Email</span><span class="figure" id="me-email"></span></div>
-          <div class="row"><span class="label">Leaderboards</span><span id="me-status"></span></div>
-          <p class="message" id="resend-message" role="status"></p>
-          <div class="button-row" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-            <button type="button" id="resend" hidden>Send the confirmation link again</button>
+          <div class="row"><span class="label">Signed in with</span><span class="figure">Google</span></div>
+          <div class="button-row" style="margin-top:12px">
             <a class="button" id="my-stats" href="../leaderboards/">Your stats</a>
           </div>
         </section>
@@ -124,46 +90,21 @@
         </section>
 
         <section>
-          <h2 class="section-title">Email</h2>
-          <form id="email-form">
-            <p class="message" data-message></p>
-            <label class="field"><span class="label">New email</span>
-              <input type="email" name="email" autocomplete="email" required></label>
-            <label class="field"><span class="label">Your password</span>
-              <input type="password" name="password" autocomplete="current-password" required></label>
-            <div class="button-row"><button type="submit">Send a link to the new address</button></div>
-          </form>
-        </section>
-
-        <section>
-          <h2 class="section-title">Password</h2>
-          <form id="password-form">
-            <p class="message" data-message></p>
-            <label class="field"><span class="label">Current password</span>
-              <input type="password" name="current" autocomplete="current-password" required></label>
-            <label class="field"><span class="label">New password, at least 10 characters</span>
-              <input type="password" name="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
-            <div class="button-row"><button type="submit">Change password</button></div>
-          </form>
-        </section>
-
-        <section>
           <h2 class="section-title">Sign out</h2>
-          <div class="button-row" style="display:flex;gap:10px;flex-wrap:wrap">
+          <div class="button-row">
             <button type="button" id="signout">Sign out</button>
             <button type="button" id="signout-all">Sign out on every device</button>
           </div>
         </section>
 
-        <section>
+        <section id="delete">
           <h2 class="section-title">Delete account</h2>
-          <form id="delete-form">
-            <p class="message bad" data-message></p>
-            <p class="label">Your saves, results and leaderboard places are deleted for good. Progress on this device stays here.</p>
-            <label class="field"><span class="label">Your password</span>
-              <input type="password" name="password" autocomplete="current-password" required></label>
-            <div class="button-row"><button class="danger" type="submit">Delete my account</button></div>
-          </form>
+          <p class="message bad" id="delete-message" role="status"></p>
+          <p class="label">Your saves, results and leaderboard places are deleted for good. Progress on this device stays here.</p>
+          <div class="button-row" style="margin-top:12px">
+            <button class="danger" type="button" id="delete-button">Delete my account</button>
+            <a class="button" id="reauth" href="#" hidden>Sign in with Google again</a>
+          </div>
         </section>
       </div>
     </main>
@@ -171,8 +112,9 @@
 
   <script>
     const $ = id => document.getElementById(id);
-    const views = ['verify-view', 'reset-view', 'guest-view', 'user-view'];
+    const views = ['guest-view', 'choose-view', 'user-view'];
     const show = id => views.forEach(v => { $(v).hidden = v !== id; });
+    const params = new URLSearchParams(location.search);
 
     function say(el, text, good) {
       el.textContent = text || '';
@@ -196,124 +138,47 @@
         }
       });
     }
-    async function request(form, method, path, body) {
-      const r = await Nexus.call(method, path, body);
-      if (!r.ok) say(formMessage(form), r.data.error || 'That did not work. Try again.');
-      return r;
-    }
 
-    // Where to go after signing in: back to the page that sent the player here.
+    // Where to go once done: back to the page that sent the player here.
     function backTarget() {
-      const back = new URLSearchParams(location.search).get('back');
+      const back = params.get('back');
       return back && back.startsWith('/') && !back.startsWith('//') ? back : null;
     }
-    async function signedIn(user) {
-      Nexus.setUser(user);
-      if (Nexus.sync) await Nexus.sync.now();
-      const back = backTarget();
-      if (back) location.href = back;
-      else render(user);
-    }
+    const signInURL = back => '../api/auth/google?back=' + encodeURIComponent(back || '/account/');
+    $('google').href = signInURL(backTarget() || '/');
+    $('reauth').href = signInURL('/account/#delete');
 
-    // ---- Guests ----
-
-    document.querySelectorAll('[data-tab]').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('[data-tab]').forEach(t => t.setAttribute('aria-selected', String(t === tab)));
-        document.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.tab; });
-        $('forgot-form').hidden = true;
-      });
-    });
-    $('show-forgot').addEventListener('click', () => {
-      $('signin-form').hidden = true;
-      $('forgot-form').hidden = false;
-      $('forgot-form').email.value = $('signin-form').email.value;
-    });
-    $('hide-forgot').addEventListener('click', () => {
-      $('forgot-form').hidden = true;
-      $('signin-form').hidden = false;
-    });
-
-    bind($('signin-form'), async (v, form) => {
-      const r = await request(form, 'POST', 'auth/login', { email: v.email, password: v.password });
-      if (r.ok) await signedIn(r.data.user);
-    });
-    bind($('signup-form'), async (v, form) => {
-      const r = await request(form, 'POST', 'auth/signup', { email: v.email, displayName: v.displayName, password: v.password });
-      if (r.ok) await signedIn(r.data.user);
-    });
-    bind($('forgot-form'), async (v, form) => {
-      const r = await request(form, 'POST', 'auth/forgot', { email: v.email });
-      if (r.ok) say(formMessage(form), 'If that email has an account, a link to reset the password is on its way.', true);
-    });
-
-    // ---- Links from emails ----
-
-    async function verify(token) {
-      show('verify-view');
-      const r = await Nexus.call('POST', 'auth/verify', { token });
-      if (r.ok) {
-        say($('verify-message'), `${r.data.email} is confirmed. Your results now count on the leaderboards.`, true);
-        const user = await Nexus.call('GET', 'me');
-        if (user.ok && user.data.user) Nexus.setUser(user.data.user);
-      } else {
-        say($('verify-message'), r.data.error || 'This link did not work.');
-      }
-    }
-
-    let resetToken = '';
-    bind($('reset-form'), async (v, form) => {
-      const r = await request(form, 'POST', 'auth/reset', { token: resetToken, password: v.password });
-      if (r.ok) {
-        history.replaceState(null, '', location.pathname);
-        await signedIn(r.data.user);
-        say($('page-message'), 'Your password is changed, and you are signed in.', true);
-      }
-    });
-
-    // ---- Signed in ----
+    const ERRORS = {
+      cancelled: 'Sign-in was cancelled.',
+      failed: 'Signing in with Google did not work. Try again.',
+      unavailable: 'Signing in is not set up on this server.',
+      busy: 'Too many sign-ins from here. Wait a minute and try again.',
+    };
+    if (params.get('error')) say($('page-message'), ERRORS[params.get('error')] || ERRORS.failed);
 
     function render(user) {
-      if (!user) {
-        show('guest-view');
-        return;
-      }
+      if (!user) return show('guest-view');
+      if (!user.displayName) return show('choose-view');
       show('user-view');
       $('me-name').textContent = user.displayName;
-      $('me-email').textContent = user.email;
-      $('me-status').innerHTML = user.verified
-        ? '<span class="stamp good">CONFIRMED</span>'
-        : '<span class="stamp bad">CONFIRM YOUR EMAIL</span>';
-      $('resend').hidden = user.verified;
       $('my-stats').href = '../leaderboards/?player=' + encodeURIComponent(user.displayName);
       $('name-form').displayName.value = user.displayName;
     }
 
-    $('resend').addEventListener('click', async () => {
-      const r = await Nexus.call('POST', 'auth/resend', {});
-      say($('resend-message'), r.ok ? 'A new link is on its way. It works for 48 hours.' : r.data.error, r.ok);
+    bind($('choose-form'), async (v, form) => {
+      const r = await Nexus.call('PATCH', 'me', { displayName: v.displayName });
+      if (!r.ok) return say(formMessage(form), r.data.error || 'That did not work. Try again.');
+      Nexus.setUser(r.data.user);
+      const back = backTarget();
+      if (back && back !== '/account/') location.href = back;
+      else render(r.data.user);
     });
     bind($('name-form'), async (v, form) => {
-      const r = await request(form, 'PATCH', 'me', { displayName: v.displayName });
-      if (r.ok) {
-        Nexus.setUser(r.data.user);
-        render(r.data.user);
-        say(formMessage(form), 'Saved.', true);
-      }
-    });
-    bind($('email-form'), async (v, form) => {
-      const r = await request(form, 'POST', 'me/email', { email: v.email, password: v.password });
-      if (r.ok) {
-        form.reset();
-        say(formMessage(form), `A link is on its way to ${v.email}. Your account moves there when you open it.`, true);
-      }
-    });
-    bind($('password-form'), async (v, form) => {
-      const r = await request(form, 'POST', 'me/password', { current: v.current, password: v.password });
-      if (r.ok) {
-        form.reset();
-        say(formMessage(form), 'Password changed. Other devices are signed out.', true);
-      }
+      const r = await Nexus.call('PATCH', 'me', { displayName: v.displayName });
+      if (!r.ok) return say(formMessage(form), r.data.error || 'That did not work. Try again.');
+      Nexus.setUser(r.data.user);
+      render(r.data.user);
+      say(formMessage(form), 'Saved.', true);
     });
     $('signout').addEventListener('click', async () => {
       await Nexus.call('POST', 'auth/logout', {});
@@ -323,36 +188,30 @@
       await Nexus.call('POST', 'auth/logout-all', {});
       Nexus.setUser(null);
     });
-    bind($('delete-form'), async (v, form) => {
+    $('delete-button').addEventListener('click', async () => {
       if (!confirm('Delete your Game Nexus account for good? This cannot be undone.')) return;
-      const r = await request(form, 'DELETE', 'me', { password: v.password });
+      const r = await Nexus.call('DELETE', 'me');
       if (r.ok) {
         if (Nexus.sync) Nexus.sync.forget();
         Nexus.setUser(null);
         say($('page-message'), 'Your account is deleted.', true);
+        return;
       }
+      say($('delete-message'), r.data.error || 'That did not work. Try again.');
+      $('reauth').hidden = !r.data.reauth;
     });
 
-    document.addEventListener('nexususer', e => {
-      if (!$('verify-view').hidden || !$('reset-view').hidden) return;
-      render(e.detail);
-    });
+    document.addEventListener('nexususer', e => render(e.detail));
 
-    // ---- Start ----
-
-    const hash = new URLSearchParams(location.hash.slice(1));
     if (!Nexus.online) {
       show('guest-view');
+      $('google').hidden = true;
       say($('page-message'), 'Accounts work when Game Nexus is opened from its server, not from a file.');
-    } else if (hash.get('verify')) {
-      history.replaceState(null, '', location.pathname);
-      verify(hash.get('verify'));
-    } else if (hash.get('reset')) {
-      resetToken = hash.get('reset');
-      history.replaceState(null, '', location.pathname);
-      show('reset-view');
     } else {
-      Nexus.userReady.then(render);
+      Nexus.userReady.then(user => {
+        render(user);
+        if (location.hash === '#delete' && user && user.displayName) $('delete').scrollIntoView();
+      });
     }
   </script>
 </body>

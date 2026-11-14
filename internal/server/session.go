@@ -18,17 +18,17 @@ const (
 
 type User struct {
 	ID          int64     `json:"id"`
-	Email       string    `json:"email"`
-	DisplayName string    `json:"displayName"`
-	Verified    bool      `json:"verified"`
+	DisplayName *string   `json:"displayName"` // nil until the player chooses one
 	CreatedAt   time.Time `json:"createdAt"`
+
+	signedInAt time.Time // when this browser's session began
 }
 
-const userColumns = `u.id, u.email::text, u.display_name::text, u.email_verified_at IS NOT NULL, u.created_at`
+const userColumns = `u.id, u.display_name::text, u.created_at`
 
 func scanUser(row pgx.Row) (*User, error) {
 	var u User
-	if err := row.Scan(&u.ID, &u.Email, &u.DisplayName, &u.Verified, &u.CreatedAt); err != nil {
+	if err := row.Scan(&u.ID, &u.DisplayName, &u.CreatedAt); err != nil {
 		return nil, err
 	}
 	return &u, nil
@@ -97,10 +97,10 @@ func (s *Server) currentUser(w http.ResponseWriter, r *http.Request) (*User, err
 	var lastSeen time.Time
 	var u User
 	err := s.db.QueryRow(r.Context(),
-		`SELECT `+userColumns+`, s.last_seen_at
+		`SELECT `+userColumns+`, s.last_seen_at, s.created_at
 		   FROM sessions s JOIN users u ON u.id = s.user_id
 		  WHERE s.token_hash = $1 AND s.expires_at > now()`, hash).
-		Scan(&u.ID, &u.Email, &u.DisplayName, &u.Verified, &u.CreatedAt, &lastSeen)
+		Scan(&u.ID, &u.DisplayName, &u.CreatedAt, &lastSeen, &u.signedInAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		s.setCookie(w, "", time.Time{})
 		return nil, nil

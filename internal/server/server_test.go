@@ -5,7 +5,7 @@ package server
 //
 //	NEXUS_TEST_DATABASE_URL="postgres://postgres@127.0.0.1:54329/nexus-test" go test ./internal/server
 //
-// Without it they are skipped.
+// Without it they are skipped. Sign-in goes through internal/fakegoogle.
 
 import (
 	"bytes"
@@ -15,40 +15,16 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"os"
-	"regexp"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"game-nexus/internal/db"
+	"game-nexus/internal/fakegoogle"
 )
-
-type mailbox chan [3]string
-
-func (m mailbox) Send(to, subject, body string) error {
-	m <- [3]string{to, subject, body}
-	return nil
-}
-
-// link waits for the next email and returns the token in its link.
-func (m mailbox) link(t *testing.T, to, kind string) string {
-	t.Helper()
-	select {
-	case msg := <-m:
-		if msg[0] != to {
-			t.Fatalf("mail went to %s, not %s", msg[0], to)
-		}
-		found := regexp.MustCompile(`#` + kind + `=([A-Za-z0-9_-]+)`).FindStringSubmatch(msg[2])
-		if found == nil {
-			t.Fatalf("no %s link in %q", kind, msg[2])
-		}
-		return found[1]
-	case <-time.After(3 * time.Second):
-		t.Fatalf("no mail to %s", to)
-	}
-	return ""
-}
 
 type client struct {
 	t    *testing.T
@@ -81,12 +57,37 @@ func (c *client) call(method, path string, body any, wantStatus int) map[string]
 	return out
 }
 
+// newClient keeps cookies and does not follow redirects, so sign-in can be walked
+// step by step.
 func newClient(t *testing.T, base string) *client {
 	jar, _ := cookiejar.New(nil)
-	return &client{t: t, base: base, http: &http.Client{Jar: jar}}
+	return &client{t: t, base: base, http: &http.Client{
+		Jar:           jar,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}}
 }
 
-func setup(t *testing.T) (string, mailbox) {
+// redirect does a GET and returns where it redirects to.
+func (c *client) redirect(target string) string {
+	c.t.Helper()
+	res, err := c.http.Get(target)
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusFound {
+		c.t.Fatalf("GET %s: status %d, want 302", target, res.StatusCode)
+	}
+	return res.Header.Get("Location")
+}
+
+type env struct {
+	base   string
+	google *fakegoogle.Provider
+	pool   *pgxpool.Pool
+}
+
+func setup(t *testing.T) *env {
 	url := os.Getenv("NEXUS_TEST_DATABASE_URL")
 	if url == "" {
 		t.Skip("NEXUS_TEST_DATABASE_URL is not set")
@@ -106,97 +107,170 @@ func setup(t *testing.T) (string, mailbox) {
 	}
 	t.Cleanup(pool.Close)
 
-	mails := make(mailbox, 10)
+	google := fakegoogle.New("", "nexus-client", "nexus-secret")
+	gs := httptest.NewServer(google)
+	t.Cleanup(gs.Close)
+	google.Issuer = gs.URL
+
 	web := t.TempDir()
 	os.WriteFile(web+"/index.html", []byte("<!doctype html><title>Game Nexus</title>"), 0o644)
-	srv := New(Config{WebRoot: web}, pool, mails)
+	srv := New(Config{WebRoot: web, Google: Google{
+		ClientID: "nexus-client", ClientSecret: "nexus-secret",
+		AuthURL: gs.URL + "/authorize", TokenURL: gs.URL + "/token", Issuer: gs.URL,
+	}}, pool)
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
-	return ts.URL, mails
+	return &env{base: ts.URL, google: google, pool: pool}
 }
 
-func signUp(t *testing.T, base string, mails mailbox, email, name string, verify bool) *client {
-	c := newClient(t, base)
-	out := c.call("POST", "/api/auth/signup", map[string]string{"email": email, "displayName": name, "password": "a long password"}, 200)
-	if out["user"].(map[string]any)["verified"] != false {
-		t.Fatal("a new account is verified")
+// signInWith walks one sign-in: the site sends the browser to Google, Google sends
+// it back with a code, the site signs it in. It returns where the site finally
+// sends the browser. action is "allow" or "cancel".
+func (e *env) signInWith(c *client, sub, back, action string) string {
+	c.t.Helper()
+	toGoogle := c.redirect(e.base + "/api/auth/google?back=" + url.QueryEscape(back))
+	ask, err := url.Parse(toGoogle)
+	if err != nil || !strings.HasPrefix(toGoogle, e.google.Issuer+"/authorize") {
+		c.t.Fatalf("not sent to Google: %s", toGoogle)
 	}
-	token := mails.link(t, email, "verify")
-	if verify {
-		newClient(t, base).call("POST", "/api/auth/verify", map[string]string{"token": token}, 200)
+	if res, err := c.http.Get(toGoogle); err != nil || res.StatusCode != 200 {
+		c.t.Fatalf("Google's page: %v %v", res, err)
+	}
+	q := ask.Query()
+	form := url.Values{"action": {action}, "sub": {sub}}
+	for _, k := range []string{"client_id", "redirect_uri", "state", "nonce", "code_challenge"} {
+		form.Set(k, q.Get(k))
+	}
+	res, err := c.http.PostForm(e.google.Issuer+"/authorize", form)
+	if err != nil || res.StatusCode != http.StatusFound {
+		c.t.Fatalf("Google's answer: %v %v", res, err)
+	}
+	res.Body.Close()
+	back2site := res.Header.Get("Location")
+	if !strings.HasPrefix(back2site, e.base+"/api/auth/google/callback") {
+		c.t.Fatalf("Google sent the browser to %s", back2site)
+	}
+	return c.redirect(back2site)
+}
+
+// player is a signed-in player; with a name unless name is empty.
+func (e *env) player(t *testing.T, sub, name string) *client {
+	c := newClient(t, e.base)
+	e.signInWith(c, sub, "/", "allow")
+	if name != "" {
+		c.call("PATCH", "/api/me", map[string]string{"displayName": name}, 200)
 	}
 	return c
 }
 
-func TestAccounts(t *testing.T) {
-	base, mails := setup(t)
-	ann := signUp(t, base, mails, "ann@example.com", "Ann", true)
+func TestSignIn(t *testing.T) {
+	e := setup(t)
 
-	if me := ann.call("GET", "/api/me", nil, 200)["user"].(map[string]any); me["displayName"] != "Ann" || me["verified"] != true {
-		t.Fatalf("me: %v", me)
+	// A first sign-in makes an account without a name, and asks for one.
+	ann := newClient(t, e.base)
+	where := e.signInWith(ann, "google-ann", "/games/tetris/", "allow")
+	if where != "/account/?back=%2Fgames%2Ftetris%2F&choose=" {
+		t.Fatalf("first sign-in went to %s", where)
 	}
-	guest := newClient(t, base)
-	if guest.call("GET", "/api/me", nil, 200)["user"] != nil {
-		t.Fatal("a guest has a user")
+	me := ann.call("GET", "/api/me", nil, 200)["user"].(map[string]any)
+	if me["displayName"] != nil {
+		t.Fatalf("a new account has a name: %v", me)
+	}
+	firstID := me["id"]
+
+	// Names: rules and taken ones, case aside.
+	ann.call("PATCH", "/api/me", map[string]string{"displayName": "<b>"}, 400)
+	ann.call("PATCH", "/api/me", map[string]string{"displayName": "Ann"}, 200)
+	bo := e.player(t, "google-bo", "")
+	bo.call("PATCH", "/api/me", map[string]string{"displayName": "aNN"}, 409)
+
+	// The same Google account is the same player, and goes straight back.
+	again := newClient(t, e.base)
+	if where := e.signInWith(again, "google-ann", "/games/tetris/", "allow"); where != "/games/tetris/" {
+		t.Fatalf("second sign-in went to %s", where)
+	}
+	if me := again.call("GET", "/api/me", nil, 200)["user"].(map[string]any); me["id"] != firstID || me["displayName"] != "Ann" {
+		t.Fatalf("second sign-in is another account: %v", me)
 	}
 
-	// Taken names and addresses, case aside; bad input.
-	guest.call("POST", "/api/auth/signup", map[string]string{"email": "ANN@example.com", "displayName": "Other", "password": "a long password"}, 409)
-	guest.call("POST", "/api/auth/signup", map[string]string{"email": "other@example.com", "displayName": "aNN", "password": "a long password"}, 409)
-	guest.call("POST", "/api/auth/signup", map[string]string{"email": "nope", "displayName": "Nope", "password": "a long password"}, 400)
-	guest.call("POST", "/api/auth/signup", map[string]string{"email": "short@example.com", "displayName": "Short", "password": "short"}, 400)
-	guest.call("POST", "/api/auth/signup", map[string]string{"email": "x@example.com", "displayName": "<b>", "password": "a long password"}, 400)
+	// A "come back" address on another site is not followed.
+	if where := e.signInWith(newClient(t, e.base), "google-ann", "//evil.example/", "allow"); where != "/" {
+		t.Fatalf("followed an outside address: %s", where)
+	}
+
+	// Cancelling, and sign-ins that do not add up.
+	if where := e.signInWith(newClient(t, e.base), "google-cy", "/x/", "cancel"); where != "/account/?back=%2Fx%2F&error=cancelled" {
+		t.Fatalf("cancel went to %s", where)
+	}
+	for name, tamper := range map[string]func(map[string]any){
+		"another client": func(c map[string]any) { c["aud"] = "someone-else" },
+		"another nonce":  func(c map[string]any) { c["nonce"] = "replayed" },
+		"another issuer": func(c map[string]any) { c["iss"] = "https://evil.example" },
+		"expired":        func(c map[string]any) { c["exp"] = 1 },
+	} {
+		e.google.Tamper = tamper
+		if where := e.signInWith(newClient(t, e.base), "google-dee", "/", "allow"); where != "/account/?error=failed" {
+			t.Errorf("%s: went to %s", name, where)
+		}
+	}
+	e.google.Tamper = nil
+	stray := newClient(t, e.base)
+	if where := stray.redirect(e.base + "/api/auth/google/callback?state=made-up&code=x"); where != "/account/?error=failed" {
+		t.Fatalf("a callback without a sign-in went to %s", where)
+	}
+	if stray.call("GET", "/api/me", nil, 200)["user"] != nil {
+		t.Fatal("a failed sign-in signed in")
+	}
 
 	// Requests without the site's header are refused.
-	res, _ := http.Post(base+"/api/auth/login", "application/json", strings.NewReader(`{}`))
+	res, _ := http.Post(e.base+"/api/auth/logout", "application/json", strings.NewReader(`{}`))
 	if res.StatusCode != 403 {
-		t.Fatalf("login without X-Nexus: %d", res.StatusCode)
+		t.Fatalf("logout without X-Nexus: %d", res.StatusCode)
 	}
 
-	// Signing in and out.
-	guest.call("POST", "/api/auth/login", map[string]string{"email": "ann@example.com", "password": "wrong password"}, 401)
-	guest.call("POST", "/api/auth/login", map[string]string{"email": "nobody@example.com", "password": "wrong password"}, 401)
-	second := newClient(t, base)
-	second.call("POST", "/api/auth/login", map[string]string{"email": "Ann@Example.com", "password": "a long password"}, 200)
+	// Signing out here, and everywhere.
 	ann.call("POST", "/api/auth/logout", nil, 200)
 	if ann.call("GET", "/api/me", nil, 200)["user"] != nil {
 		t.Fatal("still signed in after signing out")
 	}
-
-	// A reset signs out every browser and signs this one in.
-	guest.call("POST", "/api/auth/forgot", map[string]string{"email": "nobody@example.com"}, 200)
-	guest.call("POST", "/api/auth/forgot", map[string]string{"email": "ann@example.com"}, 200)
-	token := mails.link(t, "ann@example.com", "reset")
-	guest.call("POST", "/api/auth/reset", map[string]string{"token": token, "password": "a new long password"}, 200)
-	guest.call("POST", "/api/auth/reset", map[string]string{"token": token, "password": "a third password"}, 410)
-	if second.call("GET", "/api/me", nil, 200)["user"] != nil {
-		t.Fatal("another browser is still signed in after a reset")
-	}
-	if guest.call("GET", "/api/me", nil, 200)["user"] == nil {
-		t.Fatal("not signed in after a reset")
+	again.call("POST", "/api/auth/logout-all", nil, 200)
+	if again.call("GET", "/api/me", nil, 200)["user"] != nil {
+		t.Fatal("still signed in after signing out everywhere")
 	}
 
-	// Account changes need the password.
-	guest.call("PATCH", "/api/me", map[string]string{"displayName": "Ann the Second"}, 200)
-	guest.call("POST", "/api/me/password", map[string]string{"current": "a long password", "password": "whatever else"}, 403)
-	guest.call("POST", "/api/me/password", map[string]string{"current": "a new long password", "password": "yet another password"}, 200)
-	guest.call("POST", "/api/me/email", map[string]string{"password": "yet another password", "email": "ann2@example.com"}, 200)
-	token = mails.link(t, "ann2@example.com", "verify")
-	if out := guest.call("POST", "/api/auth/verify", map[string]string{"token": token}, 200); out["email"] != "ann2@example.com" {
-		t.Fatalf("verify: %v", out)
+	// Deleting asks for a recent sign-in.
+	if _, err := e.pool.Exec(context.Background(), `UPDATE sessions SET created_at = now() - interval '1 hour'`); err != nil {
+		t.Fatal(err)
 	}
-	guest.call("DELETE", "/api/me", map[string]string{"password": "nope nope nope"}, 403)
-	guest.call("DELETE", "/api/me", map[string]string{"password": "yet another password"}, 200)
-	newClient(t, base).call("POST", "/api/auth/login", map[string]string{"email": "ann2@example.com", "password": "yet another password"}, 401)
+	if out := bo.call("DELETE", "/api/me", nil, 403); out["reauth"] != true {
+		t.Fatalf("delete with an old sign-in: %v", out)
+	}
+	fresh := newClient(t, e.base)
+	e.signInWith(fresh, "google-bo", "/", "allow")
+	fresh.call("DELETE", "/api/me", nil, 200)
+	if fresh.call("GET", "/api/me", nil, 200)["user"] != nil {
+		t.Fatal("still signed in after deleting the account")
+	}
+	if where := e.signInWith(newClient(t, e.base), "google-bo", "/", "allow"); !strings.Contains(where, "choose") {
+		t.Fatalf("a deleted account came back with its name: %s", where)
+	}
+}
+
+func TestSignInNotSetUp(t *testing.T) {
+	e := setup(t)
+	srv := httptest.NewServer(New(Config{WebRoot: t.TempDir()}, e.pool).Handler())
+	defer srv.Close()
+	if where := newClient(t, srv.URL).redirect(srv.URL + "/api/auth/google"); where != "/account/?error=unavailable" {
+		t.Fatalf("went to %s", where)
+	}
 }
 
 func TestSaves(t *testing.T) {
-	base, mails := setup(t)
-	bo := signUp(t, base, mails, "bo@example.com", "Bob", false)
-	other := newClient(t, base)
-	other.call("POST", "/api/auth/login", map[string]string{"email": "bo@example.com", "password": "a long password"}, 200)
+	e := setup(t)
+	bo := e.player(t, "google-bob", "Bob")
+	other := e.player(t, "google-bob", "")
 
-	newClient(t, base).call("GET", "/api/saves", nil, 401)
+	newClient(t, e.base).call("GET", "/api/saves", nil, 401)
 	bo.call("PUT", "/api/saves/not.a.key", map[string]any{"value": "1", "baseRev": 0}, 400)
 
 	if out := bo.call("PUT", "/api/saves/games.tetris.best", map[string]any{"value": "100", "baseRev": 0, "device": "laptop"}, 200); out["rev"] != 1.0 {
@@ -227,10 +301,10 @@ func TestSaves(t *testing.T) {
 }
 
 func TestRunsAndBoards(t *testing.T) {
-	base, mails := setup(t)
-	cy := signUp(t, base, mails, "cy@example.com", "Cyd", true)
-	di := signUp(t, base, mails, "di@example.com", "Dina", true)
-	un := signUp(t, base, mails, "un@example.com", "Unconfirmed", false)
+	e := setup(t)
+	cy := e.player(t, "google-cyd", "Cyd")
+	di := e.player(t, "google-dina", "Dina")
+	un := e.player(t, "google-nameless", "")
 
 	play := func(c *client, game string, stats map[string]any, want int) map[string]any {
 		id := c.call("POST", "/api/runs", map[string]string{"game": game}, 200)["id"].(string)
@@ -242,13 +316,13 @@ func TestRunsAndBoards(t *testing.T) {
 
 	out := play(cy, "tetris", tetris(500, 4), 200)
 	ranks := out["ranks"].([]any)
-	if len(ranks) != 2 || ranks[0].(map[string]any)["rank"] != 1.0 || ranks[0].(map[string]any)["isNew"] != true {
+	if len(ranks) != 2 || ranks[0].(map[string]any)["rank"] != 1.0 || ranks[0].(map[string]any)["isNew"] != true || out["named"] != true {
 		t.Fatalf("ranks: %v", out)
 	}
 	play(di, "tetris", tetris(900, 6), 200)
 	play(cy, "tetris", tetris(300, 2), 200) // worse than Cy's best: Cy stays at 500
-	if out := play(un, "tetris", tetris(5000, 12), 200); len(out["ranks"].([]any)) != 0 || out["verified"] != false {
-		t.Fatalf("unconfirmed player ranked: %v", out)
+	if out := play(un, "tetris", tetris(5000, 12), 200); len(out["ranks"].([]any)) != 0 || out["named"] != false {
+		t.Fatalf("a player without a name ranked: %v", out)
 	}
 	play(cy, "tetris", map[string]any{"score": 1, "lines": 0, "level": 1, "seconds": 9999}, 400) // longer than the run
 	play(cy, "tetris", map[string]any{"score": 1, "lines": 0, "level": 1, "seconds": 1, "extra": 1}, 400)
@@ -260,7 +334,7 @@ func TestRunsAndBoards(t *testing.T) {
 	cy.call("POST", "/api/runs/"+id+"/finish", map[string]any{"stats": tetris(10, 0)}, 409)
 	di.call("POST", "/api/runs/"+id+"/finish", map[string]any{"stats": tetris(10, 0)}, 404)
 
-	board := newClient(t, base).call("GET", "/api/boards/tetris/score", nil, 200)
+	board := newClient(t, e.base).call("GET", "/api/boards/tetris/score", nil, 200)
 	rows := board["rows"].([]any)
 	if len(rows) != 2 || rows[0].(map[string]any)["displayName"] != "Dina" || rows[1].(map[string]any)["value"] != 500.0 {
 		t.Fatalf("board: %v", rows)
@@ -268,8 +342,14 @@ func TestRunsAndBoards(t *testing.T) {
 	if mine := cy.call("GET", "/api/boards/tetris/score?period=week", nil, 200)["me"].(map[string]any); mine["rank"] != 2.0 {
 		t.Fatalf("my row: %v", mine)
 	}
-	newClient(t, base).call("GET", "/api/boards/tetris/nope", nil, 404)
-	newClient(t, base).call("GET", "/api/boards/tetris/score?period=year", nil, 400)
+	newClient(t, e.base).call("GET", "/api/boards/tetris/nope", nil, 404)
+	newClient(t, e.base).call("GET", "/api/boards/tetris/score?period=year", nil, 400)
+
+	// Once the player picks a name, their games count.
+	un.call("PATCH", "/api/me", map[string]string{"displayName": "Late Namer"}, 200)
+	if rows := newClient(t, e.base).call("GET", "/api/boards/tetris/score", nil, 200)["rows"].([]any); rows[0].(map[string]any)["displayName"] != "Late Namer" {
+		t.Fatalf("named later: %v", rows)
+	}
 
 	// Every Minesweeper board shares one list, ranked by 3BV a second; rows carry the board.
 	mine := func(won bool, seconds float64, cols, rows, bbbv int, mode string) map[string]any {
@@ -279,18 +359,18 @@ func TestRunsAndBoards(t *testing.T) {
 	play(cy, "minesweeper", mine(true, 4, 9, 9, 6, "classic"), 200)    // 1.5: not Cyd's best
 	play(cy, "minesweeper", mine(false, 1, 9, 9, 0, "classic"), 200)   // a loss
 	play(di, "minesweeper", mine(true, 4, 30, 16, 10, "noguess"), 200) // 2.5, on a big board
-	speed := newClient(t, base).call("GET", "/api/boards/minesweeper/speed", nil, 200)["rows"].([]any)
+	speed := newClient(t, e.base).call("GET", "/api/boards/minesweeper/speed", nil, 200)["rows"].([]any)
 	if len(speed) != 2 || speed[0].(map[string]any)["displayName"] != "Dina" || speed[1].(map[string]any)["value"] != 2.0 {
 		t.Fatalf("speed: %v", speed)
 	}
 	if board := speed[0].(map[string]any)["stats"].(map[string]any); board["cols"] != 30.0 || board["mode"] != "noguess" {
 		t.Fatalf("row stats: %v", board)
 	}
-	classic := newClient(t, base).call("GET", "/api/boards/minesweeper/speed?filter=classic", nil, 200)["rows"].([]any)
+	classic := newClient(t, e.base).call("GET", "/api/boards/minesweeper/speed?filter=classic", nil, 200)["rows"].([]any)
 	if len(classic) != 1 || classic[0].(map[string]any)["displayName"] != "Cyd" {
 		t.Fatalf("classic only: %v", classic)
 	}
-	wins := newClient(t, base).call("GET", "/api/boards/minesweeper/wins", nil, 200)["rows"].([]any)
+	wins := newClient(t, e.base).call("GET", "/api/boards/minesweeper/wins", nil, 200)["rows"].([]any)
 	if wins[0].(map[string]any)["value"] != 2.0 || wins[0].(map[string]any)["stats"] != nil {
 		t.Fatalf("wins: %v", wins)
 	}
@@ -306,14 +386,14 @@ func TestRunsAndBoards(t *testing.T) {
 	}
 	play(cy, "steelspell", ss("sword", "Sword", 4), 200)
 	play(di, "steelspell", ss("icearrow", "Ice Arrow", 3), 200)
-	byIce := newClient(t, base).call("GET", "/api/boards/steelspell/time?filter=icearrow", nil, 200)["rows"].([]any)
+	byIce := newClient(t, e.base).call("GET", "/api/boards/steelspell/time?filter=icearrow", nil, 200)["rows"].([]any)
 	if len(byIce) != 1 || byIce[0].(map[string]any)["displayName"] != "Dina" {
 		t.Fatalf("filtered: %v", byIce)
 	}
 	if run := byIce[0].(map[string]any)["stats"].(map[string]any); run["items"].([]any)[0].(map[string]any)["name"] != "Padded Vest" {
 		t.Fatalf("row stats: %v", run)
 	}
-	starts := newClient(t, base).call("GET", "/api/boards/steelspell", nil, 200)["filters"].(map[string]any)["start"].([]any)
+	starts := newClient(t, e.base).call("GET", "/api/boards/steelspell", nil, 200)["filters"].(map[string]any)["start"].([]any)
 	labels := map[string]any{}
 	for _, o := range starts {
 		labels[o.(map[string]any)["value"].(string)] = o.(map[string]any)["label"]
@@ -330,23 +410,22 @@ func TestRunsAndBoards(t *testing.T) {
 	cy.call("PUT", "/api/saves/chronoguard-v2", map[string]any{"value": save(12, 300, 4), "baseRev": 0}, 200)
 	cy.call("PUT", "/api/saves/chronoguard-v2", map[string]any{"value": save(12, 300, 4), "baseRev": 1}, 200)
 	cy.call("PUT", "/api/saves/chronoguard-v2", map[string]any{"value": save(14, 320, 4), "baseRev": 2}, 200)
-	wave := newClient(t, base).call("GET", "/api/boards/chronomancer/wave", nil, 200)["rows"].([]any)
+	wave := newClient(t, e.base).call("GET", "/api/boards/chronomancer/wave", nil, 200)["rows"].([]any)
 	if len(wave) != 1 || wave[0].(map[string]any)["value"] != 14.0 {
 		t.Fatalf("chronomancer: %v", wave)
 	}
 
-	profile := newClient(t, base).call("GET", "/api/profile/cyd", nil, 200)
+	profile := newClient(t, e.base).call("GET", "/api/profile/cyd", nil, 200)
 	if profile["displayName"] != "Cyd" || len(profile["games"].([]any)) != 4 {
 		t.Fatalf("profile: %v", profile)
 	}
-	newClient(t, base).call("GET", "/api/profile/Unconfirmed", nil, 404)
-	un.call("GET", "/api/profile/Unconfirmed", nil, 200)
+	newClient(t, e.base).call("GET", "/api/profile/Nobody%20Here", nil, 404)
 }
 
 func TestStatic(t *testing.T) {
-	base, _ := setup(t)
+	e := setup(t)
 	for path, want := range map[string]int{"/": 200, "/index.html": 200, "/nope.js": 404, "/.git/config": 404, "/api/nope": 404} {
-		res, err := http.Get(base + path)
+		res, err := http.Get(e.base + path)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -359,10 +438,10 @@ func TestStatic(t *testing.T) {
 
 // Empty lists are lists: the pages call .map and .length on them.
 func TestEmptyListsAreArrays(t *testing.T) {
-	base, mails := setup(t)
-	ed := signUp(t, base, mails, "ed@example.com", "Eddy", true)
+	e := setup(t)
+	ed := e.player(t, "google-eddy", "Eddy")
 	for _, path := range []string{"/api/saves", "/api/boards/tetris/score", "/api/boards/steelspell"} {
-		res, _ := ed.http.Get(base + path)
+		res, _ := ed.http.Get(e.base + path)
 		raw, _ := io.ReadAll(res.Body)
 		res.Body.Close()
 		if bytes.Contains(raw, []byte("null")) && !bytes.Contains(raw, []byte(`"me":null`)) {
@@ -374,18 +453,13 @@ func TestEmptyListsAreArrays(t *testing.T) {
 // With many players tied, more than 100 share a rank of 100 or better; the asking
 // player's row must still come back, after the first 100.
 func TestMyRowAmongTies(t *testing.T) {
-	base, mails := setup(t)
-	me := signUp(t, base, mails, "me@example.com", "Latecomer", true)
+	e := setup(t)
+	me := e.player(t, "google-late", "Latecomer")
 	ctx := context.Background()
-	pool, err := db.Open(ctx, os.Getenv("NEXUS_TEST_DATABASE_URL"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
-	_, err = pool.Exec(ctx, `
+	_, err := e.pool.Exec(ctx, `
 		WITH made AS (
-		  INSERT INTO users (email, display_name, password_hash, email_verified_at)
-		  SELECT 'tie' || n || '@example.com', 'Tie ' || n, 'x', now() FROM generate_series(1, 120) n
+		  INSERT INTO users (google_sub, display_name)
+		  SELECT 'tie-' || n, 'Tie ' || n FROM generate_series(1, 120) n
 		  RETURNING id)
 		INSERT INTO results (user_id, game, stats, source, created_at)
 		SELECT id, 'minesweeper', '{"won":true}', 'played', now() - interval '1 day' FROM made`)

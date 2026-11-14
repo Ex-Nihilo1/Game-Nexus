@@ -140,7 +140,8 @@ func (s *Server) finishRun(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ranks := []rankInfo{}
-	if u.Verified {
+	named := u.DisplayName != nil
+	if named {
 		for _, b := range g.Boards {
 			_, mine, err := s.boardRows(ctx, boardQuery{game: g, board: &b, variant: out.Variant, me: u.ID})
 			if err != nil {
@@ -155,5 +156,5 @@ func (s *Server) finishRun(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"verified": u.Verified, "ranks": ranks})
+	writeJSON(w, http.StatusOK, map[string]any{"named": named, "ranks": ranks})
 }

@@ -14,8 +14,8 @@ import (
 
 type player struct {
 	name     string
-	email    string
-	verified bool
+	googleID string // signs in through cmd/fake-google with this account id
+	named    bool   // has a display name, so is on the boards
 	joined   time.Time
 	results  []result
 }
@@ -57,8 +57,8 @@ func generate(seed int64, count int, now time.Time) []player {
 		joined := now.Add(-time.Duration((95 + r.Float64()*25) * 24 * float64(time.Hour)))
 		p := player{
 			name:     name,
-			email:    fmt.Sprintf("seed%03d@seed.invalid", i+1),
-			verified: r.Float64() < 0.9,
+			googleID: fmt.Sprintf("seed:%03d", i+1),
+			named:    r.Float64() < 0.9,
 			joined:   joined,
 		}
 		// Skill shapes everything: most players are middling, a few are very good.

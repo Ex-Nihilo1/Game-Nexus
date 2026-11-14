@@ -8,8 +8,9 @@ info:
     the same origin as the games, under `/api`.
 
     **Guests and players.** Health, leaderboards and player pages need no account.
-    Everything else needs the session cookie that signing up, signing in or resetting a
-    password sets.
+    Everything else needs the session cookie that signing in with Google sets. A new
+    player chooses a display name first; until then they play and sync, but are not on
+    the leaderboards.
 
     **Changes come from the site only.** Every call other than GET or HEAD must send
     `X-Nexus: 1`, and an `Origin` matching the site when the browser sends one. A page on
@@ -19,8 +20,8 @@ info:
     **Errors** are `{"error": "..."}`. The messages are written for players and the pages
     show them as they are.
 
-    **Rate limits** answer 429. They are per IP address, per email or per player,
-    depending on the call, and are noted on each.
+    **Rate limits** answer 429 (sign-in: a redirect with `error=busy`). They are per IP
+    address or per player, depending on the call, and are noted on each.
 servers:
   - url: /
     description: The site itself, same origin.
@@ -28,7 +29,7 @@ tags:
   - name: Health
     description: Whether the server and its database answer.
   - name: Auth
-    description: Creating accounts, signing in and out, and the links mailed out.
+    description: Signing in with Google, and signing out.
   - name: Account
     description: The signed-in player's own account.
   - name: Saves
@@ -65,104 +66,64 @@ paths:
 
   # ---- Auth ----
 
-  /api/auth/signup:
-    post:
+  /api/auth/google:
+    get:
       tags: [Auth]
-      operationId: signup
-      summary: Create an account and sign in
+      operationId: googleStart
+      summary: Start signing in with Google
       description: |
-        Creates the account, signs this browser in (sets the session cookie) and mails a
-        link that confirms the address. Until it is confirmed the player can sync saves
-        and report games, but does not appear on the leaderboards. Limited to 5 new
-        accounts per IP address, then one every 10 minutes.
-      security: [{ siteHeader: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [email, displayName, password]
-              properties:
-                email: { type: string, format: email, maxLength: 254 }
-                displayName: { $ref: '#/components/schemas/DisplayName' }
-                password: { $ref: '#/components/schemas/Password' }
-            example: { email: ann@example.com, displayName: Graphite Fox, password: a long password }
+        A page the browser navigates to, not a call for scripts. Sends the browser to
+        Google's consent page (OAuth 2.0 authorization code flow with PKCE, a `state` and
+        a `nonce`, scope `openid` only, so Google shares nothing but the account id). The
+        state, the PKCE verifier and the nonce wait in a 10-minute cookie for the
+        callback. Limited to 30 sign-ins at once per IP address, then one every 10 s.
+      security: []
+      parameters:
+        - name: back
+          in: query
+          description: Where to return afterwards; a path on this site, anything else becomes `/`.
+          schema: { type: string, default: / }
       responses:
-        '200':
-          description: Signed up and signed in.
-          headers:
-            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/UserReply' }
-        '400':
+        '302':
           description: |
-            One of: "That does not look like an email address.", "A display name is 3 to
-            24 characters long.", "A display name starts with a letter or a digit.",
-            "A display name may use letters, digits, spaces, dots, dashes and
-            underscores.", "A password needs at least 10 characters.", "A password can
-            have at most 128 characters.", or a body that could not be read.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '403': { $ref: '#/components/responses/NotFromSite' }
-        '409':
-          description: The email or the display name is taken.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              examples:
-                email: { value: { error: "That email already has an account. Sign in, or reset the password." } }
-                name: { value: { error: "That display name is taken." } }
-        '429':
-          description: Too many new accounts from this address.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "Too many new accounts from here. Try again later." }
-        '500': { $ref: '#/components/responses/ServerError' }
-
-  /api/auth/login:
-    post:
-      tags: [Auth]
-      operationId: login
-      summary: Sign in
-      description: |
-        Signs this browser in. Emails are matched without regard to case. A wrong
-        password and an unknown email answer alike, and take as long. Limited to 20 tries
-        per IP address (then one every 20 s) and 8 per email (then one a minute).
-      security: [{ siteHeader: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [email, password]
-              properties:
-                email: { type: string }
-                password: { type: string }
-      responses:
-        '200':
-          description: Signed in.
+            To Google. Or, when no Google client is set up, to `/account/?error=unavailable`,
+            and when rate limited to `/account/?error=busy`.
           headers:
+            Location: { $ref: '#/components/headers/Location' }
+            Set-Cookie: { $ref: '#/components/headers/OAuthCookie' }
+
+  /api/auth/google/callback:
+    get:
+      tags: [Auth]
+      operationId: googleCallback
+      summary: Where Google sends the browser back
+      description: |
+        Checks the `state` against the cookie, exchanges the code (with the client secret
+        and the PKCE verifier), and reads the account id from the ID token after checking
+        its issuer, audience, expiry and nonce. The first sign-in with a Google account
+        creates the player. Signs this browser in (the session cookie) and redirects.
+      security: []
+      parameters:
+        - name: code
+          in: query
+          schema: { type: string }
+        - name: state
+          in: query
+          schema: { type: string }
+        - name: error
+          in: query
+          description: Set by Google instead of `code`, e.g. `access_denied` when the player cancels.
+          schema: { type: string }
+      responses:
+        '302':
+          description: |
+            Signed in: to `back`, or to `/account/?choose&back=...` when the player has no
+            display name yet. Cancelled: to `/account/?error=cancelled&back=...`. Anything
+            else went wrong (state, code, ID token): to `/account/?error=failed`; the reason
+            is only in the server's log.
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
             Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/UserReply' }
-        '400': { $ref: '#/components/responses/BadBody' }
-        '401':
-          description: Wrong email or password.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "Wrong email or password." }
-        '403': { $ref: '#/components/responses/NotFromSite' }
-        '429': { $ref: '#/components/responses/TooManyTries' }
-        '500': { $ref: '#/components/responses/ServerError' }
 
   /api/auth/logout:
     post:
@@ -200,145 +161,6 @@ paths:
         '403': { $ref: '#/components/responses/NotFromSite' }
         '500': { $ref: '#/components/responses/ServerError' }
 
-  /api/auth/verify:
-    post:
-      tags: [Auth]
-      operationId: verify
-      summary: Confirm an email address from a mailed link
-      description: |
-        The token comes from a link `/account/#verify=<token>`. It confirms the account's
-        own address, or moves the account to the new address a player asked for
-        (`POST /api/me/email`). Needs no session: the link may be opened on another
-        device. A link works once, for 48 hours. Limited to 20 tries per IP address, then
-        one every 10 s.
-      security: [{ siteHeader: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/TokenBody' }
-      responses:
-        '200':
-          description: Confirmed; `email` is the account's address now.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [ok, email]
-                properties:
-                  ok: { type: boolean, const: true }
-                  email: { type: string, format: email }
-        '400': { $ref: '#/components/responses/BadBody' }
-        '403': { $ref: '#/components/responses/NotFromSite' }
-        '409':
-          description: The new address has gained an account of its own since the link was sent.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "That email has an account of its own by now." }
-        '410': { $ref: '#/components/responses/LinkGone' }
-        '429': { $ref: '#/components/responses/TooManyTries' }
-        '500': { $ref: '#/components/responses/ServerError' }
-
-  /api/auth/resend:
-    post:
-      tags: [Auth]
-      operationId: resend
-      summary: Mail the confirmation link again
-      description: Replaces any earlier unused link. Limited to 3 mails per address, then one every 5 minutes.
-      security: [{ session: [], siteHeader: [] }]
-      responses:
-        '200':
-          description: A new link is on its way.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Ok' }
-        '400':
-          description: The address is already confirmed.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "Your email is already confirmed." }
-        '401': { $ref: '#/components/responses/SignInFirst' }
-        '403': { $ref: '#/components/responses/NotFromSite' }
-        '429': { $ref: '#/components/responses/MailOnItsWay' }
-        '500': { $ref: '#/components/responses/ServerError' }
-
-  /api/auth/forgot:
-    post:
-      tags: [Auth]
-      operationId: forgot
-      summary: Mail a password-reset link
-      description: |
-        Mails `/account/#reset=<token>`, valid for one hour, when the email has an account.
-        Answers the same either way, so it cannot tell anyone which emails have accounts.
-        Limited per IP address and per email.
-      security: [{ siteHeader: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [email]
-              properties:
-                email: { type: string }
-      responses:
-        '200':
-          description: If the email has an account, a link is on its way.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Ok' }
-        '400': { $ref: '#/components/responses/BadBody' }
-        '403': { $ref: '#/components/responses/NotFromSite' }
-        '429':
-          description: Too many requests from this address or for this email.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "Too many tries. Wait a few minutes and try again." }
-        '500': { $ref: '#/components/responses/ServerError' }
-
-  /api/auth/reset:
-    post:
-      tags: [Auth]
-      operationId: reset
-      summary: Set a new password from a mailed link
-      description: |
-        Sets the password, ends every session of the account, and signs this browser in.
-        Opening the link proves the address works, so it also counts as confirming it.
-      security: [{ siteHeader: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [token, password]
-              properties:
-                token: { type: string }
-                password: { $ref: '#/components/schemas/Password' }
-      responses:
-        '200':
-          description: Password changed; signed in.
-          headers:
-            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/UserReply' }
-        '400':
-          description: The password breaks a rule, or the body could not be read.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "A password needs at least 10 characters." }
-        '403': { $ref: '#/components/responses/NotFromSite' }
-        '410': { $ref: '#/components/responses/LinkGone' }
-        '429': { $ref: '#/components/responses/TooManyTries' }
-        '500': { $ref: '#/components/responses/ServerError' }
-
   # ---- Account ----
 
   /api/me:
@@ -365,7 +187,8 @@ paths:
     patch:
       tags: [Account]
       operationId: renameMe
-      summary: Change the display name
+      summary: Choose or change the display name
+      description: The name shown on the leaderboards. Until a player has one, they are not on them.
       security: [{ session: [], siteHeader: [] }]
       requestBody:
         required: true
@@ -377,18 +200,21 @@ paths:
               required: [displayName]
               properties:
                 displayName: { $ref: '#/components/schemas/DisplayName' }
+            example: { displayName: Graphite Fox }
       responses:
         '200':
-          description: Renamed.
+          description: Named.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/UserReply' }
         '400':
-          description: The name breaks a rule, or the body could not be read.
+          description: |
+            The name breaks a rule ("A display name is 3 to 24 characters long.", "A display
+            name starts with a letter or a digit.", "A display name may use letters, digits,
+            spaces, dots, dashes and underscores."), or the body could not be read.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "A display name is 3 to 24 characters long." }
         '401': { $ref: '#/components/responses/SignInFirst' }
         '403': { $ref: '#/components/responses/NotFromSite' }
         '409':
@@ -404,13 +230,10 @@ paths:
       summary: Delete the account
       description: |
         Removes the account with its saves, results and sessions, for good. Progress
-        already in the player's browsers stays there.
+        already in the player's browsers stays there. Needs a sign-in from the last 10
+        minutes on this browser; otherwise 403 with `reauth: true`, and the page offers to
+        sign in with Google again.
       security: [{ session: [], siteHeader: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/PasswordBody' }
       responses:
         '200':
           description: Deleted; this browser is signed out.
@@ -419,86 +242,18 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Ok' }
-        '400': { $ref: '#/components/responses/BadBody' }
         '401': { $ref: '#/components/responses/SignInFirst' }
-        '403': { $ref: '#/components/responses/WrongPassword' }
-        '429': { $ref: '#/components/responses/TooManyTries' }
-        '500': { $ref: '#/components/responses/ServerError' }
-
-  /api/me/password:
-    post:
-      tags: [Account]
-      operationId: changePassword
-      summary: Change the password
-      description: Every other session of the player ends; this one stays signed in.
-      security: [{ session: [], siteHeader: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [current, password]
-              properties:
-                current: { type: string }
-                password: { $ref: '#/components/schemas/Password' }
-      responses:
-        '200':
-          description: Changed.
+        '403':
+          description: The sign-in is older than 10 minutes (`reauth`), or `X-Nexus` is missing.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Ok' }
-        '400':
-          description: The new password breaks a rule, or the body could not be read.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '401': { $ref: '#/components/responses/SignInFirst' }
-        '403': { $ref: '#/components/responses/WrongPassword' }
-        '429': { $ref: '#/components/responses/TooManyTries' }
-        '500': { $ref: '#/components/responses/ServerError' }
-
-  /api/me/email:
-    post:
-      tags: [Account]
-      operationId: changeEmail
-      summary: Move the account to another email
-      description: |
-        Mails a confirmation link to the new address; the account moves there when it is
-        opened (`POST /api/auth/verify`). Until then nothing changes.
-      security: [{ session: [], siteHeader: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [password, email]
-              properties:
-                password: { type: string }
-                email: { type: string, format: email, maxLength: 254 }
-      responses:
-        '200':
-          description: The link is on its way.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Ok' }
-        '400':
-          description: '"That does not look like an email address.", "That is already your email.", or a body that could not be read.'
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '401': { $ref: '#/components/responses/SignInFirst' }
-        '403': { $ref: '#/components/responses/WrongPassword' }
-        '409':
-          description: The new email already has an account.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "That email already has an account. Sign in, or reset the password." }
-        '429': { $ref: '#/components/responses/MailOnItsWay' }
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string }
+                  reauth: { type: boolean, const: true }
+              example: { error: "To delete your account, sign in with Google again first.", reauth: true }
         '500': { $ref: '#/components/responses/ServerError' }
 
   # ---- Saves ----
@@ -705,7 +460,7 @@ paths:
         later (Steel & Spell) keeps its token.
 
         The answer says where the player now stands on each of the game's boards, all
-        time. Players with an unconfirmed email get an empty list.
+        time. Players without a display name get an empty list.
       security: [{ session: [], siteHeader: [] }]
       requestBody:
         required: true
@@ -756,16 +511,16 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [verified, ranks]
+                required: [named, ranks]
                 properties:
-                  verified:
+                  named:
                     type: boolean
-                    description: False while the player's email is unconfirmed; `ranks` is then empty.
+                    description: False while the player has no display name; `ranks` is then empty.
                   ranks:
                     type: array
                     items: { $ref: '#/components/schemas/Rank' }
               example:
-                verified: true
+                named: true
                 ranks:
                   - { board: score, title: High score, unit: points, variant: '', rank: 126, value: 1840, isNew: true }
                   - { board: lines, title: Most lines, unit: lines, variant: '', rank: 133, value: 9, isNew: true }
@@ -870,7 +625,7 @@ paths:
       summary: One leaderboard
       description: |
         Each player once, with their best result by the board's metric (or their number
-        of results, on boards that count). Only players with a confirmed email appear.
+        of results, on boards that count). Only players with a display name appear.
         Players who tie share a rank; the list stops after 100 places. When the asking
         player is on the board, `me` is their row, which may lie beyond the first 100.
       security: [{}, { session: [] }]
@@ -934,9 +689,8 @@ paths:
       summary: A player's page
       description: |
         Per game played: how many results, how long, and where the player stands on each
-        board in the (at most 3) variants they play most. Players with an unconfirmed
-        email are shown only to themselves.
-      security: [{}, { session: [] }]
+        board in the (at most 3) variants they play most.
+      security: []
       responses:
         '200':
           description: The player.
@@ -944,16 +698,15 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [displayName, joined, verified, games]
+                required: [displayName, joined, games]
                 properties:
                   displayName: { type: string }
                   joined: { type: string, format: date-time }
-                  verified: { type: boolean }
                   games:
                     type: array
                     items: { $ref: '#/components/schemas/ProfileGame' }
         '404':
-          description: No such player, or one only they may see.
+          description: No player has that name.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -967,7 +720,7 @@ components:
       in: cookie
       name: __Host-nexus
       description: |
-        Set by signup, login and reset; HttpOnly, SameSite=Lax, 30 days, renewed while in
+        Set when signing in with Google; HttpOnly, SameSite=Lax, 30 days, renewed while in
         use. Named `__Host-nexus` when the site is served over HTTPS and `nexus` in
         development over plain HTTP.
     siteHeader:
@@ -977,6 +730,14 @@ components:
       description: Must be `1` on every call other than GET or HEAD.
 
   headers:
+    Location:
+      description: Where the browser goes next.
+      schema: { type: string }
+    OAuthCookie:
+      description: |
+        The sign-in in progress, `nexus-oauth` (`__Secure-nexus-oauth` over HTTPS), on path
+        `/api/auth/google`, HttpOnly, 10 minutes. The callback clears it.
+      schema: { type: string }
     SessionCookie:
       description: The new session, e.g. `__Host-nexus=<token>; Path=/; Expires=...; HttpOnly; Secure; SameSite=Lax`.
       schema: { type: string }
@@ -992,12 +753,6 @@ components:
       schema: { $ref: '#/components/schemas/GameId' }
 
   responses:
-    BadBody:
-      description: The body is not the expected JSON (unknown fields are refused too).
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/Error' }
-          example: { error: "The request could not be read." }
     SignInFirst:
       description: No valid session.
       content:
@@ -1010,30 +765,6 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
           example: { error: "This request did not come from Game Nexus." }
-    WrongPassword:
-      description: The password given to confirm the change is not the player's.
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/Error' }
-          example: { error: "That is not your current password." }
-    LinkGone:
-      description: The link is unknown, used, or out of date.
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/Error' }
-          example: { error: "This link has been used or is out of date. Ask for a new one." }
-    TooManyTries:
-      description: Rate limited.
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/Error' }
-          example: { error: "Too many tries. Wait a minute and try again." }
-    MailOnItsWay:
-      description: An email to that address went out moments ago.
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/Error' }
-          example: { error: "An email is already on its way. Wait a few minutes before asking again." }
     NoSuchGame:
       description: No such game.
       content:
@@ -1069,31 +800,14 @@ components:
       minLength: 3
       maxLength: 24
       pattern: '^[\p{L}\p{N}][\p{L}\p{N} ._-]*$'
-    Password:
-      type: string
-      minLength: 10
-      maxLength: 128
-      format: password
-    TokenBody:
-      type: object
-      additionalProperties: false
-      required: [token]
-      properties:
-        token: { type: string, description: "The token from the mailed link." }
-    PasswordBody:
-      type: object
-      additionalProperties: false
-      required: [password]
-      properties:
-        password: { type: string }
     User:
       type: object
-      required: [id, email, displayName, verified, createdAt]
+      required: [id, displayName, createdAt]
       properties:
         id: { type: integer }
-        email: { type: string, format: email }
-        displayName: { type: string }
-        verified: { type: boolean, description: "The email is confirmed; only then is the player on the boards." }
+        displayName:
+          description: Null until the player chooses one; only then are they on the leaderboards.
+          type: [string, 'null']
         createdAt: { type: string, format: date-time }
     UserReply:
       type: object

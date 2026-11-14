@@ -28,7 +28,7 @@ func TestSpecMatchesRoutes(t *testing.T) {
 	for _, m := range regexp.MustCompile(`api\("([A-Z]+) (/api/[^"]*)"`).FindAllSubmatch(src, -1) {
 		server[strings.ToLower(string(m[1]))+" "+string(m[2])] = true
 	}
-	if len(server) < 20 {
+	if len(server) < 10 {
 		t.Fatalf("found only %d routes in server.go; has the way they are declared changed?", len(server))
 	}
 

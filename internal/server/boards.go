@@ -137,7 +137,7 @@ func (s *Server) boardRows(ctx context.Context, q boardQuery) ([]boardRow, *boar
 	if b.Desc {
 		order = "DESC"
 	}
-	where := `r.game = $1 AND r.variant = $2 AND r.created_at >= $3 AND u.email_verified_at IS NOT NULL`
+	where := `r.game = $1 AND r.variant = $2 AND r.created_at >= $3 AND u.display_name IS NOT NULL`
 	args := []any{q.game.ID, q.variant, q.since, q.me}
 	if b.OnlyWon {
 		where += ` AND (r.stats->>'won')::boolean`
@@ -265,20 +265,14 @@ type profileGame struct {
 }
 
 func (s *Server) profile(w http.ResponseWriter, r *http.Request) {
-	viewer, err := s.currentUser(w, r)
-	if err != nil {
-		failInternal(w, "profile", err)
-		return
-	}
 	ctx := r.Context()
 	var id int64
 	var name string
-	var verified bool
 	var joined time.Time
-	err = s.db.QueryRow(ctx,
-		`SELECT id, display_name::text, email_verified_at IS NOT NULL, created_at FROM users WHERE display_name = $1`,
-		r.PathValue("name")).Scan(&id, &name, &verified, &joined)
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !verified && (viewer == nil || viewer.ID != id)) {
+	err := s.db.QueryRow(ctx,
+		`SELECT id, display_name::text, created_at FROM users WHERE display_name = $1`,
+		r.PathValue("name")).Scan(&id, &name, &joined)
+	if errors.Is(err, pgx.ErrNoRows) {
 		fail(w, http.StatusNotFound, "No player has that name.")
 		return
 	}
@@ -330,6 +324,6 @@ func (s *Server) profile(w http.ResponseWriter, r *http.Request) {
 		list = append(list, pg)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"displayName": name, "joined": joined, "verified": verified, "games": list,
+		"displayName": name, "joined": joined, "games": list,
 	})
 }

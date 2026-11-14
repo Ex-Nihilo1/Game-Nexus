@@ -5,7 +5,7 @@ self:
 let
   cfg = config.services.game-nexus;
   system = pkgs.stdenv.hostPlatform.system;
-  inherit (lib) mkOption mkEnableOption mkIf types optional optionalAttrs;
+  inherit (lib) mkOption mkEnableOption mkIf types optional;
 in
 {
   options.services.game-nexus = {
@@ -28,7 +28,7 @@ in
     domain = mkOption {
       type = types.str;
       example = "games.example.com";
-      description = "The site's domain: nginx serves it and mailed links point to it.";
+      description = "The site's domain: nginx serves it, and Google sends players back to it after sign-in.";
     };
 
     baseURL = mkOption {
@@ -57,29 +57,15 @@ in
       };
     };
 
-    smtp = {
-      host = mkOption {
-        type = types.nullOr types.str;
-        default = null;
-        example = "smtp.example.com";
-        description = "Mail server for confirmation and password-reset emails. Null writes them to the journal instead.";
-      };
-      port = mkOption {
-        type = types.port;
-        default = 587;
-        description = "465 for TLS from the start, anything else for STARTTLS.";
-      };
-      username = mkOption {
-        type = types.nullOr types.str;
-        default = null;
-        description = "SMTP user. The password goes in environmentFile as NEXUS_SMTP_PASSWORD.";
-      };
-      from = mkOption {
-        type = types.str;
-        default = "Game Nexus <games@${cfg.domain}>";
-        defaultText = lib.literalExpression ''"Game Nexus <games@''${config.services.game-nexus.domain}>"'';
-        description = "Sender of the emails.";
-      };
+    google.clientId = mkOption {
+      type = types.str;
+      default = "";
+      example = "1234567890-abc.apps.googleusercontent.com";
+      description = ''
+        The Google OAuth client players sign in with (Google Cloud Console, OAuth client ID,
+        type Web application, redirect URI ''${baseURL}/api/auth/google/callback).
+        Its secret goes in environmentFile as NEXUS_GOOGLE_CLIENT_SECRET.
+      '';
     };
 
     environmentFile = mkOption {
@@ -87,8 +73,8 @@ in
       default = null;
       example = "/run/secrets/game-nexus.env";
       description = ''
-        File with secrets as KEY=value lines, kept out of the Nix store, e.g.
-        NEXUS_SMTP_PASSWORD=... Works with sops-nix or agenix.
+        File with secrets as KEY=value lines, kept out of the Nix store:
+        NEXUS_GOOGLE_CLIENT_SECRET=... Works with sops-nix or agenix.
       '';
     };
 
@@ -103,6 +89,11 @@ in
   };
 
   config = mkIf cfg.enable {
+    assertions = [{
+      assertion = cfg.google.clientId != "";
+      message = "services.game-nexus.google.clientId must be set: players sign in with Google.";
+    }];
+
     users.users.game-nexus = {
       isSystemUser = true;
       group = "game-nexus";
@@ -135,12 +126,7 @@ in
         NEXUS_WEB_ROOT = "${cfg.webRoot}";
         NEXUS_BASE_URL = cfg.baseURL;
         NEXUS_TRUST_PROXY = if cfg.nginx.enable then "1" else "0";
-        NEXUS_SMTP_PORT = toString cfg.smtp.port;
-        NEXUS_SMTP_FROM = cfg.smtp.from;
-      } // optionalAttrs (cfg.smtp.host != null) {
-        NEXUS_SMTP_HOST = cfg.smtp.host;
-      } // optionalAttrs (cfg.smtp.username != null) {
-        NEXUS_SMTP_USERNAME = cfg.smtp.username;
+        NEXUS_GOOGLE_CLIENT_ID = cfg.google.clientId;
       };
 
       serviceConfig = {
