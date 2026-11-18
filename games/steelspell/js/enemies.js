@@ -57,13 +57,13 @@ function spawnEnemies(dt) {
     const types = ELITES.waves[Math.min(nextElite, ELITES.waves.length - 1)];
     nextElite++;
     for (const type of types) addEnemy(type);
-    say(types.length > 1 ? 'Elites have arrived' : `${ENEMIES[types[0]].name} has arrived`);
+    say(types.length > 1 ? t('toasts.elites') : t('toasts.elite', { name: t(`enemies.${types[0]}`) }));
   }
   while (elapsed >= ringEntry(nextRing).at) {
     const ring = ringEntry(nextRing++);
     if (ring.from && elapsed < ring.from) continue; // this ring comes only later in a run
     for (let i = 0; i < ring.count; i++) addEnemy(ring.type, i / ring.count * TAU);
-    say('They are closing in');
+    say(t('toasts.ring'));
   }
   wildOrbTimer -= dt;
   if (wildOrbTimer <= 0) {

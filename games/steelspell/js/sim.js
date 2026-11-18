@@ -313,14 +313,14 @@ function simRun(job) {
   simulating = false;
   setMetaForRun(null);
   const dealt = {};
-  for (const w of hero.weapons) dealt[w.def.name] = Math.round(w.dealt);
+  for (const w of hero.weapons) dealt[w.def.id] = Math.round(w.dealt);
   return {
     bot: job.bot, cards: job.cards, seed: job.seed, weapon: job.weapon, active: job.active, god: !!job.god,
     death: Math.round(deaths.length ? deaths[0] : elapsed), wall: Math.round(wall), deaths: deaths.length, capped,
     level, kills, perMinute, dealt, events, items: items.length, maxHp: hero.maxHp,
     hurtPerMinute: Math.round(hurt / Math.max(1 / 60, elapsed / 60)),
     hurtBy: Object.fromEntries(Object.entries(hero.hurtBy).map(([k, v]) => [k, Math.round(v)])),
-    kit: hero.weapons.map(w => w.def.tag + (w.level ? w.level : '')),
+    kit: hero.weapons.map(w => w.def.id + (w.level ? w.level : '')), // ids: the workers have no texts
     updateMs: +(ms / Math.max(1, steps)).toFixed(3),
   };
 }
@@ -562,7 +562,7 @@ function devKey(code) {
     const w = hero.weapons.find(canLevel);
     if (w) {
       while (canLevel(w)) levelUpWeapon(w);
-      say(`${w.def.name} is at its last level`);
+      say(`${nameOf(w.def)} is at its last level`);
       if (queue.length) nextChoice();
     }
   } else if (code === 'KeyH') {
@@ -574,4 +574,5 @@ function devKey(code) {
   }
 }
 
-if (!SIM_IN_WORKER && SIM_PARAMS.has('sim')) window.addEventListener('load', simBoot);
+// After the page's own start (main.js), which waits for the texts too.
+if (!SIM_IN_WORKER && SIM_PARAMS.has('sim')) window.addEventListener('load', () => textsReady.then(simBoot));

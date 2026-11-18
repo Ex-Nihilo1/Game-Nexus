@@ -28,11 +28,11 @@ const CAST = {
   stash(def) {
     const a = rand() * TAU;
     chests.push({ x: hero.x + Math.cos(a) * def.distance, y: hero.y + Math.sin(a) * def.distance, type: 'stash', dead: false });
-    say('A chest appeared nearby');
+    say(t('toasts.stash'));
   },
   inspiration(def) {
     gainXp(xpNext * def.share);
-    say('Inspired!');
+    say(t('toasts.inspired'));
   },
 };
 
@@ -64,10 +64,10 @@ function hurtHero(amount, kind = 'phys', source = 'touch') {
   }
   const taken = amount * (1 - armorCut());
   // Second Wind: the hit that would have left the hero nearly dead does not land.
-  if (gearValue('secondWind') && elapsed >= hero.windAt && hero.hp - taken < hero.maxHp * 0.2) {
+  if (gearValue('secondWind') && elapsed >= hero.windAt && hero.hp - taken < hero.maxHp * SECOND_WIND.below) {
     hero.windAt = elapsed + gearValue('secondWind');
-    hero.iframes = 2;
-    say('Second Wind!');
+    hero.iframes = SECOND_WIND.safe;
+    say(t('toasts.secondWind', { name: t('items.wind.name') }));
     return;
   }
   hero.hp -= taken;
@@ -84,7 +84,7 @@ function revive() {
   hero.iframes = REVIVE.iframes;
   eachEnemyNear(hero.x, hero.y, REVIVE.radius, e => hurtEnemy(e, e.maxHp * REVIVE.share, 'pure', false, null));
   addFx({ type: 'ring', x: hero.x, y: hero.y, r: REVIVE.radius, life: 0.7, pen: KINDS.pure.pen });
-  say('Back from the dead!');
+  say(t('toasts.revived'));
 }
 
 // Bodies are solid. The hero shoves small enemies aside but can be walled in by a crowd,

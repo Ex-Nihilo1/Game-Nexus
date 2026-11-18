@@ -194,6 +194,8 @@
     .camp-rank { font: 13px var(--font-figure); font-variant-numeric: tabular-nums; }
     .camp-row button { min-width: 92px; height: 28px; }
 
+    .lang-pick { height: 32px; padding: 0 6px; font: 13px var(--font-condensed); color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 2px; }
+
     @media (max-width: 560px) {
       .page { padding: 6px 8px 8px; }
       .app-header { margin-bottom: 6px; padding-bottom: 6px; }
@@ -210,7 +212,7 @@
     <header class="app-header">
       <div>
         <a class="back-link" href="../../index.html">&larr; Game Nexus</a>
-        <h1 class="app-title">Steel &amp; Spell</h1>
+        <h1 class="app-title" id="title">Steel &amp; Spell</h1>
         <div class="app-status" id="status"></div>
       </div>
       <div class="theme-controls"></div>
@@ -218,7 +220,7 @@
 
     <main class="stage" id="stage">
       <canvas id="view"></canvas>
-      <button class="corner-btn" id="pause-btn" hidden>Pause</button>
+      <button class="corner-btn" id="pause-btn" hidden></button>
       <button class="active-btn" id="active-btn" hidden>
         <span id="active-name"></span>
         <span class="time" id="active-time"></span>
@@ -233,6 +235,7 @@
   <script src="js/data/weapons.js"></script>
   <script src="js/data/enemies.js"></script>
   <script src="js/data/items.js"></script>
+  <script src="js/lang.js"></script>
   <script src="js/core.js"></script>
   <script src="js/stats.js"></script>
   <script src="js/grid.js"></script>

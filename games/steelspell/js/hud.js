@@ -30,10 +30,13 @@ function drawWeaponTiles(H) {
     ctx.strokeStyle = pal[KINDS[w.def.kind].pen];
     ctx.lineWidth = 2;
     ctx.strokeRect(x, y, size, size);
-    hudText(w.def.tag, x + size / 2, y + size / 2 - (w.level && size >= 32 ? 4 : 0), Math.max(9, Math.round(size * 0.38)), 'ink', 'center');
-    if (w.level && size >= 32) hudText(w.evo ? 'EVO' : w.level >= MAX_WEAPON_LEVEL ? 'MAX' : `Lv ${w.level}`, x + size / 2, y + size - 8, 10, w.evo ? 'red-pencil' : 'ink-muted', 'center');
+    hudText(tagOf(w.def), x + size / 2, y + size / 2 - (w.level && size >= 32 ? 4 : 0), Math.max(9, Math.round(size * 0.38)), 'ink', 'center');
+    if (w.level && size >= 32) {
+      const mark = w.evo ? t('hud.tileEvo') : w.level >= MAX_WEAPON_LEVEL ? t('hud.tileMax') : t('hud.tileLevel', { level: w.level });
+      hudText(mark, x + size / 2, y + size - 8, 10, w.evo ? 'red-pencil' : 'ink-muted', 'center');
+    }
     if (w.charges !== undefined) hudText(String(w.charges), x + size - 6, y + 8, 12, 'red-pencil', 'center');
-    if (w.locked && w.cfg.earlyCost > 1) hudText('x2', x + 9, y + 9, 12, 'red-pencil', 'center');
+    if (w.locked && w.cfg.earlyCost > 1) hudText(t('hud.earlyCost', { cost: w.cfg.earlyCost }), x + 9, y + 9, 12, 'red-pencil', 'center');
     x += size + 6;
   }
   // Items as small chips in their rarity's color; the pause screen has the names.
@@ -63,26 +66,24 @@ function drawHud() {
   ctx.fillStyle = pal['green-ink'];
   ctx.fillRect(0, 0, W * Math.min(1, xp / xpNext), 9);
 
-  hudText(`Level ${level}`, 10, 25, 17, 'ink');
-  hudText(`Health ${Math.ceil(Math.max(0, hero.hp))} / ${hero.maxHp}`, 10, 44, 13, 'ink-muted');
-  hudText(`Rerolls ${rerolls}`, 10, 60, 13, 'ink-muted');
+  hudText(t('hud.level', { level }), 10, 25, 17, 'ink');
+  hudText(t('hud.health', { hp: Math.ceil(Math.max(0, hero.hp)), max: hero.maxHp }), 10, 44, 13, 'ink-muted');
+  hudText(t('hud.rerolls', { rerolls }), 10, 60, 13, 'ink-muted');
   let line = 77;
+  const timer = (name, seconds, pen) => {
+    hudText(t('hud.timer', { name, seconds: Math.ceil(seconds) }), 10, line, 13, pen);
+    line += 16;
+  };
   if (hero.lives > 0) {
-    hudText(`Spare lives ${hero.lives}`, 10, line, 13, 'green-ink');
+    hudText(t('hud.lives', { lives: hero.lives }), 10, line, 13, 'green-ink');
     line += 16;
   }
-  if (berserkLeft > 0) {
-    hudText(`Berserk ${Math.ceil(berserkLeft)}s`, 10, line, 13, 'red-pencil');
-    line += 16;
-  }
-  if (hero.ghostLeft > 0) {
-    hudText(`Ghost ${Math.ceil(hero.ghostLeft)}s`, 10, line, 13, 'violet');
-    line += 16;
-  }
-  if (gearValue('pocketMagnet')) hudText(`Pocket Magnet ${Math.ceil(pocketLeft)}s`, 10, line, 13, 'blue-pen');
+  if (berserkLeft > 0) timer(activeName(BERSERK), berserkLeft, 'red-pencil');
+  if (hero.ghostLeft > 0) timer(activeName(activeDef), hero.ghostLeft, 'violet');
+  if (gearValue('pocketMagnet')) timer(t('items.pocket.name'), pocketLeft, 'blue-pen');
 
   hudText(formatTime(elapsed), W / 2, 28, 22, 'ink', 'center');
-  hudText(`Kills ${kills}`, W - 74, 30, 13, 'ink-muted', 'right');
+  hudText(t('hud.kills', { kills }), W - 74, 30, 13, 'ink-muted', 'right');
   if (toastLeft > 0) hudText(toast, W / 2, 54, 17, 'red-pencil', 'center');
 
   drawWeaponTiles(H);
@@ -113,7 +114,7 @@ function drawHud() {
 
 function updateActiveButton() {
   const ready = activeCd <= 0;
-  setText(activeTimeEl, ready ? 'Ready' : `${Math.ceil(activeCd)}s`);
+  setText(activeTimeEl, ready ? t('hud.ready') : t('hud.seconds', { seconds: Math.ceil(activeCd) }));
   const share = ready ? 0 : Math.round(activeCd / activeCooldown() * 100) / 100;
   if (share === lastCdShare) return;
   lastCdShare = share;
@@ -166,14 +167,14 @@ function showCards(title, note, cards) {
     if (!choice || !(choice.reroll || choice.skip)) return;
     const actions = el('div', 'panel-actions');
     if (choice.reroll) {
-      const again = el('button', '', `Reroll (${rerolls})`);
+      const again = el('button', '', t('cards.reroll', { rerolls }));
       again.disabled = rerolls <= 0;
       again.appendChild(el('kbd', '', 'R'));
       again.addEventListener('click', rerollChoice);
       actions.appendChild(again);
     }
     if (choice.skip) {
-      const pass = el('button', '', `Skip: heal ${Math.round(SKIP_HEAL * 100)}%`);
+      const pass = el('button', '', t('cards.skip', { pct: Math.round(SKIP_HEAL * 100) }));
       pass.appendChild(el('kbd', '', 'X'));
       pass.addEventListener('click', skipChoice);
       actions.appendChild(pass);
@@ -182,7 +183,8 @@ function showCards(title, note, cards) {
   });
 }
 
-function addPickRows(parent, rows, current, describe, onPick) {
+// `name(item)` is what a button says.
+function addPickRows(parent, rows, current, name, describe, onPick) {
   const detail = el('p', 'pick-detail', describe(current));
   const buttons = [];
   for (const row of rows) {
@@ -191,7 +193,7 @@ function addPickRows(parent, rows, current, describe, onPick) {
     const box = el('div', 'pick-items');
     for (const item of row.items) {
       const b = el('button', 'pick');
-      b.appendChild(el('span', '', item.name));
+      b.appendChild(el('span', '', name(item)));
       if (row.note) b.appendChild(el('small', '', row.note(item)));
       b.setAttribute('aria-pressed', String(item === current));
       b.addEventListener('click', () => {
@@ -225,57 +227,93 @@ function showStart(keep = false) {
   const starters = startersFor(loadout.active);
   if (!starters.includes(loadout.weapon)) loadout.weapon = starters[0];
   showPanel(p => {
-    p.appendChild(el('h2', 'panel-title', 'Choose your loadout'));
-    p.appendChild(el('p', 'panel-note',
-      `The horde never stops growing: last as long as you can. New weapons come at levels ${WEAPON_LEVELS.join(', ')}. A weapon grows to level ${MAX_WEAPON_LEVEL} through level-up cards, then evolves one of two ways, and two evolved weapons of a pair can merge into a stronger one.`));
+    p.appendChild(el('h2', 'panel-title', t('start.title')));
+    p.appendChild(el('p', 'panel-note', t('start.note', { levels: WEAPON_LEVELS.join(', '), max: MAX_WEAPON_LEVEL })));
 
-    p.appendChild(el('h3', 'section-title', 'Active skill'));
+    p.appendChild(el('h3', 'section-title', t('start.active')));
     addPickRows(p, ACTIVE_GROUPS.map(group => ({
-      label: group,
+      label: t(`activeGroups.${group}`),
       items: ACTIVES.filter(a => a.group === group),
-      note: a => `${a.cooldown} s`,
-    })), loadout.active, a => a.blurb + (a.passive ? ` Passive: ${a.passive}` : ''), a => {
+      note: a => t('start.cooldown', { seconds: a.cooldown }),
+    })), loadout.active, activeName, activeDescription, a => {
       const before = loadout.active;
       loadout.active = a;
       if (before.freeWeapon !== a.freeWeapon) showStart(true); // the weapons on offer change
     });
 
-    p.appendChild(el('h3', 'section-title', 'First weapon'));
+    p.appendChild(el('h3', 'section-title', t('start.weapon')));
     addPickRows(p, ['magic', 'phys'].map(kind => ({
-      label: KINDS[kind].name,
+      label: kindName(kind),
       items: starters.filter(d => d.kind === kind),
-    })), loadout.weapon, d => `${d.blurb} Uses: ${d.scales.map(k => STATS[k].name).join(', ')}.`, d => { loadout.weapon = d; });
+    })), loadout.weapon, nameOf, d => `${blurbOf(d)} ${usesText(d)}`, d => { loadout.weapon = d; });
 
     const actions = el('div', 'panel-actions');
     const save = loadSave();
     if (save) {
-      const resume = el('button', 'primary', `Continue · ${formatTime(save.elapsed)}, level ${save.level}`);
+      const resume = el('button', 'primary', t('start.continue', { time: formatTime(save.elapsed), level: save.level }));
       resume.addEventListener('click', continueRun);
       actions.appendChild(resume);
     }
-    const go = el('button', save ? '' : 'primary', 'Start run');
+    const go = el('button', save ? '' : 'primary', t('start.go'));
     go.addEventListener('click', beginFromMenu);
-    const camp = el('button', '', `Camp · ${loadMeta().glory} Glory`);
+    const camp = el('button', '', t('start.camp', { glory: loadMeta().glory }));
     camp.addEventListener('click', showCamp);
-    const records = el('button', '', 'Records');
+    const records = el('button', '', t('start.records'));
     records.addEventListener('click', () => showRecords());
-    const codex = el('button', '', 'Codex');
+    const codex = el('button', '', t('ui.codex'));
     codex.addEventListener('click', () => showCodex('weapons', 'start'));
     actions.append(go, camp, records, codex);
+    if (LANGUAGES.length > 1) actions.appendChild(languagePicker());
     p.appendChild(actions);
-    if (save) p.appendChild(el('p', 'panel-note', 'A saved run is waiting. Starting a new one drops it.'));
+    if (save) p.appendChild(el('p', 'panel-note', t('start.saved')));
 
     const hints = el('p', 'hints');
-    hints.innerHTML =
-      '<kbd>WASD</kbd> or arrows, or drag on the field, to walk &middot; <kbd>Space</kbd> active skill &middot; ' +
-      '<kbd>1</kbd>&ndash;<kbd>4</kbd> pick a card &middot; <kbd>R</kbd> reroll the cards &middot; <kbd>X</kbd> skip a level-up &middot; <kbd>P</kbd> pause<br>' +
-      'An orange outline is armor that blunts physical damage, a violet outline is a ward that blunts magic: 100 of either halves a hit, and damage never vanishes. A double outline is a tank: hit it with the other kind, set it on fire, or pierce its armor. Pure damage ignores both.<br>' +
-      'Enemies with a dot in the middle fight from a distance. Everything the horde throws at you is bright cyan: shots, and dashed outlines on the ground for strikes about to land. Step out of them.<br>' +
-      'Red orbs heal. Walking turns them up, and elites drop them along with a chest: pick 1 item of 3. A blue chest is better than a grey one, a yellow one better still.<br>' +
-      'A blue horseshoe is a magnet: it pulls in every XP orb on the map.' +
-      (DEV ? '<br>Dev keys: <kbd>L</kbd> level up &middot; <kbd>G</kbd> weapon pick &middot; <kbd>I</kbd> open a chest &middot; <kbd>K</kbd> die and revive &middot; <kbd>R</kbd> reset active &middot; <kbd>T</kbd> skip a minute &middot; <kbd>E</kbd> elite &middot; <kbd>F</kbd> shooters &middot; <kbd>O</kbd> fill the horde &middot; <kbd>H</kbd> immortal &middot; <kbd>M</kbd> max a weapon' : '');
+    const lines = textList('start.hints', { chestSlots: CHEST_SLOTS });
+    if (DEV) lines.push('Dev keys: [L] level up · [G] weapon pick · [I] open a chest · [K] die and revive · [R] reset active · [T] skip a minute · [E] elite · [F] shooters · [O] fill the horde · [H] immortal · [M] max a weapon');
+    lines.forEach((line, i) => {
+      if (i) hints.appendChild(el('br'));
+      addHint(hints, line);
+    });
     p.appendChild(hints);
   });
+}
+
+function activeDescription(a) {
+  const passive = activePassive(a);
+  return activeBlurb(a) + (passive ? ` ${t('start.passive', { text: passive })}` : '');
+}
+
+// A line of the hints, where [Space] is a key on the keyboard.
+function addHint(box, line) {
+  line.split(/\[([^\]]+)\]/).forEach((part, i) => {
+    if (i % 2) box.appendChild(el('kbd', '', part));
+    else if (part) box.appendChild(el('span', '', part));
+  });
+}
+
+// The menu's language: the texts load again, and the screen with them.
+function languagePicker() {
+  const pick = el('select', 'lang-pick');
+  pick.setAttribute('aria-label', t('start.language'));
+  for (const lang of LANGUAGES) {
+    const option = el('option', '', lang.name);
+    option.value = lang.id;
+    option.selected = lang.id === langId;
+    pick.appendChild(option);
+  }
+  pick.addEventListener('change', () => setLanguage(pick.value).then(() => {
+    applyPageTexts();
+    showBest();
+    showStart(true);
+  }));
+  return pick;
+}
+
+// The few words of the page outside the canvas and the panels.
+function applyPageTexts() {
+  document.title = t('game.title');
+  setText(document.getElementById('title'), t('game.title'));
+  setText(pauseBtn, t('ui.pause'));
 }
 
 function beginFromMenu() {
@@ -298,28 +336,28 @@ function addRow(parent, label, value) {
 }
 
 function weaponTitle(w) {
-  if (w.evo) return `${weaponName(w)}, was ${w.def.name}`;
-  return w.def.name + (w.level ? ` Lv ${w.level}` : '');
+  if (w.evo) return t('report.evolved', { name: weaponName(w), base: nameOf(w.def) });
+  return w.level ? t('report.level', { name: nameOf(w.def), level: w.level }) : nameOf(w.def);
 }
 
 // How many shots a weapon fires, and where they come from.
 function shotsText(w) {
   const reads = w.cfg.scales.includes('count');
   const parts = [];
-  if (reads && upgrades.count) parts.push(`cards +${upgrades.count}`);
-  if (reads && extraBonus('count')) parts.push(`items +${extraBonus('count')}`);
-  if (w.bonus.count) parts.push(`weapon +${w.bonus.count}`);
-  if (reads && berserkLeft > 0 && BERSERK.buff.count) parts.push(`Berserk +${BERSERK.buff.count}`);
+  if (reads && upgrades.count) parts.push(t('report.fromCards', { n: upgrades.count }));
+  if (reads && extraBonus('count')) parts.push(t('report.fromItems', { n: extraBonus('count') }));
+  if (w.bonus.count) parts.push(t('report.fromWeapon', { n: w.bonus.count }));
+  if (reads && berserkLeft > 0 && BERSERK.buff.count) parts.push(t('report.fromActive', { name: activeName(BERSERK), n: BERSERK.buff.count }));
   if (!parts.length) return '';
-  if (w.cfg.single) return ` · 1 shot, Count +${Math.round(weaponCount(w) * COUNT.overflow * 100)}% damage (${parts.join(', ')})`;
-  return ` · ${shotCount(w)} shots (${parts.join(', ')})`;
+  if (w.cfg.single) return t('report.single', { pct: Math.round(weaponCount(w) * COUNT.overflow * 100), parts: parts.join(', ') });
+  return t('report.shots', { shots: shotCount(w), parts: parts.join(', ') });
 }
 
 function addKitReport(p) {
-  p.appendChild(el('h3', 'section-title', 'Damage dealt'));
+  p.appendChild(el('h3', 'section-title', t('report.dealt')));
   const box = el('div', 'report');
   [...hero.weapons].sort((a, b) => b.dealt - a.dealt).forEach(w => {
-    addRow(box, `${weaponTitle(w)} (${KINDS[w.def.kind].name})${shotsText(w)}`, Math.round(w.dealt).toLocaleString('en-US'));
+    addRow(box, t('report.weaponRow', { weapon: weaponTitle(w), kind: kindName(w.def.kind), shots: shotsText(w) }), formatNumber(Math.round(w.dealt)));
   });
   p.appendChild(box);
 }
@@ -328,22 +366,22 @@ function addKitReport(p) {
 function addHurtReport(p) {
   const by = hero.hurtBy;
   if (by.touch + by.shot + by.strike < 1) return;
-  p.appendChild(el('h3', 'section-title', 'Damage taken'));
+  p.appendChild(el('h3', 'section-title', t('report.taken')));
   const box = el('div', 'report');
-  addRow(box, 'Touches', Math.round(by.touch).toLocaleString('en-US'));
-  addRow(box, 'Shots', Math.round(by.shot).toLocaleString('en-US'));
-  addRow(box, 'Strikes on the ground', Math.round(by.strike).toLocaleString('en-US'));
+  addRow(box, t('report.touches'), formatNumber(Math.round(by.touch)));
+  addRow(box, t('report.shotsTaken'), formatNumber(Math.round(by.shot)));
+  addRow(box, t('report.strikes'), formatNumber(Math.round(by.strike)));
   p.appendChild(box);
 }
 
 function addItemReport(p) {
   if (!items.length) return;
-  p.appendChild(el('h3', 'section-title', 'Items'));
+  p.appendChild(el('h3', 'section-title', t('report.items')));
   const box = el('div', 'item-list');
   for (const item of items) {
     const row = el('div', 'item-row');
-    row.appendChild(el('span', `item-name ${item.rarity}`, item.name));
-    row.appendChild(el('span', 'item-text', item.text));
+    row.appendChild(el('span', `item-name ${item.rarity}`, itemName(item)));
+    row.appendChild(el('span', 'item-text', itemText(item)));
     box.appendChild(row);
   }
   p.appendChild(box);
@@ -351,58 +389,61 @@ function addItemReport(p) {
 
 // Each stat shows its strong and weak picks, and what items and the Camp add on top.
 function addStatReport(p) {
-  p.appendChild(el('h3', 'section-title', 'Stats'));
+  p.appendChild(el('h3', 'section-title', t('report.stats')));
   const box = el('div', 'report');
   const arms = el('div');
-  arms.appendChild(el('span', 'stamp hero', 'Weapons'));
+  arms.appendChild(el('span', 'stamp hero', t('cards.forWeapons')));
   const self = el('div');
-  self.appendChild(el('span', 'stamp hero', KINDS.hero.name));
-  addRow(self, 'Health', String(hero.maxHp));
-  if (levelHealth()) addRow(self, 'From levels', `+${levelHealth()} HP`);
-  if (gearValue('regen')) addRow(self, 'Health regen', `${Math.round(gearValue('regen') * 100)}% per s`);
-  addRow(arms, 'Base attack', String(Math.round(hero.baseAttack)));
-  if (activeDef.passive) addRow(self, `${activeDef.name} passive`, activeDef.passive);
-  for (const [key, label] of [['armorPen', 'Armor pierced'], ['magicPen', 'Ward pierced'], ['armorPenPct', 'Armor pierced'], ['magicPenPct', 'Ward pierced']]) {
-    if (gearValue(key)) addRow(arms, label, key.endsWith('Pct') ? `${Math.round(gearValue(key) * 100)}%` : String(gearValue(key)));
+  self.appendChild(el('span', 'stamp hero', kindName('hero')));
+  const share = value => `${formatNumber(Math.round(value * 100))}%`;
+  addRow(self, t('report.health'), formatNumber(hero.maxHp));
+  if (levelHealth()) addRow(self, t('report.fromLevels'), t('report.levelHp', { hp: levelHealth() }));
+  if (gearValue('regen')) addRow(self, t('report.regen'), t('report.regenValue', { pct: Math.round(gearValue('regen') * 100) }));
+  addRow(arms, t('report.baseAttack'), formatNumber(Math.round(hero.baseAttack)));
+  const passive = activePassive(activeDef);
+  if (passive) addRow(self, t('report.passive', { name: activeName(activeDef) }), passive);
+  for (const [key, label] of [['armorPen', 'armorPierced'], ['magicPen', 'wardPierced'], ['armorPenPct', 'armorPierced'], ['magicPenPct', 'wardPierced']]) {
+    if (gearValue(key)) addRow(arms, t(`report.${label}`), key.endsWith('Pct') ? share(gearValue(key)) : formatNumber(gearValue(key)));
   }
   for (const key of Object.keys(STATS)) {
-    const def = STATS[key];
     const picks = upgrades[key];
     const parts = [];
     if (picks) {
       const strong = Math.min(picks, STRONG_PICKS);
-      parts.push(key === 'count' ? `${picks} picked` : `${strong}/${STRONG_PICKS} strong${picks > strong ? ` + ${picks - strong} weak` : ''}`);
+      if (key === 'count') parts.push(t('report.picked', { n: picks }));
+      else if (picks > strong) parts.push(t('report.strongWeak', { strong, max: STRONG_PICKS, weak: picks - strong }));
+      else parts.push(t('report.strong', { strong, max: STRONG_PICKS }));
     }
-    if (extraBonus(key)) parts.push(`${bonusText(key, extraBonus(key))} from items and Camp`);
+    if (extraBonus(key)) parts.push(t('report.fromGear', { bonus: bonusText(key, extraBonus(key)) }));
     const text = formatStat(key, stat(key)) + (parts.length ? ` (${parts.join(', ')})` : '');
-    addRow(def.note ? self : arms, def.name, text);
+    addRow(STATS[key].hero ? self : arms, statName(key), text);
   }
-  if (heroArmor()) addRow(self, 'Hits hurt', `${Math.round(armorCut() * 100)}% less`);
-  addRow(self, 'Pickup radius', String(Math.round(magnetRadius())));
-  if (gearValue('attackPerLevel')) addRow(arms, 'From levels', `+${Math.round(gearValue('attackPerLevel') * level * 100)}% damage`);
-  if (gearValue('physDamage')) addRow(arms, 'All physical damage', `+${Math.round(gearValue('physDamage') * 100)}%`);
-  if (gearValue('magicDamage')) addRow(arms, 'All magic damage', `+${Math.round(gearValue('magicDamage') * 100)}%`);
-  if (gearValue('pureShare')) addRow(arms, 'Damage made pure', `${Math.round(gearValue('pureShare') * 100)}%`);
-  if (gearValue('activeCooldown')) addRow(self, 'Active cooldown', `-${Math.round(gearValue('activeCooldown') * 100)}%`);
-  if (hero.lives) addRow(self, 'Spare lives', String(hero.lives));
+  if (heroArmor()) addRow(self, t('report.hitsHurt'), t('report.hitsHurtValue', { pct: Math.round(armorCut() * 100) }));
+  addRow(self, t('report.pickup'), formatNumber(Math.round(magnetRadius())));
+  if (gearValue('attackPerLevel')) addRow(arms, t('report.fromLevels'), t('report.levelDamage', { pct: Math.round(gearValue('attackPerLevel') * level * 100) }));
+  if (gearValue('physDamage')) addRow(arms, t('report.physDamage'), `+${share(gearValue('physDamage'))}`);
+  if (gearValue('magicDamage')) addRow(arms, t('report.magicDamage'), `+${share(gearValue('magicDamage'))}`);
+  if (gearValue('pureShare')) addRow(arms, t('report.pure'), share(gearValue('pureShare')));
+  if (gearValue('activeCooldown')) addRow(self, t('report.activeCooldown'), `-${share(gearValue('activeCooldown'))}`);
+  if (hero.lives) addRow(self, t('report.lives'), formatNumber(hero.lives));
   box.append(arms, self);
   p.appendChild(box);
 }
 
 function showPause() {
   showPanel(p => {
-    p.appendChild(el('h2', 'panel-title', 'Paused'));
+    p.appendChild(el('h2', 'panel-title', t('pause.title')));
     addStatReport(p);
     addItemReport(p);
     addKitReport(p);
     const actions = el('div', 'panel-actions');
-    const resume = el('button', 'primary', 'Resume');
+    const resume = el('button', 'primary', t('pause.resume'));
     resume.addEventListener('click', togglePause);
-    const codex = el('button', '', 'Codex');
+    const codex = el('button', '', t('ui.codex'));
     codex.addEventListener('click', () => showCodex('weapons', 'pause'));
-    const keep = el('button', '', 'Save & quit');
+    const keep = el('button', '', t('pause.save'));
     keep.addEventListener('click', saveAndQuit);
-    const quit = el('button', '', 'End run');
+    const quit = el('button', '', t('pause.end'));
     quit.addEventListener('click', endRun);
     actions.append(resume, codex, keep, quit);
     p.appendChild(actions);
@@ -423,26 +464,26 @@ function togglePause() {
 // `result` is what recordRun() made of the run: its place among the records and its Glory.
 function showEnd(result) {
   showPanel(p => {
-    p.appendChild(el('h2', 'panel-title', hero.hp > 0 ? 'Run ended' : 'The horde got you'));
+    p.appendChild(el('h2', 'panel-title', hero.hp > 0 ? t('end.title') : t('end.died')));
     const notes = [];
-    if (result.place === 1) notes.push('A new best time.');
-    else if (result.place) notes.push(`#${result.place} of your runs.`);
-    if (result.bestWith && result.place !== 1) notes.push(`Your best with ${WEAPONS.find(d => d.id === startWeapon).name}.`);
-    notes.push(`+${result.glory} Glory for the Camp.`);
+    if (result.place === 1) notes.push(t('end.best'));
+    else if (result.place) notes.push(t('end.place', { place: result.place }));
+    if (result.bestWith && result.place !== 1) notes.push(t('end.bestWith', { weapon: nameOf(WEAPONS.find(d => d.id === startWeapon)) }));
+    notes.push(t('end.glory', { glory: result.glory }));
     p.appendChild(el('p', 'panel-note', notes.join(' ')));
     const figures = el('div', 'figures');
-    addFigure(figures, 'Time', formatTime(elapsed));
-    addFigure(figures, 'Level', String(level));
-    addFigure(figures, 'Kills', kills.toLocaleString('en-US'));
+    addFigure(figures, t('end.time'), formatTime(elapsed));
+    addFigure(figures, t('end.level'), formatNumber(level));
+    addFigure(figures, t('end.kills'), formatNumber(kills));
     p.appendChild(figures);
     addKitReport(p);
     addHurtReport(p);
     addItemReport(p);
     addStatReport(p);
     const actions = el('div', 'panel-actions');
-    const again = el('button', 'primary', 'New run');
+    const again = el('button', 'primary', t('end.again'));
     again.addEventListener('click', showStart);
-    const camp = el('button', '', 'Camp');
+    const camp = el('button', '', t('ui.camp'));
     camp.addEventListener('click', showCamp);
     actions.append(again, camp);
     p.appendChild(actions);

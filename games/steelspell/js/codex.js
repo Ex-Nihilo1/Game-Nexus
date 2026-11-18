@@ -1,13 +1,8 @@
 // The Codex: every weapon, merge, item and stat, open from the start. Weapons and merges are
 // tiles; a tile opens a window with everything about it. All of it is read from the tables in
-// js/data, so whatever is added there shows up here by itself.
+// js/data and the texts in lang/en.json, so whatever is added there shows up here by itself.
 
-const CODEX_TABS = [
-  { id: 'weapons', name: 'Weapons' },
-  { id: 'merges', name: 'Merges' },
-  { id: 'items', name: 'Items' },
-  { id: 'stats', name: 'Stats' },
-];
+const CODEX_TABS = ['weapons', 'merges', 'items', 'stats'];
 
 let codexBack = null; // where Back (and Escape) goes: the start screen or the pause
 let codexWindow = null; // the open window, if any
@@ -34,7 +29,7 @@ function openCodexWindow(title, build) {
   box.setAttribute('aria-label', title);
   const head = el('div', 'codex-dialog-head');
   head.appendChild(el('h3', 'codex-dialog-title', title));
-  const close = el('button', '', 'Close');
+  const close = el('button', '', t('ui.close'));
   close.addEventListener('click', closeCodexWindow);
   head.appendChild(close);
   box.appendChild(head);
@@ -60,8 +55,6 @@ function windowLines(box, lines) {
   }
 }
 
-function statNames(keys) { return keys.map(k => STATS[k].name).join(', '); }
-
 function defOf(id) { return WEAPON_DEFS.find(d => d.id === id); }
 
 function mergesOf(id) { return SYNERGIES.filter(s => s.needs.includes(id)); }
@@ -69,10 +62,10 @@ function mergesOf(id) { return SYNERGIES.filter(s => s.needs.includes(id)); }
 // A weapon or a merge as a tile. Pressing it opens its window.
 function codexTile(def, owned) {
   const tile = el('button', `codex-tile ${def.kind}`);
-  tile.appendChild(el('span', 'codex-tag', def.tag));
-  tile.appendChild(el('span', 'codex-tile-name', def.name));
-  if (owned) tile.appendChild(el('span', 'codex-mine', 'yours'));
-  tile.setAttribute('aria-label', `${def.name}, ${KINDS[def.kind].name}${owned ? ', in your kit' : ''}`);
+  tile.appendChild(el('span', 'codex-tag', tagOf(def)));
+  tile.appendChild(el('span', 'codex-tile-name', nameOf(def)));
+  if (owned) tile.appendChild(el('span', 'codex-mine', t('codex.yours')));
+  tile.setAttribute('aria-label', t(owned ? 'codex.tileMine' : 'codex.tile', { name: nameOf(def), kind: kindName(def.kind) }));
   tile.addEventListener('click', () => (def.needs ? showMergeWindow(def) : showWeaponWindow(def)));
   return tile;
 }
@@ -84,45 +77,45 @@ function mergeButtons(box, list) {
 }
 
 function showWeaponWindow(d) {
-  openCodexWindow(d.name, box => {
-    box.appendChild(el('span', `stamp ${d.kind}`, KINDS[d.kind].name + (d.defense ? ', defensive' : '')));
+  openCodexWindow(nameOf(d), box => {
+    box.appendChild(el('span', `stamp ${d.kind}`, d.defense ? t('codex.defensive', { kind: kindName(d.kind) }) : kindName(d.kind)));
     const levels = [];
-    for (let lv = 2; lv <= MAX_WEAPON_LEVEL; lv++) levels.push(`Lv ${lv}: ${stepText(levelStep(d, lv))}`);
-    windowLines(box, [d.blurb, `Uses: ${statNames(d.scales)}.`]);
-    box.appendChild(el('h4', 'codex-sub', 'Levels'));
+    for (let lv = 2; lv <= MAX_WEAPON_LEVEL; lv++) levels.push(t('codex.levelLine', { level: lv, text: levelText(d, lv) }));
+    windowLines(box, [blurbOf(d), usesText(d)]);
+    box.appendChild(el('h4', 'codex-sub', t('codex.levels')));
     windowLines(box, [levels]);
-    box.appendChild(el('h4', 'codex-sub', `Evolutions at Lv ${MAX_WEAPON_LEVEL}`));
-    windowLines(box, [(EVOLUTIONS[d.id] || []).map(evo => `${evo.name}: ${evo.blurb}`)]);
+    box.appendChild(el('h4', 'codex-sub', t('codex.evolutions', { max: MAX_WEAPON_LEVEL })));
+    windowLines(box, [(EVOLUTIONS[d.id] || []).map(evo => t('codex.evoLine', { name: evoName(evo), text: evoBlurb(d, evo) }))]);
     const merges = mergesOf(d.id);
-    box.appendChild(el('h4', 'codex-sub', 'Merges'));
-    if (!merges.length) windowLines(box, ['Merges with nothing.']);
+    box.appendChild(el('h4', 'codex-sub', t('codex.merges')));
+    if (!merges.length) windowLines(box, [t('codex.noMerges')]);
     else {
-      windowLines(box, [`Once both weapons are at Lv ${MAX_WEAPON_LEVEL} and evolved, a card offers the merge. A weapon goes into one merge only.`]);
+      windowLines(box, [t('codex.mergeRule', { max: MAX_WEAPON_LEVEL })]);
       mergeButtons(box, merges);
     }
   });
 }
 
 function showMergeWindow(m) {
-  openCodexWindow(m.name, box => {
-    box.appendChild(el('span', `stamp ${m.kind}`, KINDS[m.kind].name));
+  openCodexWindow(nameOf(m), box => {
+    box.appendChild(el('span', `stamp ${m.kind}`, kindName(m.kind)));
     box.appendChild(recipeRow(m, true));
-    windowLines(box, [m.blurb, `Uses: ${statNames(m.scales)}.`]);
-    box.appendChild(el('h4', 'codex-sub', 'It keeps what the evolutions did'));
+    windowLines(box, [blurbOf(m), usesText(m)]);
+    box.appendChild(el('h4', 'codex-sub', t('codex.keeps')));
     windowLines(box, [m.needs.flatMap(id => (EVOLUTIONS[id] || [])
       .filter(evo => evo.inherit && evo.inherit[m.id])
-      .map(evo => `From ${evo.name}: ${evo.inherit[m.id].text}.`))]);
+      .map(evo => t('cards.fromEvo', { evo: evoName(evo), text: inheritText(evo, m) })))]);
   });
 }
 
 function showItemWindow(item) {
-  openCodexWindow(item.name, box => {
-    box.appendChild(el('span', `stamp ${item.rarity}`, RARITIES[item.rarity].name));
+  openCodexWindow(itemName(item), box => {
+    box.appendChild(el('span', `stamp ${item.rarity}`, t(`rarities.${item.rarity}`)));
     const stats = Object.keys(item.gives).filter(key => STATS[key]);
     windowLines(box, [
-      item.text,
-      stats.length ? `Adds to ${statNames(stats)} at full value, on top of the cards.` : '',
-      'Every item is one of a kind: a chest never offers one you have.',
+      itemText(item),
+      stats.length ? t('codex.itemAdds', { stats: statNames(stats) }) : '',
+      t('codex.itemUnique'),
     ]);
   });
 }
@@ -146,9 +139,9 @@ function recipeRow(m, inWindow = false) {
 
 function codexWeapons(p, mine) {
   const kit = mine ? hero.weapons.map(w => w.def.id) : [];
-  p.appendChild(el('p', 'panel-note', 'Press a weapon to see its levels, evolutions and merges.'));
+  p.appendChild(el('p', 'panel-note', t('codex.weaponsNote')));
   for (const kind of ['phys', 'magic']) {
-    p.appendChild(el('h3', 'section-title', KINDS[kind].name));
+    p.appendChild(el('h3', 'section-title', kindName(kind)));
     const grid = el('div', 'codex-grid');
     WEAPONS.filter(d => d.kind === kind).forEach(d => grid.appendChild(codexTile(d, kit.includes(d.id))));
     p.appendChild(grid);
@@ -156,29 +149,29 @@ function codexWeapons(p, mine) {
 }
 
 function codexMerges(p) {
-  p.appendChild(el('p', 'panel-note', 'Two weapons at their last level, both evolved, merge into one. A merge of two weapons of one kind keeps that kind.'));
+  p.appendChild(el('p', 'panel-note', t('codex.mergesNote')));
   const groups = [
-    ['Physical + physical', m => m.needs.every(id => defOf(id).kind === 'phys')],
-    ['Magic + magic', m => m.needs.every(id => defOf(id).kind === 'magic')],
-    ['Physical + magic', m => new Set(m.needs.map(id => defOf(id).kind)).size > 1],
+    ['codex.groupPhys', m => m.needs.every(id => defOf(id).kind === 'phys')],
+    ['codex.groupMagic', m => m.needs.every(id => defOf(id).kind === 'magic')],
+    ['codex.groupMixed', m => new Set(m.needs.map(id => defOf(id).kind)).size > 1],
   ];
   for (const [title, test] of groups) {
     const list = SYNERGIES.filter(test);
     if (!list.length) continue;
-    p.appendChild(el('h3', 'section-title', title));
+    p.appendChild(el('h3', 'section-title', t(title)));
     mergeButtons(p, list);
   }
 }
 
 function codexItems(p) {
-  p.appendChild(el('p', 'panel-note', 'Items come from chests: elites drop one, pick 1 item of 3. Press an item for more.'));
+  p.appendChild(el('p', 'panel-note', t('codex.itemsNote', { chestSlots: CHEST_SLOTS })));
   for (const rarity of Object.keys(RARITIES)) {
-    p.appendChild(el('h3', 'section-title', RARITIES[rarity].name));
+    p.appendChild(el('h3', 'section-title', t(`rarities.${rarity}`)));
     const grid = el('div', 'codex-items');
     for (const item of ITEMS.filter(i => i.rarity === rarity)) {
       const row = el('button', 'codex-item');
-      row.appendChild(el('span', `item-name ${item.rarity}`, item.name));
-      row.appendChild(el('span', 'item-text', item.text));
+      row.appendChild(el('span', `item-name ${item.rarity}`, itemName(item)));
+      row.appendChild(el('span', 'item-text', itemText(item)));
       row.addEventListener('click', () => showItemWindow(item));
       grid.appendChild(row);
     }
@@ -187,43 +180,36 @@ function codexItems(p) {
 }
 
 function codexStats(p) {
-  p.appendChild(el('p', 'panel-note',
-    `The first ${STRONG_PICKS} picks of a stat are strong, every pick after them is weaker. Items and Camp upgrades always add their full value on top. A weapon gets a stat only if it uses it.`));
+  p.appendChild(el('p', 'panel-note', t('codex.statsNote', { strong: STRONG_PICKS })));
   for (const key of Object.keys(STATS)) {
     const def = STATS[key];
     const box = el('div', 'codex-entry');
     const head = el('div', 'codex-head');
-    head.appendChild(el('span', 'codex-name', def.name));
-    head.appendChild(el('span', 'stamp hero', def.note ? KINDS.hero.name : 'Weapons'));
+    head.appendChild(el('span', 'codex-name', statName(key)));
+    head.appendChild(el('span', 'stamp hero', def.hero ? kindName('hero') : t('cards.forWeapons')));
     box.appendChild(head);
-    const lines = [def.note || 'For the weapons that use it.'];
+    const lines = [def.hero ? t(`stats.${key}.note`) : t('codex.statForWeapons')];
     if (key === 'count') {
-      lines.push(`+1 shot per pick. The card stops coming at +${COUNT.cap}; items, the Camp and weapon levels add more shots with no limit. A weapon that fires a single shot gets +${Math.round(COUNT.overflow * 100)}% damage per Count instead.`);
+      lines.push(t('codex.countLine', { cap: COUNT.cap, overflow: Math.round(COUNT.overflow * 100) }));
     } else {
-      lines.push(`Strong pick: ${bonusText(key, def.step)}. Weak pick: ${bonusText(key, def.weak)}. Starts at ${formatStat(key, def.base)}.`);
+      lines.push(t('codex.statLine', { strong: bonusText(key, def.step), weak: bonusText(key, def.weak), base: formatStat(key, def.base) }));
     }
-    if (key === 'critChance') lines.push('Every weapon can crit. Past 100% a crit can land twice.');
-    if (key === 'armor') lines.push('A hit does 100 / (100 + Armor) of its damage. Bastion hits harder with it.');
-    if (key === 'vitality') lines.push('Summoned copies get your max health, and hit harder the more you have.');
-    if (key === 'haste') lines.push('A weapon attacks 1 + Haste times as often.');
+    if (hasText(`codex.statExtra.${key}`)) lines.push(t(`codex.statExtra.${key}`));
     windowLines(box, lines);
     p.appendChild(box);
   }
-  p.appendChild(el('h3', 'section-title', 'Enemy armor'));
-  windowLines(p, [
-    'Armor blunts physical hits and ward blunts magic ones: a hit does 100 / (100 + armor) of its damage, so 100 halves it and damage never vanishes. A hybrid hit meets the average of the two.',
-    'Penetration lowers armor (physical) or ward (magic) before a hit; past zero the hit does more, up to twice. Railgun and Frost Halo take armor or ward off enemies, never more than half.',
-    'Burning also takes 2% of an enemy\'s max health per second for every stack, half on elites.',
-    'Tanks come from minute 20: Iron Tanks need magic, Ward Tanks need physical damage, and the Colossus has a lot of health.',
-  ]);
-  p.appendChild(el('h3', 'section-title', 'Active skills'));
+  p.appendChild(el('h3', 'section-title', t('codex.armorTitle')));
+  const firstTanks = WAVES.find(w => Object.keys(w.mix).some(id => ENEMIES[id].tank));
+  windowLines(p, textList('codex.armorLines', { burn: percent(BURN_SHARE), tanksFrom: firstTanks ? firstTanks.at / 60 : 0 }));
+  p.appendChild(el('h3', 'section-title', t('codex.actives')));
   for (const a of ACTIVES) {
     const box = el('div', 'codex-entry');
     const head = el('div', 'codex-head');
-    head.appendChild(el('span', 'codex-name', a.name));
-    head.appendChild(el('span', 'stamp hero', `${a.cooldown} s`));
+    head.appendChild(el('span', 'codex-name', activeName(a)));
+    head.appendChild(el('span', 'stamp hero', t('start.cooldown', { seconds: a.cooldown })));
     box.appendChild(head);
-    windowLines(box, [a.blurb, a.passive ? `Passive: ${a.passive}` : '']);
+    const passive = activePassive(a);
+    windowLines(box, [activeBlurb(a), passive ? t('start.passive', { text: passive }) : '']);
     p.appendChild(box);
   }
 }
@@ -234,12 +220,12 @@ function showCodex(tab = 'weapons', from = 'start') {
   if (from === 'start') phase = 'menu';
   codexBack = from === 'pause' ? () => { codexBack = null; showPause(); } : () => { codexBack = null; showStart(); };
   showPanel(p => {
-    p.appendChild(el('h2', 'panel-title', 'Codex'));
+    p.appendChild(el('h2', 'panel-title', t('codex.title')));
     const tabs = el('div', 'codex-tabs');
-    for (const t of CODEX_TABS) {
-      const b = el('button', '', t.name);
-      b.setAttribute('aria-pressed', String(t.id === tab));
-      b.addEventListener('click', () => showCodex(t.id, from));
+    for (const id of CODEX_TABS) {
+      const b = el('button', '', t(`codex.tabs.${id}`));
+      b.setAttribute('aria-pressed', String(id === tab));
+      b.addEventListener('click', () => showCodex(id, from));
       tabs.appendChild(b);
     }
     p.appendChild(tabs);
@@ -250,7 +236,7 @@ function showCodex(tab = 'weapons', from = 'start') {
     else codexStats(body);
     p.appendChild(body);
     const actions = el('div', 'panel-actions');
-    const back = el('button', 'primary', 'Back');
+    const back = el('button', 'primary', t('ui.back'));
     back.addEventListener('click', () => codexBack());
     actions.appendChild(back);
     p.appendChild(actions);

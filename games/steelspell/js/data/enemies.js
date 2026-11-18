@@ -17,39 +17,39 @@
 //   spiral  `count` shots one after another, `gap` seconds and `twist` radians apart
 // Shot damage grows with the minutes of the run exactly as contact damage does.
 const ENEMIES = {
-  mite: { name: 'Mite', shape: 'circle', pen: 'ink-muted', r: 9, hp: 12, speed: 58, damage: 14, armor: 0, ward: 0, xp: 1 },
-  runner: { name: 'Runner', shape: 'triangle', pen: 'ink', r: 8, hp: 8, speed: 120, damage: 10, armor: 0, ward: 0, xp: 1 },
-  stalker: { name: 'Stalker', shape: 'triangle', pen: 'red-pencil', r: 11, hp: 40, speed: 165, damage: 16, armor: 33, ward: 33, xp: 6 },
-  ironclad: { name: 'Ironclad', shape: 'square', pen: 'ink-muted', r: 13, hp: 45, speed: 46, damage: 28, armor: 150, ward: 0, xp: 3 },
-  warded: { name: 'Warded', shape: 'diamond', pen: 'ink-muted', r: 13, hp: 36, speed: 54, damage: 25, armor: 0, ward: 150, xp: 3 },
+  mite: { shape: 'circle', pen: 'ink-muted', r: 9, hp: 12, speed: 58, damage: 14, armor: 0, ward: 0, xp: 1 },
+  runner: { shape: 'triangle', pen: 'ink', r: 8, hp: 8, speed: 120, damage: 10, armor: 0, ward: 0, xp: 1 },
+  stalker: { shape: 'triangle', pen: 'red-pencil', r: 11, hp: 40, speed: 165, damage: 16, armor: 33, ward: 33, xp: 6 },
+  ironclad: { shape: 'square', pen: 'ink-muted', r: 13, hp: 45, speed: 46, damage: 28, armor: 150, ward: 0, xp: 3 },
+  warded: { shape: 'diamond', pen: 'ink-muted', r: 13, hp: 36, speed: 54, damage: 25, armor: 0, ward: 150, xp: 3 },
 
-  slinger: { name: 'Slinger', shape: 'circle', mark: 'dot', pen: 'ink-muted', r: 10, hp: 18, speed: 70, damage: 10, armor: 0, ward: 0, xp: 2,
+  slinger: { shape: 'circle', mark: 'dot', pen: 'ink-muted', r: 10, hp: 18, speed: 70, damage: 10, armor: 0, ward: 0, xp: 2,
     keep: [180, 260],
     attacks: [{ type: 'shot', every: 2.6, range: 330, kind: 'phys', speed: 190, damage: 16, r: 5 }] },
-  hexer: { name: 'Hexer', shape: 'diamond', mark: 'dot', pen: 'ink-muted', r: 12, hp: 26, speed: 55, damage: 10, armor: 0, ward: 100, xp: 3,
+  hexer: { shape: 'diamond', mark: 'dot', pen: 'ink-muted', r: 12, hp: 26, speed: 55, damage: 10, armor: 0, ward: 100, xp: 3,
     keep: [220, 300],
     attacks: [{ type: 'fan', every: 4, range: 360, kind: 'magic', speed: 160, damage: 14, r: 5, count: 3, spread: 0.21 }] },
-  mortar: { name: 'Mortar', shape: 'square', mark: 'dot', pen: 'ink-muted', r: 13, hp: 40, speed: 35, damage: 12, armor: 67, ward: 0, xp: 4,
+  mortar: { shape: 'square', mark: 'dot', pen: 'ink-muted', r: 13, hp: 40, speed: 35, damage: 12, armor: 67, ward: 0, xp: 4,
     keep: [240, 380],
     attacks: [{ type: 'lob', every: 5, range: 430, kind: 'phys', damage: 40, radius: 55, delay: 1.1, lead: 0.8 }] },
 
   // Tanks. Iron and Ward Tanks gain 10 armor (ward) a minute from minute 20; the Colossus has
   // modest armor and a lot of health, so burning and flat penetration work best on it.
-  irontank: { name: 'Iron Tank', shape: 'square', pen: 'ink-muted', r: 18, hp: 112, speed: 38, damage: 40, armor: 300, ward: 50, xp: 10, tank: true,
+  irontank: { shape: 'square', pen: 'ink-muted', r: 18, hp: 112, speed: 38, damage: 40, armor: 300, ward: 50, xp: 10, tank: true,
     grow: { from: 20, armor: 10, ward: 0 } },
-  wardtank: { name: 'Ward Tank', shape: 'diamond', pen: 'ink-muted', r: 18, hp: 90, speed: 44, damage: 36, armor: 50, ward: 300, xp: 10, tank: true,
+  wardtank: { shape: 'diamond', pen: 'ink-muted', r: 18, hp: 90, speed: 44, damage: 36, armor: 50, ward: 300, xp: 10, tank: true,
     grow: { from: 20, armor: 0, ward: 10 } },
-  colossus: { name: 'Colossus', shape: 'circle', pen: 'ink-muted', r: 24, hp: 270, speed: 32, damage: 50, armor: 60, ward: 60, xp: 14, tank: true },
+  colossus: { shape: 'circle', pen: 'ink-muted', r: 24, hp: 270, speed: 32, damage: 50, armor: 60, ward: 60, xp: 14, tank: true },
 
-  hulk: { name: 'Iron Hulk', shape: 'square', pen: 'ink-muted', r: 28, hp: 400, speed: 40, damage: 65, armor: 150, ward: 11, xp: 25, elite: true, grow: { from: 0, armor: 3, ward: 3 },
+  hulk: { shape: 'square', pen: 'ink-muted', r: 28, hp: 400, speed: 40, damage: 65, armor: 150, ward: 11, xp: 25, elite: true, grow: { from: 0, armor: 3, ward: 3 },
     attacks: [
       { type: 'slam', every: 6, range: 150, kind: 'phys', radius: 110, delay: 0.8, damage: 50 },
       { type: 'charge', every: 9, range: 330, delay: 0.6, distance: 280, speed: 520 },
     ] },
-  warden: { name: 'Spell Warden', shape: 'diamond', pen: 'ink-muted', r: 28, hp: 350, speed: 46, damage: 56, armor: 11, ward: 150, xp: 25, elite: true, grow: { from: 0, armor: 3, ward: 3 },
+  warden: { shape: 'diamond', pen: 'ink-muted', r: 28, hp: 350, speed: 46, damage: 56, armor: 11, ward: 150, xp: 25, elite: true, grow: { from: 0, armor: 3, ward: 3 },
     attacks: [{ type: 'nova', every: 5, range: 400, kind: 'magic', count: 12, speed: 150, damage: 16, r: 5, orbEvery: 2,
       orb: { kind: 'magic', speed: 75, damage: 26, r: 9, life: 4, turn: 1.6 } }] },
-  siege: { name: 'Siege Engine', shape: 'square', mark: 'dot', pen: 'ink-muted', r: 30, hp: 480, speed: 28, damage: 60, armor: 54, ward: 54, xp: 30, elite: true, grow: { from: 0, armor: 3, ward: 3 },
+  siege: { shape: 'square', mark: 'dot', pen: 'ink-muted', r: 30, hp: 480, speed: 28, damage: 60, armor: 54, ward: 54, xp: 30, elite: true, grow: { from: 0, armor: 3, ward: 3 },
     attacks: [{ type: 'spiral', every: 3, range: 440, kind: 'phys', count: 10, gap: 0.08, twist: 0.5, speed: 140, damage: 14, r: 5 }] },
 };
 const ENEMY_LIST = Object.values(ENEMIES);

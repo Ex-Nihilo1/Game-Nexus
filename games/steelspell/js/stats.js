@@ -124,36 +124,30 @@ function takeItem(item) {
 // ---- Stats as text ----
 
 function formatStat(key, value) {
-  if (key === 'count') return `+${value}`;
-  if (key === 'haste') return `+${Math.round(value * 100)}%`;
-  if (key === 'armor') return String(Math.round(value));
-  if (key === 'recovery') return `${value.toFixed(1)}/s`;
-  return `${Math.round(value * 100)}%`;
+  if (key === 'count') return `+${formatNumber(value)}`;
+  if (key === 'haste') return `+${formatNumber(Math.round(value * 100))}%`;
+  if (key === 'armor') return formatNumber(Math.round(value));
+  if (key === 'recovery') return t('ui.perSecond', { value: formatFixed(value, 1) });
+  return `${formatNumber(Math.round(value * 100))}%`;
+}
+
+// A bonus as a card or the stats window shows it.
+function bonusText(key, value) {
+  if (key === 'count') return `+${formatNumber(value)}`;
+  if (key === 'armor') return `+${formatNumber(+value.toFixed(1))}`;
+  if (key === 'recovery') return `+${t('ui.perSecond', { value: +value.toFixed(2) })}`;
+  return `+${formatNumber(+(value * 100).toFixed(1))}%`;
 }
 
 // What the next pick adds, as the card shows it.
-function gainText(key) {
-  const gain = statGain(key);
-  if (key === 'count') return '+1';
-  if (key === 'armor') return `+${+gain.toFixed(1)}`;
-  if (key === 'recovery') return `+${+gain.toFixed(2)}/s`;
-  return `+${+(gain * 100).toFixed(1)}%`;
-}
+function gainText(key) { return key === 'count' ? '+1' : bonusText(key, statGain(key)); }
 
 // A line for the card: which pick this is, and what is worth a word.
 function statRemark(key) {
   const picks = upgrades[key];
-  if (key === 'count') return `Shot ${picks + 1} of ${COUNT.cap} from cards. Items and weapon levels add more`;
-  const parts = [picks < STRONG_PICKS ? `Strong pick ${picks + 1} of ${STRONG_PICKS}` : `Weak pick: the ${STRONG_PICKS} strong ones are taken`];
-  if (key === 'armor') parts.push(`Hits will hurt ${Math.round((1 - 100 / (100 + heroArmor() + statGain('armor'))) * 100)}% less`);
-  if (key === 'critChance' && stat(key) >= 1) parts.push('Past 100% a crit can land twice');
+  if (key === 'count') return t('cards.countRemark', { shot: picks + 1, cap: COUNT.cap });
+  const parts = [picks < STRONG_PICKS ? t('cards.strongPick', { pick: picks + 1, strong: STRONG_PICKS }) : t('cards.weakPick', { strong: STRONG_PICKS })];
+  if (key === 'armor') parts.push(t('cards.armorRemark', { pct: Math.round((1 - 100 / (100 + heroArmor() + statGain('armor'))) * 100) }));
+  if (key === 'critChance' && stat(key) >= 1) parts.push(t('cards.critRemark'));
   return parts.join(' · ');
-}
-
-// A bonus as the stats window shows it.
-function bonusText(key, value) {
-  if (key === 'count') return `+${value}`;
-  if (key === 'armor') return `+${+value.toFixed(1)}`;
-  if (key === 'recovery') return `+${+value.toFixed(2)}/s`;
-  return `+${+(value * 100).toFixed(1)}%`;
 }

@@ -81,14 +81,14 @@ function continueRun() {
   hero.hurtBy = Object.assign(hero.hurtBy, save.hero.hurtBy);
   hero.iframes = SAVE_SAFETY;
   queue = (save.queue || []).filter(kind => typeof kind === 'string');
-  setText(activeNameEl, activeDef.name);
-  activeBtn.title = activeDef.blurb;
+  setText(activeNameEl, activeName(activeDef));
+  activeBtn.title = activeBlurb(activeDef);
   lastCdShare = -1;
   activeBtn.hidden = false;
   pauseBtn.hidden = false;
   phase = 'playing';
   hideOverlay();
-  say('Run continued');
+  say(t('toasts.continued'));
   dirty = true;
   if (queue.length) nextChoice();
 }

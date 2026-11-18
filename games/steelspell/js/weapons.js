@@ -76,24 +76,38 @@ function evolveWeapon(w, branch) {
   rebuildWeapon(w);
 }
 
-function signedShare(share) { return `${share > 0 ? '+' : ''}${Math.round(share * 100)}%`; }
+function signedShare(share) { return `${share > 0 ? '+' : ''}${formatNumber(Math.round(share * 100))}%`; }
 
-// What a step does, as the card says it.
-function stepText(step) {
-  const parts = step.text ? [step.text] : [];
-  for (const key of ['damage', 'size', 'haste', 'duration']) {
-    if (step[key]) parts.push(`${STATS[key].name} ${signedShare(step[key])}`);
+// What a step does, as the card says it: its own text under `key`, if it has one, and the
+// stats it raises.
+function stepText(step, key, params) {
+  const own = key && hasText(key);
+  const parts = own ? [t(key, params)] : [];
+  for (const field of ['damage', 'size', 'haste', 'duration']) {
+    if (step[field]) parts.push(t('steps.stat', { stat: statName(field), share: signedShare(step[field]) }));
   }
-  if (step.count && !step.text) parts.push(`+${step.count} count`);
+  if (step.count && !own) parts.push(t('steps.count', { count: step.count }));
   return parts.join(', ');
+}
+
+// Where the text of the step to level `lv` is: the weapon's own upgrades and `lvN` steps.
+function levelStepKey(def, lv) {
+  const slot = LEVEL_PLAN[lv - 2];
+  if (slot === 'a' || slot === 'b') return `weapons.${def.id}.ups.${slot === 'a' ? 0 : 1}`;
+  return def[`lv${lv}`] ? `weapons.${def.id}.lv${lv}` : '';
+}
+
+function levelText(def, lv) {
+  const step = levelStep(def, lv);
+  return stepText(step, levelStepKey(def, lv), stepParams(def, step));
 }
 
 // The name a weapon goes by: its evolution's, once it has one. A merged one names what it kept.
 function weaponName(w) {
   const evo = evolutionOf(w);
-  if (evo) return evo.name;
-  const kept = inheritedSteps(w.def.id, w.parts).map(x => x.evo.name);
-  return kept.length ? `${w.def.name} (${kept.join(', ')})` : w.def.name;
+  if (evo) return evoName(evo);
+  const kept = inheritedSteps(w.def.id, w.parts).map(x => evoName(x.evo));
+  return kept.length ? t('ui.keptName', { name: nameOf(w.def), kept: kept.join(', ') }) : nameOf(w.def);
 }
 
 function newWeapon(id) {
@@ -153,7 +167,7 @@ function mergeWeapons(merge) {
   hero.weapons.push(w);
   merges++;
   queue.unshift('weapon');
-  say(`Merged: ${merge.name}!`);
+  say(t('toasts.merged', { name: nameOf(merge) }));
 }
 
 // ---- The loop ----

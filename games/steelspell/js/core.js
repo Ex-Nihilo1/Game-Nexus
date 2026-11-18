@@ -22,7 +22,7 @@ const loadout = { active: ACTIVES[0], weapon: WEAPONS[0] };
 
 let pal = {};
 let dirty = true;
-let phase = 'start'; // start | menu (records, camp) | playing | choosing | paused | over
+let phase = 'start'; // start | menu (records, camp) | playing | choosing | paused | over | notexts
 let seed = 1;
 let frame = 0;
 let lastTime = 0;
@@ -105,8 +105,8 @@ function startRun(activeId, weaponId, runSeed = Date.now()) {
   if (activeDef.freeWeapon && weaponId !== activeDef.freeWeapon) addWeapon(activeDef.freeWeapon);
   for (let i = 0; i < (activeDef.startLevels || 0); i++) addLevel();
   saveJson(LAST_KEY, { active: activeId, weapon: weaponId });
-  setText(activeNameEl, activeDef.name);
-  activeBtn.title = activeDef.blurb;
+  setText(activeNameEl, activeName(activeDef));
+  activeBtn.title = activeBlurb(activeDef);
   lastCdShare = -1;
   activeBtn.hidden = false;
   pauseBtn.hidden = false;
