@@ -479,8 +479,8 @@
     },
     "hurricane": {
       "name": "Hurricane", "tag": "Hu",
-      "blurb": "A whirlwind lands on the thickest crowd and wanders for a while. It drags enemies in and swallows their shots. Count adds whirlwinds.",
-      "ups": ["Pulls {pull}% harder", "+{count, plural, one {# whirlwind} other {# whirlwinds}}"]
+      "blurb": "A whirlwind lands on the thickest crowd and wanders for a while. An enemy that stays inside for {blow.after} s is pushed out, once, and the whirlwind swallows enemy shots. Count adds whirlwinds.",
+      "ups": ["Radius +{radius}%", "+{count, plural, one {# whirlwind} other {# whirlwinds}}"]
     },
     "shotgun": {
       "name": "Shotgun", "tag": "Sg",
@@ -636,8 +636,8 @@
     },
     "eye": {
       "name": "Eye of the Storm",
-      "blurb": "The whirlwinds circle around you instead of wandering, and pull {pull}% harder.",
-      "inherit": { "stormlance": "The whirlwinds circle around you, and pull {pull}% harder" }
+      "blurb": "The whirlwinds rise in a ring around you and slowly drift straight away from you instead of wandering.",
+      "inherit": { "stormlance": "The whirlwinds rise in a ring around you and slowly drift straight away from you" }
     },
     "wildfire": {
       "name": "Wildfire",
@@ -711,7 +711,7 @@
     },
     "firetornado": {
       "name": "Fire Tornado", "tag": "To",
-      "blurb": "A whirlwind of fire that grows for as long as it lives: wider and hotter every second. Two that touch become one. Count adds tornadoes."
+      "blurb": "A whirlwind of fire that grows for as long as it lives: wider and hotter every second. An enemy that stays inside for {blow.after} s is pushed out, once. Two that touch become one. Count adds tornadoes."
     },
     "bastion": {
       "name": "Bastion", "tag": "Ba",
@@ -719,7 +719,7 @@
     },
     "stormlance": {
       "name": "Storm Lance", "tag": "SL",
-      "blurb": "Whirlwinds land on the thickest crowd, each with a beam fixed to it that slowly turns around and burns through the line."
+      "blurb": "Whirlwinds, each with a beam fixed to it that slowly turns around and burns through the line. An enemy that stays inside one for {blow.after} s is pushed out, once."
     },
     "emberstep": {
       "name": "Ember Step", "tag": "ES",

@@ -23,6 +23,11 @@ const LEVEL_GAINS = LEVEL_PLAN.filter(step => typeof step === 'object').reduce((
 // `fire: true` marks a weapon that burns, for items that favor fire; `lasting: true` one
 // whose attack stays for a while, for the Echo Stone.
 // Weapons marked `defense` cannot be the first pick, as they barely attack.
+// Whirlwinds (Hurricane, Fire Tornado, Storm Lance) hold no one: an enemy that stays inside
+// one for `after` seconds in a row is pushed out of it, once, at least `distance` units and
+// always past its edge, over `time` seconds. Elites stand their ground.
+const BLOW = { distance: 70, after: 0.3, time: 0.16 };
+
 const WEAPONS = [
   { id: 'fireball', fire: true, kind: 'magic', pen: 'red-pencil',
     scales: ['damage', 'haste', 'size', 'count', 'critChance', 'critDamage'],
@@ -84,7 +89,7 @@ const WEAPONS = [
     lv4: { damage: 0.2 } },
   { id: 'sword', kind: 'phys', pen: 'orange-pen',
     scales: ['damage', 'haste', 'size', 'count', 'critChance', 'critDamage'],
-    cooldown: 1.4, damage: 30, reach: 92, arc: 2.4, swingGap: 0.14,
+    cooldown: 1.4, damage: 30, reach: 64, arc: 2.4, swingGap: 0.14,
     ups: [{ count: 1 }, { mul: { arc: 1.3 } }] },
   { id: 'shield', kind: 'phys', pen: 'orange-pen', defense: true,
     scales: ['haste', 'damage', 'critChance', 'critDamage'],
@@ -100,8 +105,8 @@ const WEAPONS = [
     ups: [{ mul: { span: 1.3 } }, { add: { drones: 1 } }] },
   { id: 'hurricane', lasting: true, kind: 'magic', pen: 'violet',
     scales: ['damage', 'haste', 'size', 'duration', 'count', 'critChance', 'critDamage'],
-    cooldown: 5, life: 4, tick: 0.25, damage: 8, radius: 50, range: 400, drift: 40, pull: 60,
-    ups: [{ mul: { pull: 1.6 } }, { count: 1 }],
+    cooldown: 5, life: 4, tick: 0.25, damage: 8, radius: 50, range: 400, drift: 40, blow: BLOW,
+    ups: [{ mul: { radius: 1.2 } }, { count: 1 }],
     lv4: { duration: 0.2 } },
   { id: 'shotgun', gun: true, kind: 'phys', pen: 'orange-pen',
     scales: ['damage', 'haste', 'count', 'critChance', 'critDamage'],
@@ -210,8 +215,8 @@ const EVOLUTIONS = {
   hurricane: [
     { id: 'twin', count: 1, damage: 0.15,
       inherit: { firetornado: { count: 1, damage: 0.15 } } },
-    { id: 'eye', mul: { pull: 1.5 }, set: { eye: true, eyeRadius: 110, eyeTurn: 1.6 },
-      inherit: { stormlance: { mul: { pull: 1.5 }, set: { eye: true, eyeRadius: 130, eyeTurn: 1.2 } } } },
+    { id: 'eye', set: { eye: true, eyeRadius: 110, eyeDrift: 30 },
+      inherit: { stormlance: { set: { eye: true, eyeRadius: 130, eyeDrift: 30 } } } },
   ],
   firetrail: [
     { id: 'wildfire', set: { afterburn: 2, spread: 45 },
@@ -276,7 +281,7 @@ const SYNERGIES = [
   // every second of its age, up to `rampMax` of them, adds `ramp` to its damage. `scorch` is the ground it leaves burning.
   { id: 'firetornado', lasting: true, kind: 'hybrid', pen: 'red-pencil', fire: true, needs: ['hurricane', 'flamethrower'], evos: { hurricane: 'twin', flamethrower: 'napalm' },
     scales: ['damage', 'haste', 'size', 'duration', 'count', 'critChance', 'critDamage'],
-    cooldown: 6, life: 6, tick: 0.25, damage: 20, range: 400, drift: 45, pull: 80, ramp: 0.15, rampMax: 10,
+    cooldown: 6, life: 6, tick: 0.25, damage: 20, range: 400, drift: 45, blow: BLOW, ramp: 0.15, rampMax: 10,
     grow: { from: 40, perSecond: 14, slowAt: 160, max: 220 },
     scorch: { every: 0.6, life: 1.5, tick: 0.5, damage: 10 } },
 
@@ -289,7 +294,7 @@ const SYNERGIES = [
     bonus: { count: 1, size: 0.2 } },
   { id: 'stormlance', lasting: true, kind: 'magic', pen: 'violet', needs: ['hurricane', 'laser'], evos: { hurricane: 'eye', laser: 'prism' },
     scales: ['damage', 'haste', 'size', 'duration', 'count', 'critChance', 'critDamage'],
-    cooldown: 5, life: 5, tick: 0.2, damage: 14, radius: 60, range: 400, drift: 40, pull: 60,
+    cooldown: 5, life: 5, tick: 0.2, damage: 14, radius: 60, range: 400, drift: 40, blow: BLOW,
     beams: 1, beamLength: 260, beamWidth: 14, beamTurn: 1.57,
     bonus: { count: 1, duration: 0.2 } },
   // Ember Step is a Phase Dash (the top-level numbers) that walks a Fire Trail (`trail`) and

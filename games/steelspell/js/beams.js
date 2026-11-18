@@ -216,16 +216,28 @@ FIRE.dragonfire = function (w) {
 
 // ---- Hurricane ----
 
-// Drags enemies toward the middle (elites half as hard) and swallows enemy shots.
-function drag(z, pull, dt) {
-  eachEnemyNear(z.x, z.y, z.r * 1.5, e => {
-    const dx = z.x - e.x;
-    const dy = z.y - e.y;
-    const d = Math.hypot(dx, dy) || 1;
-    const step = Math.min(d, pull * dt * (e.def.elite ? 0.5 : 1));
-    e.x += dx / d * step;
-    e.y += dy / d * step;
+// Pushes out, once, an enemy that has stayed inside for `blow.after` seconds in a row (see BLOW
+// in data/weapons.js), and swallows enemy shots. `inside` counts the unbroken stays.
+function blowOut(z, dt) {
+  const b = z.w.cfg.blow;
+  const inside = z.inside || (z.inside = new Map());
+  const blown = z.blown || (z.blown = new Set());
+  const here = new Set();
+  eachEnemyNear(z.x, z.y, z.r, e => {
+    if (blown.has(e)) return;
+    here.add(e);
+    const stay = (inside.get(e) || 0) + dt;
+    if (stay < b.after) {
+      inside.set(e, stay);
+      return;
+    }
+    inside.delete(e);
+    blown.add(e);
+    const dist = Math.hypot(e.x - z.x, e.y - z.y);
+    const a = dist > 0.5 ? Math.atan2(e.y - z.y, e.x - z.x) : rand() * TAU;
+    knockBack(e, a, Math.max(b.distance, z.r + e.r - dist), b.time);
   });
+  for (const e of inside.keys()) if (!here.has(e)) inside.delete(e); // the stay must be unbroken
   eraseEnemyShots(z.x, z.y, z.r);
 }
 
@@ -241,19 +253,26 @@ function wander(z, dt) {
 
 function moveWhirlwind(z, dt) {
   wander(z, dt);
-  drag(z, z.w.cfg.pull, dt);
+  blowOut(z, dt);
 }
 
-// Eye of the Storm: on a ring around the hero.
+// Eye of the Storm: the whirlwinds rise on a ring around the hero, then each drifts straight
+// away from where the hero stood, `eyeDrift` units a second. They do not follow the hero.
 function moveEye(z, dt) {
   const d = z.w.cfg;
-  z.turn += d.eyeTurn * dt;
-  z.x = hero.x + Math.cos(z.turn) * d.eyeRadius;
-  z.y = hero.y + Math.sin(z.turn) * d.eyeRadius;
-  drag(z, d.pull, dt);
+  z.x += Math.cos(z.turn) * d.eyeDrift * dt;
+  z.y += Math.sin(z.turn) * d.eyeDrift * dt;
+  blowOut(z, dt);
 }
 
-// One whirlwind per shot, each on a crowd of its own while there are crowds enough.
+// Where a whirlwind rises: on the crowd it was cast at, or on Eye of the Storm's ring.
+function whirlSpot(w, spot, turn) {
+  if (!w.cfg.eye) return spot;
+  return { x: hero.x + Math.cos(turn) * w.cfg.eyeRadius, y: hero.y + Math.sin(turn) * w.cfg.eyeRadius };
+}
+
+// One whirlwind per shot, each on a crowd of its own while there are crowds enough. With Eye
+// of the Storm they share a ring instead, evenly spaced from a random start.
 function castWhirlwinds(w, make) {
   const n = shotCount(w);
   const spots = [];
@@ -263,7 +282,8 @@ function castWhirlwinds(w, make) {
     spots.push(spot);
   }
   if (!spots.length) return false;
-  for (let i = 0; i < n; i++) make(w, spots[i % spots.length], i / n * TAU);
+  const offset = w.cfg.eye ? rand() * TAU : 0;
+  for (let i = 0; i < n; i++) make(w, whirlSpot(w, spots[i % spots.length], offset + i / n * TAU), offset + i / n * TAU);
   return true;
 }
 
@@ -286,18 +306,11 @@ function tornadoRadius(d, age, size) {
   return Math.min(g.max, r) * size;
 }
 
-// From Eye of the Storm a tornado circles the hero instead of wandering.
 function moveTornado(z, dt) {
   const d = z.w.cfg;
   z.r = tornadoRadius(d, z.age, z.size);
-  if (d.eye) {
-    z.turn += d.eyeTurn * dt;
-    z.x = hero.x + Math.cos(z.turn) * d.eyeRadius;
-    z.y = hero.y + Math.sin(z.turn) * d.eyeRadius;
-  } else {
-    wander(z, dt);
-  }
-  drag(z, d.pull, dt);
+  wander(z, dt);
+  blowOut(z, dt);
   z.scorchIn -= dt;
   if (z.scorchIn <= 0) {
     z.scorchIn += d.scorch.every;
