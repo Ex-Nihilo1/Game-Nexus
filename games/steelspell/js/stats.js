@@ -83,7 +83,11 @@ function kindBonus(kind) {
 
 function magnetRadius() { return HERO.magnet * stat('magnet'); }
 
-function activeCooldown() { return activeDef.cooldown * (1 - gearValue('activeCooldown')); }
+// Ability Haste works as in LoL: 100 / (100 + it) of the cooldown is left, so it never reaches
+// zero. Items that cut the cooldown by a share (Hourglass) come on top.
+function abilityHasteCut(haste = gearValue('abilityHaste')) { return 1 - 100 / (100 + haste); }
+
+function activeCooldown() { return activeDef.cooldown * (1 - gearValue('activeCooldown')) * (1 - abilityHasteCut()); }
 
 // Bulwark Plate is armor only for a hero who carries no shield.
 function heroArmor() { return stat('armor') + (chargedWeapon() ? 0 : gearValue('plateArmor')); }

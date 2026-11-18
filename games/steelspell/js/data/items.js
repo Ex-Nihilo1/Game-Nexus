@@ -29,6 +29,7 @@ const CHESTS = {
 //   physDamage, magicDamage   on top of everything else; a hybrid hit gets half of each
 //   fireDamage           the same for weapons marked `fire`
 //   activeCooldown       share cut from the active skill's cooldown
+//   abilityHaste         Ability Haste: the active skill's cooldown x 100 / (100 + it)
 //   attackPerLevel       damage for each level the hero has
 //   thorns               share of an enemy's contact damage it takes itself, as pure damage
 //   chestLuck            chance that an elite's chest is one step better

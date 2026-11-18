@@ -36,6 +36,7 @@
     "active": "Active skill",
     "weapon": "First weapon",
     "cooldown": "{seconds} s",
+    "activeNote": "{seconds} s · {weapon}",
     "passive": "Passive: {text}",
     "continue": "Continue · {time}, level {level}",
     "go": "Start run",
@@ -119,6 +120,8 @@
     "magicDamage": "All magic damage",
     "pure": "Damage made pure",
     "activeCooldown": "Active cooldown",
+    "abilityHaste": "Ability Haste",
+    "abilityHasteValue": "{haste} (cooldown -{cut}%)",
     "lives": "Spare lives"
   },
   "pause": {
@@ -229,7 +232,10 @@
       "Burning also takes {burn}% of an enemy's max health per second for every stack, half on elites.",
       "Tanks come from minute {tanksFrom}: Iron Tanks need magic, Ward Tanks need physical damage, and the Colossus has a lot of health."
     ],
-    "actives": "Active skills"
+    "actives": "Active skills",
+    "activesNote": "Every active skill brings a weapon of its own for free, from the start and on top of the one you pick. That weapon cannot be your first one then.",
+    "abilityHaste": "Ability Haste shortens the active skill's cooldown: 100 / (100 + Ability Haste) of it is left, so 50 leaves two thirds of it and it never reaches zero. Weapons do not read it, and Haste does not touch the active skill.",
+    "freeWith": "{active} brings it for free from the start; then it cannot be your first weapon."
   },
   "toasts": {
     "merged": "Merged: {name}!",
@@ -273,6 +279,7 @@
     "economy": "Economy"
   },
   "actives": {
+    "freeWeapon": "A free {weapon} from the start, on top of your weapons; it cannot be your first weapon.",
     "flash": {
       "name": "Flash",
       "passive": "After a blink: +{critBoost}% crit chance for {critTime} s.",
@@ -290,11 +297,12 @@
     },
     "ignite": {
       "name": "Ignite",
-      "passive": "A free {weapon} from the start, on top of your weapons. Fire damage +{gives.fireDamage}%. The {weapon} cannot be your first weapon.",
+      "passive": "Fire damage +{gives.fireDamage}%.",
       "blurb": "Sets the ground around you on fire for {duration} s. Whatever burns the whole time loses {share}% of its max health, as pure damage."
     },
     "stash": {
       "name": "Stash",
+      "passive": "+{gives.abilityHaste} Ability Haste: the cooldown is {abilityHaste.cut}% shorter.",
       "blurb": "Drops a chest nearby: pick 1 of {chestSlots} items, common, rare or epic (never legendary)."
     },
     "inspiration": {

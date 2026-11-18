@@ -234,7 +234,7 @@ function showStart(keep = false) {
     addPickRows(p, ACTIVE_GROUPS.map(group => ({
       label: t(`activeGroups.${group}`),
       items: ACTIVES.filter(a => a.group === group),
-      note: a => t('start.cooldown', { seconds: a.cooldown }),
+      note: activeNote,
     })), loadout.active, activeName, activeDescription, a => {
       const before = loadout.active;
       loadout.active = a;
@@ -425,6 +425,9 @@ function addStatReport(p) {
   if (gearValue('magicDamage')) addRow(arms, t('report.magicDamage'), `+${share(gearValue('magicDamage'))}`);
   if (gearValue('pureShare')) addRow(arms, t('report.pure'), share(gearValue('pureShare')));
   if (gearValue('activeCooldown')) addRow(self, t('report.activeCooldown'), `-${share(gearValue('activeCooldown'))}`);
+  if (gearValue('abilityHaste')) {
+    addRow(self, t('report.abilityHaste'), t('report.abilityHasteValue', { haste: gearValue('abilityHaste'), cut: Math.round(abilityHasteCut() * 100) }));
+  }
   if (hero.lives) addRow(self, t('report.lives'), formatNumber(hero.lives));
   box.append(arms, self);
   p.appendChild(box);

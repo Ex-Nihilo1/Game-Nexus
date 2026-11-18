@@ -81,7 +81,8 @@ function showWeaponWindow(d) {
     box.appendChild(el('span', `stamp ${d.kind}`, d.defense ? t('codex.defensive', { kind: kindName(d.kind) }) : kindName(d.kind)));
     const levels = [];
     for (let lv = 2; lv <= MAX_WEAPON_LEVEL; lv++) levels.push(t('codex.levelLine', { level: lv, text: levelText(d, lv) }));
-    windowLines(box, [blurbOf(d), usesText(d)]);
+    const bringer = ACTIVES.find(a => a.freeWeapon === d.id);
+    windowLines(box, [blurbOf(d), usesText(d), bringer ? t('codex.freeWith', { active: activeName(bringer) }) : '']);
     box.appendChild(el('h4', 'codex-sub', t('codex.levels')));
     windowLines(box, [levels]);
     box.appendChild(el('h4', 'codex-sub', t('codex.evolutions', { max: MAX_WEAPON_LEVEL })));
@@ -202,11 +203,12 @@ function codexStats(p) {
   const firstTanks = WAVES.find(w => Object.keys(w.mix).some(id => ENEMIES[id].tank));
   windowLines(p, textList('codex.armorLines', { burn: percent(BURN_SHARE), tanksFrom: firstTanks ? firstTanks.at / 60 : 0 }));
   p.appendChild(el('h3', 'section-title', t('codex.actives')));
+  windowLines(p, [t('codex.activesNote'), t('codex.abilityHaste')]);
   for (const a of ACTIVES) {
     const box = el('div', 'codex-entry');
     const head = el('div', 'codex-head');
     head.appendChild(el('span', 'codex-name', activeName(a)));
-    head.appendChild(el('span', 'stamp hero', t('start.cooldown', { seconds: a.cooldown })));
+    head.appendChild(el('span', 'stamp hero', activeNote(a)));
     box.appendChild(head);
     const passive = activePassive(a);
     windowLines(box, [activeBlurb(a), passive ? t('start.passive', { text: passive }) : '']);

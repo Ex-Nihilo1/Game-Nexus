@@ -231,9 +231,18 @@ function itemName(item) { return t(`items.${item.id}.name`); }
 function itemText(item) { return t(`items.${item.id}.text`, itemParams(item)); }
 function activeName(a) { return t(`actives.${a.id}.name`); }
 function activeBlurb(a) { return t(`actives.${a.id}.blurb`, activeParams(a)); }
+// An active skill's cooldown and the weapon it brings, as its button on the start screen says.
+function activeNote(a) {
+  const weapon = WEAPON_DEFS.find(d => d.id === a.freeWeapon);
+  return weapon ? t('start.activeNote', { seconds: a.cooldown, weapon: nameOf(weapon) }) : t('start.cooldown', { seconds: a.cooldown });
+}
+
+// The weapon an active skill brings, then its own passive.
 function activePassive(a) {
-  const key = `actives.${a.id}.passive`;
-  return hasText(key) ? t(key, activeParams(a)) : '';
+  const params = activeParams(a);
+  const parts = a.freeWeapon ? [t('actives.freeWeapon', params)] : [];
+  if (hasText(`actives.${a.id}.passive`)) parts.push(t(`actives.${a.id}.passive`, params));
+  return parts.join(' ');
 }
 function campText(up) {
   return t(`camp.upgrades.${up.id}.text`, { amount: SHARE_GIVES.has(up.gives) ? percent(up.amount) : up.amount });
@@ -316,5 +325,6 @@ function activeParams(a) {
     out[`buff.${key}`] = key === 'count' ? value : percent(key === 'haste' ? value : value - 1);
   }
   if (a.freeWeapon) out.weapon = nameOf(WEAPON_DEFS.find(d => d.id === a.freeWeapon));
+  if (a.gives && a.gives.abilityHaste) out['abilityHaste.cut'] = Math.round(abilityHasteCut(a.gives.abilityHaste) * 100);
   return out;
 }

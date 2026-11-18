@@ -62,7 +62,7 @@ const BEST_KEY = 'games.steelspell.best'; // the one best run of the first versi
 const LAST_KEY = 'games.steelspell.last';
 const RECORD_RUNS = 20; // the longest runs kept, for each balance version
 // Runs are compared only within one balance version: raise it whenever the numbers change.
-const BALANCE_VERSION = '0.2.3';
+const BALANCE_VERSION = '0.3';
 
 // Glory is what a run earns for the Camp, win or lose.
 const GLORY = { perMinute: 10, perElite: 15, perLevel: 2, perMerge: 25 };
@@ -80,7 +80,6 @@ const SECOND_WIND = { below: 0.2, safe: 2 };
 
 // Kinds of damage, and of what a card or a stat is for. Every name the player reads is in
 // lang/en.json, by the id of its row.
-
 const KINDS = {
   phys: { pen: 'orange-pen' },
   magic: { pen: 'violet' },
@@ -113,15 +112,19 @@ const STATS = {
 // Active skills: one is picked before the run and sits on the Space key. Each also has a
 // passive for the whole run: `gives` adds to the hero like an item. `group` is where the start
 // screen lists it.
+// Every active skill brings a weapon of its own, `freeWeapon`, from the start and on top of the
+// one picked: that weapon cannot be the first pick then, and no card offers it again.
 const ACTIVES = [
-  { id: 'flash', group: 'mobility', cooldown: 40, distance: 190, critBoost: 0.25, critTime: 20 },
-  { id: 'ghost', group: 'mobility', cooldown: 120, duration: 5, speedBoost: 2, gives: { speed: 0.1, magnet: 0.25 } },
+  { id: 'flash', group: 'mobility', cooldown: 40, distance: 190, critBoost: 0.25, critTime: 20, freeWeapon: 'shotgun' },
+  { id: 'ghost', group: 'mobility', cooldown: 120, duration: 5, speedBoost: 2, gives: { speed: 0.1, magnet: 0.25 }, freeWeapon: 'spear' },
   { id: 'berserk', group: 'damage', cooldown: 60, duration: 30, gives: { baseHp: 50, regen: 0.005 }, rageRegen: 0.05, rageTime: 10,
-    buff: { damage: 1.3, size: 1.25, haste: 0.25, count: 1 } },
+    buff: { damage: 1.3, size: 1.25, haste: 0.25, count: 1 }, freeWeapon: 'sword' },
   { id: 'ignite', group: 'damage', cooldown: 120, duration: 8, radius: 270, tick: 0.5, share: 0.7,
     gives: { fireDamage: 0.1 }, freeWeapon: 'flamethrower' },
-  { id: 'stash', group: 'economy', cooldown: 300, distance: 110 },
-  { id: 'inspiration', group: 'economy', cooldown: 100, share: 0.6, startLevels: 3 },
+  // Ability Haste shortens the active skill's cooldown, as in LoL: cooldown x 100 / (100 + it).
+  // It is not Haste, which only the weapons read.
+  { id: 'stash', group: 'economy', cooldown: 300, distance: 110, gives: { abilityHaste: 30 }, freeWeapon: 'drone' },
+  { id: 'inspiration', group: 'economy', cooldown: 100, share: 0.6, startLevels: 3, freeWeapon: 'aura' },
 ];
 const ACTIVE_GROUPS = ['mobility', 'damage', 'economy'];
 const BERSERK = ACTIVES.find(a => a.id === 'berserk');
