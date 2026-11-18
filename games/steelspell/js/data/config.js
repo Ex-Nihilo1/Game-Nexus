@@ -121,9 +121,7 @@ const ACTIVES = [
     buff: { damage: 1.3, size: 1.25, haste: 0.25, count: 1 }, freeWeapon: 'sword' },
   { id: 'ignite', group: 'damage', cooldown: 120, duration: 8, radius: 270, tick: 0.5, share: 0.7,
     gives: { fireDamage: 0.1 }, freeWeapon: 'flamethrower' },
-  // Ability Haste shortens the active skill's cooldown, as in LoL: cooldown x 100 / (100 + it).
-  // It is not Haste, which only the weapons read.
-  { id: 'stash', group: 'economy', cooldown: 300, distance: 110, gives: { abilityHaste: 30 }, freeWeapon: 'drone' },
+  { id: 'stash', group: 'economy', cooldown: 300, distance: 110, gives: { haste: 0.1 }, freeWeapon: 'drone' },
   { id: 'inspiration', group: 'economy', cooldown: 100, share: 0.6, startLevels: 3, freeWeapon: 'aura' },
 ];
 const ACTIVE_GROUPS = ['mobility', 'damage', 'economy'];

@@ -424,7 +424,6 @@ function addStatReport(p) {
   if (gearValue('physDamage')) addRow(arms, t('report.physDamage'), `+${share(gearValue('physDamage'))}`);
   if (gearValue('magicDamage')) addRow(arms, t('report.magicDamage'), `+${share(gearValue('magicDamage'))}`);
   if (gearValue('pureShare')) addRow(arms, t('report.pure'), share(gearValue('pureShare')));
-  if (gearValue('activeCooldown')) addRow(self, t('report.activeCooldown'), `-${share(gearValue('activeCooldown'))}`);
   if (gearValue('abilityHaste')) {
     addRow(self, t('report.abilityHaste'), t('report.abilityHasteValue', { haste: gearValue('abilityHaste'), cut: Math.round(abilityHasteCut() * 100) }));
   }

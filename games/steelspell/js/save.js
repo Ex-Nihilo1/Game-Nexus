@@ -62,6 +62,11 @@ function continueRun() {
   activeDef = ACTIVES.find(a => a.id === save.active) || ACTIVES[0];
   for (const key of Object.keys(upgrades)) upgrades[key] = (save.upgrades || {})[key] || 0;
   gear = Object.assign({}, save.gear);
+  // Before 0.3 the Hourglass cut the cooldown by a share; the same cut in Ability Haste.
+  if (gear.activeCooldown) {
+    gear.abilityHaste = (gear.abilityHaste || 0) + 100 * gear.activeCooldown / (1 - gear.activeCooldown);
+    delete gear.activeCooldown;
+  }
   items = (save.items || []).map(id => ITEMS.find(item => item.id === id)).filter(Boolean);
   for (const saved of save.weapons) {
     if (!WEAPON_DEFS.some(d => d.id === saved.id)) continue;

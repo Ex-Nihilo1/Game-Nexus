@@ -258,7 +258,7 @@ const PERIOD_FIELDS = new Set(['tick', 'dropEvery']);
 // What items, the Camp and the active skills give: these are shares, the rest are amounts.
 const SHARE_GIVES = new Set([
   ...Object.keys(STATS).filter(key => !['count', 'armor', 'recovery'].includes(key)),
-  'regen', 'pureShare', 'hpToAttack', 'physDamage', 'magicDamage', 'fireDamage', 'activeCooldown', 'attackPerLevel',
+  'regen', 'pureShare', 'hpToAttack', 'physDamage', 'magicDamage', 'fireDamage', 'attackPerLevel',
   'chestLuck', 'enemyHp', 'echo', 'ricochet', 'armorPenPct', 'magicPenPct', 'weakSpot', 'glory',
 ]);
 
@@ -297,9 +297,11 @@ function stepParams(def, step) {
   return out;
 }
 
+// Ability Haste also says how much shorter the cooldown gets: `abilityHaste.cut`.
 function givesParams(gives, prefix = '') {
   const out = {};
   for (const [key, value] of Object.entries(gives || {})) out[prefix + key] = SHARE_GIVES.has(key) ? percent(value) : value;
+  if (gives && gives.abilityHaste) out[`${prefix}abilityHaste.cut`] = Math.round(abilityHasteCut(gives.abilityHaste) * 100);
   return out;
 }
 
@@ -325,6 +327,5 @@ function activeParams(a) {
     out[`buff.${key}`] = key === 'count' ? value : percent(key === 'haste' ? value : value - 1);
   }
   if (a.freeWeapon) out.weapon = nameOf(WEAPON_DEFS.find(d => d.id === a.freeWeapon));
-  if (a.gives && a.gives.abilityHaste) out['abilityHaste.cut'] = Math.round(abilityHasteCut(a.gives.abilityHaste) * 100);
   return out;
 }

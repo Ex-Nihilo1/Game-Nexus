@@ -119,7 +119,6 @@
     "physDamage": "All physical damage",
     "magicDamage": "All magic damage",
     "pure": "Damage made pure",
-    "activeCooldown": "Active cooldown",
     "abilityHaste": "Ability Haste",
     "abilityHasteValue": "{haste} (cooldown -{cut}%)",
     "lives": "Spare lives"
@@ -234,7 +233,7 @@
     ],
     "actives": "Active skills",
     "activesNote": "Every active skill brings a weapon of its own for free, from the start and on top of the one you pick. That weapon cannot be your first one then.",
-    "abilityHaste": "Ability Haste shortens the active skill's cooldown: 100 / (100 + Ability Haste) of it is left, so 50 leaves two thirds of it and it never reaches zero. Weapons do not read it, and Haste does not touch the active skill.",
+    "abilityHaste": "Ability Haste shortens the active skill's cooldown: 100 / (100 + Ability Haste) of it is left, so 50 leaves two thirds of it and it never reaches zero. Only items give it. Weapons do not read it, and Haste does not touch the active skill.",
     "freeWith": "{active} brings it for free from the start; then it cannot be your first weapon."
   },
   "toasts": {
@@ -302,7 +301,7 @@
     },
     "stash": {
       "name": "Stash",
-      "passive": "+{gives.abilityHaste} Ability Haste: the cooldown is {abilityHaste.cut}% shorter.",
+      "passive": "+{gives.haste}% Haste for the whole run.",
       "blurb": "Drops a chest nearby: pick 1 of {chestSlots} items, common, rare or epic (never legendary)."
     },
     "inspiration": {
@@ -361,7 +360,7 @@
     "edge": { "name": "Void Edge", "text": "{pureShare}% of all damage becomes pure" },
     "pact": { "name": "Blood Pact", "text": "{hpToAttack}% of your Health turns into Base attack" },
     "feather": { "name": "Phoenix Feather", "text": "+{lives, plural, one {# life} other {# lives}}. Dying brings you back at full health with a blast of pure damage" },
-    "hourglass": { "name": "Hourglass", "text": "-{activeCooldown}% Active skill cooldown" },
+    "hourglass": { "name": "Hourglass", "text": "+{abilityHaste} Ability Haste: the active skill's cooldown is {abilityHaste.cut}% shorter" },
     "armory": { "name": "Armory Key", "text": "{weapons, plural, one {An extra weapon} other {# extra weapons}} right away" },
     "compass": { "name": "Compass", "text": "{cardsWith} cards on every level-up instead of {levelCards}" },
     "crown": { "name": "Cursed Crown", "text": "+{xp}% XP, but every enemy that arrives from now on has {enemyHp}% more Health" },

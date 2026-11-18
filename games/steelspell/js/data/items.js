@@ -28,8 +28,8 @@ const CHESTS = {
 //   lives, levels, weapons, rerolls   handed over right away
 //   physDamage, magicDamage   on top of everything else; a hybrid hit gets half of each
 //   fireDamage           the same for weapons marked `fire`
-//   activeCooldown       share cut from the active skill's cooldown
-//   abilityHaste         Ability Haste: the active skill's cooldown x 100 / (100 + it)
+//   abilityHaste         Ability Haste, as in LoL: 100 / (100 + it) of the active skill's
+//                        cooldown is left. Only items give it; weapons never read it.
 //   attackPerLevel       damage for each level the hero has
 //   thorns               share of an enemy's contact damage it takes itself, as pure damage
 //   chestLuck            chance that an elite's chest is one step better
@@ -86,7 +86,7 @@ const ITEMS = [
   { id: 'edge', rarity: 'legendary', gives: { pureShare: 0.3 } },
   { id: 'pact', rarity: 'legendary', gives: { hpToAttack: 0.5 } },
   { id: 'feather', rarity: 'legendary', gives: { lives: 1 } },
-  { id: 'hourglass', rarity: 'legendary', gives: { activeCooldown: 0.5 } },
+  { id: 'hourglass', rarity: 'legendary', gives: { abilityHaste: 100 } },
   { id: 'armory', rarity: 'legendary', gives: { weapons: 1 } },
   { id: 'compass', rarity: 'legendary', gives: { cardSlots: 1 } },
   { id: 'crown', rarity: 'legendary', gives: { xp: 0.4, enemyHp: 0.25 } },
