@@ -264,8 +264,9 @@ function showStart(keep = false) {
     records.addEventListener('click', () => showRecords());
     const codex = el('button', '', t('ui.codex'));
     codex.addEventListener('click', () => showCodex('weapons', 'start'));
-    actions.append(go, camp, records, codex);
-    if (LANGUAGES.length > 1) actions.appendChild(languagePicker());
+    const setup = el('button', '', t('ui.settings'));
+    setup.addEventListener('click', () => showSettings('start'));
+    actions.append(go, camp, records, codex, setup);
     p.appendChild(actions);
     if (save) p.appendChild(el('p', 'panel-note', t('start.saved')));
 
@@ -293,10 +294,45 @@ function addHint(box, line) {
   });
 }
 
-// The menu's language: the texts load again, and the screen with them.
-function languagePicker() {
+// The Settings screen, from the start screen or the pause menu (`from`).
+function showSettings(from) {
+  showPanel(p => {
+    p.appendChild(el('h2', 'panel-title', t('settings.title')));
+    const row = el('label', 'setting');
+    row.appendChild(el('span', 'setting-name', t('settings.attackAlpha')));
+    const slider = el('input', 'setting-range');
+    slider.type = 'range';
+    slider.min = '10';
+    slider.max = '100';
+    slider.step = '10';
+    slider.value = String(Math.round(settings.attackAlpha * 100));
+    const shown = el('span', 'setting-value', `${slider.value}%`);
+    slider.addEventListener('input', () => {
+      settings.attackAlpha = Number(slider.value) / 100;
+      shown.textContent = `${slider.value}%`;
+      saveSettings();
+      dirty = true;
+    });
+    row.append(slider, shown);
+    p.appendChild(row);
+    p.appendChild(el('p', 'panel-note', t('settings.attackAlphaNote')));
+    if (LANGUAGES.length > 1) {
+      const lang = el('label', 'setting');
+      lang.append(el('span', 'setting-name', t('settings.language')), languagePicker(() => showSettings(from)));
+      p.appendChild(lang);
+    }
+    const actions = el('div', 'panel-actions');
+    const back = el('button', 'primary', t('ui.back'));
+    back.addEventListener('click', () => (from === 'pause' ? showPause() : showStart(true)));
+    actions.appendChild(back);
+    p.appendChild(actions);
+  });
+}
+
+// The language: the texts load again, and the screen with them (`after`).
+function languagePicker(after) {
   const pick = el('select', 'lang-pick');
-  pick.setAttribute('aria-label', t('start.language'));
+  pick.setAttribute('aria-label', t('settings.language'));
   for (const lang of LANGUAGES) {
     const option = el('option', '', lang.name);
     option.value = lang.id;
@@ -306,7 +342,7 @@ function languagePicker() {
   pick.addEventListener('change', () => setLanguage(pick.value).then(() => {
     applyPageTexts();
     showBest();
-    showStart(true);
+    after();
   }));
   return pick;
 }
@@ -445,11 +481,13 @@ function showPause() {
     resume.addEventListener('click', togglePause);
     const codex = el('button', '', t('ui.codex'));
     codex.addEventListener('click', () => showCodex('weapons', 'pause'));
+    const setup = el('button', '', t('ui.settings'));
+    setup.addEventListener('click', () => showSettings('pause'));
     const keep = el('button', '', t('pause.save'));
     keep.addEventListener('click', saveAndQuit);
     const quit = el('button', '', t('pause.end'));
     quit.addEventListener('click', endRun);
-    actions.append(resume, codex, keep, quit);
+    actions.append(resume, codex, setup, keep, quit);
     p.appendChild(actions);
   });
 }

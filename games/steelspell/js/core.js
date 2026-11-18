@@ -4,7 +4,8 @@
 
 const stageEl = document.getElementById('stage');
 const canvas = document.getElementById('view');
-const ctx = canvas.getContext('2d');
+const viewCtx = canvas.getContext('2d');
+let ctx = viewCtx; // render.js draws the hero's own attacks on a layer of their own now and then
 const overlayEl = document.getElementById('overlay');
 const panelEl = document.getElementById('panel');
 const statusEl = document.getElementById('status');
@@ -173,6 +174,11 @@ function saveJson(key, value) {
   if (simulating) return;
   try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode etc. */ }
 }
+
+// What the player set on the Settings screen. `attackAlpha` is how opaque the hero's own
+// attacks are drawn: 1, the default, is no see-through at all.
+const settings = Object.assign({ attackAlpha: 1 }, loadJson(SETTINGS_KEY) || {});
+function saveSettings() { saveJson(SETTINGS_KEY, settings); }
 function say(text) {
   toast = text;
   toastLeft = 3;

@@ -481,9 +481,11 @@ function drawHero() {
   ctx.globalAlpha = 1;
 }
 
-function drawFx() {
+// `only` picks which of them: the hero's own or the horde's.
+function drawFx(only) {
   ctx.lineCap = 'round';
   for (const f of fx) {
+    if (!only(f)) continue;
     const k = f.life / f.max; // runs from 1 down to 0
     const pen = pal[f.pen];
     const fill = f.pen === 'enemy-attack' ? 1 : HERO_FILL;
@@ -556,6 +558,37 @@ function drawNumbers() {
   ctx.globalAlpha = 1;
 }
 
+// The hero's own attacks can be drawn see-through (Settings): they go on a layer of their own,
+// which lands on the view at that opacity. At full opacity they go straight on the view.
+let ownLayer = null;
+function drawOwn(paint) {
+  if (settings.attackAlpha >= 1) {
+    paint();
+    return;
+  }
+  if (!ownLayer || ownLayer.width !== canvas.width || ownLayer.height !== canvas.height) {
+    ownLayer = document.createElement('canvas');
+    ownLayer.width = canvas.width;
+    ownLayer.height = canvas.height;
+  }
+  const layer = ownLayer.getContext('2d');
+  layer.setTransform(1, 0, 0, 1, 0, 0);
+  layer.clearRect(0, 0, ownLayer.width, ownLayer.height);
+  layer.setTransform(viewCtx.getTransform());
+  layer.lineJoin = 'round';
+  ctx = layer;
+  try {
+    paint();
+  } finally {
+    ctx = viewCtx;
+  }
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = settings.attackAlpha;
+  ctx.drawImage(ownLayer, 0, 0);
+  ctx.restore();
+}
+
 function draw() {
   dirty = false;
   cam.x = hero.x - view.w / 2;
@@ -564,18 +597,21 @@ function draw() {
   ctx.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
   ctx.lineJoin = 'round';
   drawGround();
-  drawZones();
+  drawOwn(drawZones);
   drawChests();
   drawOrbs();
   drawRedOrbs();
   drawMagnets();
   drawEnemies();
-  drawBeams();
-  drawShots();
-  drawHeroEffects();
+  drawOwn(() => {
+    drawBeams();
+    drawShots();
+    drawHeroEffects();
+  });
   drawAllies();
   drawHero();
-  drawFx();
+  drawOwn(() => drawFx(f => f.pen !== 'enemy-attack'));
+  drawFx(f => f.pen === 'enemy-attack');
   drawWarnings();
   drawEnemyShots();
   drawNumbers();

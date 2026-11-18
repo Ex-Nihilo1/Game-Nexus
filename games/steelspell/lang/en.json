@@ -8,6 +8,7 @@
     "codex": "Codex",
     "camp": "Camp",
     "pause": "Pause",
+    "settings": "Settings",
     "uses": "Uses: {stats}.",
     "keptName": "{name} ({kept})",
     "perSecond": "{value}/s"
@@ -44,7 +45,6 @@
     "camp": "Camp · {glory} Glory",
     "records": "Records",
     "saved": "A saved run is waiting. Starting a new one drops it.",
-    "language": "Language",
     "hints": [
       "[WASD] or arrows, or drag on the field, to walk · [Space] active skill · [1]–[4] pick a card · [R] reroll the cards · [X] skip a level-up · [P] pause",
       "An orange outline is armor that blunts physical damage, a violet outline is a ward that blunts magic: 100 of either halves a hit, and damage never vanishes. A double outline is a tank: hit it with the other kind, set it on fire, or pierce its armor. Pure damage ignores both.",
@@ -133,6 +133,12 @@
     "resume": "Resume",
     "save": "Save & quit",
     "end": "End run"
+  },
+  "settings": {
+    "title": "Settings",
+    "attackAlpha": "Your attacks",
+    "attackAlphaNote": "Make your own attacks see-through to keep the horde and its shots in sight. At 100% they look as usual.",
+    "language": "Language"
   },
   "end": {
     "title": "Run ended",
