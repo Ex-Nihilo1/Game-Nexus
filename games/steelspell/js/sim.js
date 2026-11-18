@@ -35,6 +35,7 @@ const SIM_RARITY_SCORE = { grey: 10, blue: 20, purple: 30, legendary: 40 };
 
 let simResults = [];
 let simSeed = 1;
+let simAltarAt = 0; // seconds into a stage when the bot calls the boss; 0: it comes by itself
 let simThink = 0;
 let simDir = 0;
 let simAngle = 0;
@@ -258,6 +259,7 @@ function simPrepare(job) {
   view.w = SIM_VIEW.w;
   view.h = SIM_VIEW.h;
   simSeed = (job.seed ^ 0x5bd1e995) | 0;
+  simAltarAt = (job.altar || 0) * 60;
   simThink = 0;
   simDir = 0;
   simAngle = 0;
@@ -407,7 +409,7 @@ function simJobs(params) {
       weapon: params.get('weapon') || pool[i % pool.length],
       active,
       god: params.get('god') === '1', meta: params.get('meta') || '0', after: Number(params.get('after')) || 0,
-      patch: params.get('patch') || '', only,
+      patch: params.get('patch') || '', only, altar: Number(params.get('altar')) || 0,
     });
   }
   return jobs;
@@ -562,7 +564,7 @@ function devKey(code) {
   else if (code === 'KeyG') enqueueChoice('weapon');
   else if (code === 'KeyI') enqueueChoice(pickWeighted(CHEST_ROLL));
   else if (code === 'KeyR') activeCd = 0;
-  else if (code === 'KeyT') elapsed += 60;
+  else if (code === 'KeyT') devSkipMinute();
   else if (code === 'KeyE') addEnemy(pickOne(['hulk', 'warden', 'siege']));
   else if (code === 'KeyF') ['slinger', 'slinger', 'slinger', 'slinger', 'hexer', 'hexer', 'mortar', 'mortar'].forEach(type => addEnemy(type));
   else if (code === 'KeyO') {

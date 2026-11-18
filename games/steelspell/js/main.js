@@ -22,6 +22,7 @@ function update(dt) {
   elapsed += dt;
   frame++;
   moveHero(dt);
+  updateStage(dt);
   spawnEnemies(dt);
   moveEnemies(dt);
   rebuildGrid();

@@ -93,6 +93,7 @@ function pullOrb(o, dt) {
 // An orb left far behind comes back ahead of the hero: walking always turns up XP, and none
 // is lost for good.
 function updateOrbs(dt) {
+  if (fight) return; // the orbs wait for the end of a boss fight
   const far = recycleDistance();
   for (const o of orbs) {
     const dx = hero.x - o.x;
@@ -215,6 +216,12 @@ function openChoice(kind) {
     cards = EVOLUTIONS[w.def.id].map((evo, branch) => evolveCard(w, evo, branch));
     title = t('cards.evolveTitle', { name: nameOf(w.def) });
     note = t('cards.evolveNote');
+    reroll = false;
+  } else if (kind === 'arsenal') {
+    cards = weaponCards(true); // after a story boss: any weapon at all
+    if (!cards.length) return false;
+    title = t('cards.arsenalTitle');
+    note = t('cards.arsenalNote');
     reroll = false;
   } else {
     cards = kind === 'weapon' ? weaponCards() : [];
@@ -380,12 +387,13 @@ function levelCards() {
 }
 
 // A weapon that went into a merge is gone from the pool too.
-function weaponCards() {
+// `all`: every weapon the hero can still take, not 4 of them (the pick after a story boss).
+function weaponCards(all = false) {
   const merged = SYNERGIES.filter(s => owned(s.id)).flatMap(s => s.needs);
   const free = WEAPONS.filter(d => !owned(d.id) && !merged.includes(d.id));
-  const chosen = [];
+  const chosen = all ? [...free] : [];
   const partners = free.filter(d => synergyPartners(d.id).length);
-  if (partners.length) chosen.push(pickOne(partners));
+  if (partners.length && !all) chosen.push(pickOne(partners));
   while (chosen.length < 4 && chosen.length < free.length) {
     const d = pickOne(free);
     if (!chosen.includes(d)) chosen.push(d);

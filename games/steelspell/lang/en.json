@@ -25,6 +25,14 @@
     "timer": "{name} {seconds}s",
     "kills": "Kills {kills}",
     "dev": "DEV",
+    "stageAltar": "Stage {stage} · the altar rises in {time}",
+    "stageBoss": "Stage {stage} · boss +{boost}% · it comes in {time}",
+    "endless": "Endless · next boss in {time}",
+    "rest": "Rest · {time}",
+    "altarBoost": "+{boost}%",
+    "bossBar": "{name} · stage {stage} · armor {armor} · ward {ward}",
+    "enrageIn": "Enrages in {time}",
+    "enraged": "Enraged: double damage",
     "tileLevel": "Lv {level}",
     "tileMax": "MAX",
     "tileEvo": "EVO",
@@ -34,7 +42,7 @@
   },
   "start": {
     "title": "Choose your loadout",
-    "note": "The horde never stops growing: last as long as you can. New weapons come at levels {levels}. A weapon grows to level {max} through level-up cards, then evolves one of two ways, and two evolved weapons of a pair can merge into a stronger one.",
+    "note": "Three stages, each ending in a boss. At minute {altar} of a stage an altar rises: touch it to call the boss. The longer you put it off, the stronger the boss gets, and at minute {length} it comes by itself. After the third boss, survive as long as you can. New weapons come at levels {levels}, and after every boss you pick any weapon you like. A weapon grows to level {max} through level-up cards, then evolves one of two ways, and two evolved weapons of a pair can merge into a stronger one.",
     "active": "Active skill",
     "weapon": "First weapon",
     "cooldown": "{seconds} s",
@@ -82,6 +90,8 @@
     "evoMerges": "Leads to {merge}, with {partner} evolved either way.",
     "merges": "Merges {list} once both are at Lv {max} and evolved.",
     "reroll": "Reroll ({rerolls})",
+    "arsenalTitle": "The boss is down: any weapon",
+    "arsenalNote": "Pick any weapon you do not have yet. It comes at level 1.",
     "skip": "Skip: heal {pct}%"
   },
   "steps": {
@@ -148,6 +158,18 @@
     "devMode": "Developer mode",
     "devNote": "Opens the developer panel: F1, or the button in the pause menu. A run where a cheat was used goes to no records and earns no Glory."
   },
+  "boss": {
+    "armor": "The Armored Boss",
+    "ward": "The Warded Boss",
+    "health": "The Hulking Boss"
+  },
+  "victory": {
+    "title": "Victory!",
+    "note": "All three bosses are down in {time}.",
+    "best": "Your fastest clear!",
+    "continue": "Keep going: endless survival",
+    "end": "End the run"
+  },
   "dev": {
     "title": "Developer panel",
     "note": "Seed {seed}. Every button but those under Show marks the run: no records, no Glory.",
@@ -155,6 +177,11 @@
     "time": "Time",
     "step": "Step a frame",
     "minute": "+1 minute",
+    "stage": "Stage {stage}",
+    "endless": "endless",
+    "altar": "Raise the altar",
+    "callBoss": "Call the boss",
+    "killBoss": "Kill the boss",
     "hero": "Hero",
     "immortal": "Immortal",
     "heal": "Full health",
@@ -183,6 +210,8 @@
     "bestWith": "Your best with {weapon}.",
     "glory": "+{glory} Glory for the Camp.",
     "cheated": "Developer cheats were used: this run goes to no records and earns no Glory.",
+    "clear": "All three bosses down in {time}.",
+    "bestClear": "Your fastest clear!",
     "time": "Time",
     "level": "Level",
     "kills": "Kills",
@@ -197,6 +226,7 @@
     "kills": "Kills",
     "elites": "Elites",
     "merges": "Merges",
+    "fastest": "Fastest clear",
     "noEarlier": "No runs from earlier versions.",
     "none": "No runs in {version} yet. Runs are compared only within one balance version; the {count} longest are listed here.",
     "longest": "Longest runs",
@@ -204,6 +234,7 @@
       "place": "#",
       "version": "Version",
       "time": "Time",
+      "clear": "Clear",
       "level": "Level",
       "kills": "Kills",
       "start": "Start",
@@ -297,7 +328,12 @@
     "revived": "Back from the dead!",
     "elites": "Elites have arrived",
     "elite": "{name} has arrived",
-    "ring": "They are closing in"
+    "ring": "They are closing in",
+    "altar": "An altar has risen: touch it to call the boss",
+    "boss": "{name} is here",
+    "hordeBack": "The horde is back",
+    "bossCalls": "The boss calls for help",
+    "bossDown": "The boss is down!"
   },
   "kinds": {
     "phys": "Physical",

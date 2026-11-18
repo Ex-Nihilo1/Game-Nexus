@@ -15,12 +15,15 @@ const REROLLS = { start: 2, everyLevels: 12 }; // rerolls a run begins with, and
 const SKIP_HEAL = 0.1; // share of max health for skipping a level-up
 const XP = { base: 5, perLevel: 2.7, curve: 0.03 }; // a level costs base + perLevel x level + curve x level squared
 const HP_PER_LEVEL = 1; // max health for every level gained
-// How the horde grows with every minute of a run: health by `hp` and by `hpAccel` per minute
-// squared, to keep up with a growing kit; the damage of touches and shots; walking speed.
+// How the horde grows with every minute of the world clock (it stands still in boss fights, see
+// js/stages.js): health by `hp` and by `hpAccel` per minute squared, to keep up with a growing
+// kit; the damage of touches and shots; walking speed.
 const GROWTH = { hp: 0.12, hpAccel: 0.03, damage: 0.12, speed: 0.03 };
-const HP_WALL = { from: 24, doubling: 3 }; // from this minute on health also doubles every so many minutes, so every run ends
+// The walls stand only in endless survival, after the third boss: from this minute of it on,
+// health doubles every so many minutes, so every run ends.
+const HP_WALL = { from: 0, doubling: 3 };
 // Contact damage doubles too, from later on: a build that only outlasts the horde without killing it still ends.
-const TOUCH_WALL = { from: 32, doubling: 3 };
+const TOUCH_WALL = { from: 8, doubling: 3 };
 const AIM_RANGE = 460;
 const ORB_PULL_SPEED = 340;
 const WILD_ORB = { every: 2, share: 0.03 }; // orbs also appear on the map, each worth this share of the level, so a hero who cannot kill still grows

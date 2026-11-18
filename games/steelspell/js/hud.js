@@ -85,7 +85,8 @@ function drawHud() {
   hudText(formatTime(elapsed), W / 2, 28, 22, 'ink', 'center');
   hudText(t('hud.kills', { kills }), W - 74, 30, 13, 'ink-muted', 'right');
   if (cheated) hudText(t('hud.dev'), W - 74, 48, 13, 'red-pencil', 'right');
-  if (toastLeft > 0) hudText(toast, W / 2, 54, 17, 'red-pencil', 'center');
+  drawStageHud(W, H);
+  if (toastLeft > 0) hudText(toast, W / 2, fight ? 100 : 70, 17, 'red-pencil', 'center');
 
   drawWeaponTiles(H);
 
@@ -152,7 +153,7 @@ function showCards(title, note, cards) {
   showPanel(p => {
     p.appendChild(el('h2', 'panel-title', title));
     p.appendChild(el('p', 'panel-note', note));
-    const grid = el('div', cards.length === 1 ? 'cards single' : 'cards');
+    const grid = el('div', cards.length === 1 ? 'cards single' : choice && choice.kind === 'arsenal' ? 'cards arsenal' : 'cards');
     cards.forEach((c, i) => {
       const b = el('button', `card ${c.kind}`);
       b.appendChild(el('span', `stamp ${c.kind}`, c.tag));
@@ -230,7 +231,9 @@ function showStart(keep = false) {
   if (!starters.includes(loadout.weapon)) loadout.weapon = starters[0];
   showPanel(p => {
     p.appendChild(el('h2', 'panel-title', t('start.title')));
-    p.appendChild(el('p', 'panel-note', t('start.note', { levels: WEAPON_LEVELS.join(', '), max: MAX_WEAPON_LEVEL })));
+    p.appendChild(el('p', 'panel-note', t('start.note', {
+      levels: WEAPON_LEVELS.join(', '), max: MAX_WEAPON_LEVEL, altar: STAGE.altarAt / 60, length: STAGE.length / 60,
+    })));
 
     p.appendChild(el('h3', 'section-title', t('start.active')));
     addPickRows(p, ACTIVE_GROUPS.map(group => ({
@@ -562,6 +565,7 @@ function showEnd(result) {
     if (result.place === 1) notes.push(t('end.best'));
     else if (result.place) notes.push(t('end.place', { place: result.place }));
     if (result.bestWith && result.place !== 1) notes.push(t('end.bestWith', { weapon: nameOf(WEAPONS.find(d => d.id === startWeapon)) }));
+    if (clearTime) notes.push(t('end.clear', { time: formatTime(clearTime) }) + (result.bestClear ? ` ${t('end.bestClear')}` : ''));
     if (result.cheated) notes.push(t('end.cheated'));
     else notes.push(t('end.glory', { glory: result.glory }));
     p.appendChild(el('p', 'panel-note', notes.join(' ')));

@@ -48,6 +48,7 @@ function zeroPicks() {
 function resetWorld() {
   cheated = false;
   resetDev();
+  resetStages();
   hero = {
     x: 0, y: 0, r: HERO.r, hp: HERO.hp, maxHp: HERO.hp, baseAttack: HERO.attack, lives: HERO.lives + (metaBonus.lives || 0),
     faceX: 1, faceY: 0, vx: 0, vy: 0, iframes: 0, ghostLeft: 0, igniteLeft: 0, phaseLeft: 0, critBoostLeft: 0, hurtFlash: 0, windAt: 0, hurtBy: { touch: 0, shot: 0, strike: 0 }, weapons: [],

@@ -73,7 +73,8 @@ const WAVES = [
   { at: 1800, rate: 12, mix: { runner: 2, ironclad: 4, warded: 4, stalker: 3, slinger: 1.5, hexer: 2, mortar: 1.5, irontank: 2, wardtank: 2, colossus: 2 } },
 ];
 
-// Elites come every `every` seconds and drop a chest. The last wave listed repeats for good.
+// Elites come every `every` seconds of a stage (of endless survival, later) and drop a chest.
+// The waves follow one another through the run; the last one listed repeats for good.
 const ELITES = {
   every: 180,
   waves: [['hulk'], ['warden'], ['hulk', 'warden'], ['siege', 'hulk'], ['siege', 'warden'], ['hulk', 'warden', 'siege']],
@@ -81,7 +82,8 @@ const ELITES = {
 
 // Rings around the hero. They have gaps to slip through at first; once they close, cut your
 // way out, or use Flash or Ghost. After the table, one of RING_LOOP every so often, for good;
-// a ring with `from` is skipped before that second.
+// a ring with `from` is skipped before that second. WAVES and RINGS are read on the wave clock
+// (js/stages.js): every stage brings its own 10 minutes of them.
 const RINGS = [
   { at: 150, type: 'mite', count: 40 },
   { at: 300, type: 'mite', count: 50 },
@@ -101,4 +103,46 @@ const RING_LOOP = {
     { type: 'irontank', count: 12, from: 1800 },
     { type: 'wardtank', count: 12, from: 1800 },
   ],
+};
+
+// ---- Stages and the boss ----
+
+// A run is three stages, each a farm ending in a boss, then endless survival. A stage lasts
+// `length` seconds counted from the previous boss's death, the rest after it included. Its
+// altar rises at `altarAt`, `altarDistance` away: touching it calls the boss, which cannot be
+// called earlier. From `growFrom` on the boss grows `growPerMinute` stronger (health and
+// damage) every minute it is put off; at `length` it comes by itself. After a boss, `rest`
+// seconds without new enemies, while every orb flies in.
+const STAGE = { length: 600, altarAt: 180, growFrom: 300, growPerMinute: 0.1, altarDistance: 340, altarR: 26, rest: 15 };
+
+// The boss: one body for now, in three variants that differ in what blunts damage, like the
+// three tanks. `hp` and `damage` (contact) are by stage; a number in a list is by stage too.
+// Its attacks are rows like the horde's (see the top of this file), each from stage `from`.
+// At the shares of health in `phases` (by stage) it calls a ring of `callCount` of its kind.
+// The arena: a ring of `arena` around where the fight began that the hero cannot leave. The
+// horde is held back for `hordeAfter` seconds; after `enrageAfter` the boss deals `enrage`
+// times its damage. Against a boss, a burning tick's share of health is `burn` of an ordinary
+// enemy's, Ignite's `ignite` and Black Frost's health hit `healthHit`; a slow is at most
+// `slowMax`. Endless bosses come every `endless.every` seconds, each `grow` stronger.
+const BOSS = {
+  r: 42, speed: 44, spawnDistance: 300,
+  hp: [20000, 60000, 125000],
+  damage: [80, 150, 240],
+  variants: {
+    armor: { armor: [250, 350, 450], ward: 50, hp: 1, shape: 'square', calls: 'ironclad' },
+    ward: { armor: 50, ward: [250, 350, 450], hp: 1, shape: 'diamond', calls: 'warded' },
+    health: { armor: 50, ward: 50, hp: 3, shape: 'circle', calls: 'mite' },
+  },
+  attacks: [
+    { from: 1, type: 'slam', every: 6, range: 170, kind: 'phys', radius: 140, delay: 0.9, damage: [120, 220, 320] },
+    { from: 1, type: 'nova', every: 5, range: 460, kind: 'magic', count: 16, speed: 160, damage: [20, 35, 50], r: 6, orbEvery: 2,
+      orb: { kind: 'magic', speed: 80, damage: [35, 60, 85], r: 10, life: 5, turn: 1.6 } },
+    { from: 2, type: 'charge', every: 8, range: 380, delay: 0.7, distance: 320, speed: 560 },
+    { from: 3, type: 'spiral', every: 4, range: 460, kind: 'phys', count: 16, gap: 0.06, twist: 0.4, speed: 170, damage: [0, 0, 45], r: 6 },
+  ],
+  phases: [[], [0.5], [0.5, 0.25]],
+  callCount: 16,
+  arena: 500, hordeAfter: 60, enrageAfter: 180, enrage: 2,
+  burn: 0.125, ignite: 0.15 / 0.7, healthHit: 0.25, slowMax: 0.2,
+  endless: { every: 300, grow: 0.5, chest: 'common' },
 };

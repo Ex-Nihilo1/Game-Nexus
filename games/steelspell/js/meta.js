@@ -80,8 +80,9 @@ function refundCamp() {
 function recordRun() {
   if (cheated) return { place: 0, bestWith: false, glory: 0, cheated: true };
   const records = loadRecords();
+  const bestClear = clearTime > 0 && !(fastestClear(records) <= clearTime);
   const run = {
-    version: runVersionNow, time: elapsed, level, kills, active: activeDef.id, start: startWeapon,
+    version: runVersionNow, time: elapsed, clear: clearTime || 0, level, kills, active: activeDef.id, start: startWeapon,
     weapons: hero.weapons.map(w => (w.evo ? `${w.def.id}:${w.evo}` : w.def.id)),
     items: items.map(item => item.id), date: new Date().toISOString().slice(0, 10),
   };
@@ -106,7 +107,13 @@ function recordRun() {
   const glory = gloryEarned();
   meta.glory += glory;
   saveJson(META_KEY, meta);
-  return { place: place <= RECORD_RUNS ? place : 0, bestWith, glory };
+  return { place: place <= RECORD_RUNS ? place : 0, bestWith, glory, bestClear };
+}
+
+// The fastest clear (the third boss down) of this balance version, in seconds, or 0.
+function fastestClear(records) {
+  const times = records.runs.filter(r => runVersion(r) === BALANCE_VERSION && r.clear > 0).map(r => r.clear);
+  return times.length ? Math.min(...times) : 0;
 }
 
 // The best run with each first weapon in this balance version. `bestByWeapon` from 0.2
@@ -182,6 +189,8 @@ function showRecords(earlier = false) {
       addFigure(figures, t('records.kills'), formatNumber(totals.kills));
       addFigure(figures, t('records.elites'), formatNumber(totals.elites));
       addFigure(figures, t('records.merges'), formatNumber(totals.merges));
+      const fastest = fastestClear(records);
+      if (fastest) addFigure(figures, t('records.fastest'), formatTime(fastest));
       p.appendChild(figures);
     }
 
@@ -193,10 +202,10 @@ function showRecords(earlier = false) {
       return;
     }
     p.appendChild(el('h3', 'section-title', t('records.longest')));
-    const head = ['place', ...(earlier ? ['version'] : []), 'time', 'level', 'kills', 'start', 'active', 'weapons', 'items', 'date'];
+    const head = ['place', ...(earlier ? ['version'] : []), 'time', 'clear', 'level', 'kills', 'start', 'active', 'weapons', 'items', 'date'];
     addTable(p, head.map(key => t(`records.head.${key}`)),
       runs.map((run, i) => [
-        i + 1, ...(earlier ? [runVersion(run)] : []), formatTime(run.time), run.level, formatNumber(run.kills),
+        i + 1, ...(earlier ? [runVersion(run)] : []), formatTime(run.time), run.clear > 0 ? formatTime(run.clear) : '–', run.level, formatNumber(run.kills),
         weaponOf(run.start), activeOf(run.active), run.weapons.map(weaponLabel).join(', '), run.items.length, run.date,
       ]));
 

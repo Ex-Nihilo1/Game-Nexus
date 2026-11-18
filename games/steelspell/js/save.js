@@ -9,13 +9,15 @@ const SAVE_SAFETY = 3; // seconds the hero cannot be hurt after loading
 let runVersionNow = BALANCE_VERSION; // the balance version the current run began in
 
 // Only a run in progress can be saved.
-function canSave() { return !simulating && (phase === 'playing' || phase === 'paused' || phase === 'choosing'); }
+// Not in a boss fight: the run waits only in a farm stretch (or in endless survival).
+function canSave() { return !simulating && !fight && (phase === 'playing' || phase === 'paused' || phase === 'choosing'); }
 
 function snapshot() {
   const pending = phase === 'choosing' && choice ? [choice.kind, ...queue] : [...queue];
   return {
     version: runVersionNow, saved: new Date().toISOString().slice(0, 10),
     seed, startWeapon, active: activeDef.id, activeCd, rerolls, merges, elitesKilled, cheated,
+    stage, stageTime, worldTime, endlessTime, restLeft, bossesKilled, clearTime, nextEndlessBoss, stageElites, altar,
     level, xp, xpNext, elapsed, kills, spawnBudget, nextElite, nextRing, wildOrbTimer, magnetTimer, walked,
     upgrades, gear, items: items.map(item => item.id), metaBonus, queue: pending,
     hero: { hp: hero.hp, lives: hero.lives, windAt: hero.windAt, hurtBy: hero.hurtBy },
@@ -56,6 +58,11 @@ function continueRun() {
   resetWorld();
   seed = save.seed; startWeapon = save.startWeapon; activeCd = save.activeCd; rerolls = save.rerolls;
   cheated = !!save.cheated;
+  // Saves from before the stages start on stage 1, with the world clock where the run was.
+  stage = save.stage || 1; stageTime = save.stageTime || 0; worldTime = save.worldTime === undefined ? save.elapsed : save.worldTime;
+  endlessTime = save.endlessTime || 0; restLeft = save.restLeft || 0; bossesKilled = save.bossesKilled || 0;
+  clearTime = save.clearTime || 0; nextEndlessBoss = save.nextEndlessBoss || BOSS.endless.every;
+  stageElites = save.stageElites || 0; altar = save.altar || null;
   merges = save.merges; elitesKilled = save.elitesKilled; level = save.level; xp = save.xp; xpNext = save.xpNext;
   elapsed = save.elapsed; kills = save.kills; spawnBudget = save.spawnBudget; nextElite = save.nextElite;
   nextRing = save.nextRing; wildOrbTimer = save.wildOrbTimer; magnetTimer = save.magnetTimer; walked = save.walked;

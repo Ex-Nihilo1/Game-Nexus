@@ -707,7 +707,8 @@ const FIRE = {
     eachEnemyNear(hero.x, hero.y, radius, e => {
       hit(e, w, d.damage);
       // A share of max health, magic like the rest, half on elites and tanks; not on a dummy.
-      if (!e.dead && !e.def.dummy) hurtEnemy(e, e.maxHp * d.healthHit * (e.def.elite || e.def.tank ? 0.5 : 1), 'magic', false, w);
+      const share = e.def.boss ? BOSS.healthHit : e.def.elite || e.def.tank ? 0.5 : 1;
+      if (!e.dead && !e.def.dummy) hurtEnemy(e, e.maxHp * d.healthHit * share, 'magic', false, w);
       if (e.dead) return;
       slow(e, d.slow, d.slowTime * lasts);
       ignite(e, w, d.burn, d.burnTime * lasts);

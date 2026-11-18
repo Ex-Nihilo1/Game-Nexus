@@ -87,7 +87,11 @@ function hurtEnemy(e, amount, kind, crit, w, dot = false) {
 function killEnemy(e) {
   e.dead = true;
   kills++;
-  dropOrb(e.x, e.y, e.def.xp);
+  if (e.def.boss) {
+    bossDown(e);
+    return;
+  }
+  if (!fight) dropOrb(e.x, e.y, e.def.xp); // a boss fight gives no XP
   if (gearValue('killsPerHeal') && kills % gearValue('killsPerHeal') === 0) hero.hp = Math.min(hero.maxHp, hero.hp + 1);
   if (!e.def.elite) {
     if (rand() < MAGNET.dropChance) dropMagnet(e.x, e.y);
@@ -109,7 +113,7 @@ function luckyChest(type) {
 }
 
 function slow(e, by, seconds) {
-  e.slowBy = e.def.elite ? by / 2 : by;
+  e.slowBy = e.def.boss ? Math.min(BOSS.slowMax, by / 2) : e.def.elite ? by / 2 : by;
   e.slowLeft = Math.max(e.slowLeft, seconds);
 }
 
@@ -283,7 +287,7 @@ function updateBurns(dt) {
       hit(e, b.w, b.damage * b.stacks, undefined, 'burn');
       // And a share of its max health: not raised by Damage, raised by fire bonuses, half on elites.
       if (!e.dead && !e.def.dummy) {
-        const share = BURN_SHARE * BURN_TICK * b.stacks * (e.def.elite ? 0.5 : 1);
+        const share = BURN_SHARE * BURN_TICK * b.stacks * (e.def.boss ? BOSS.burn : e.def.elite ? 0.5 : 1);
         hurtEnemy(e, e.maxHp * share * fireBonus(b.w), b.w.def.kind, false, b.w, 'burn');
       }
       let lit = 0;

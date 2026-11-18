@@ -128,8 +128,9 @@ function traceBody(e) {
 }
 
 // The outline tells the armor: orange blunts physical damage, violet blunts magic. A tank has
-// a double outline.
+// a double outline. A boss has a body of its own (js/stages.js).
 function drawEnemies() {
+  for (const e of enemies) if (e.def.boss) drawBoss(e);
   for (const def of ENEMY_LIST) {
     ctx.beginPath();
     for (const e of enemies) if (e.def === def && onScreen(e.x, e.y, 30)) traceBody(e);
@@ -180,7 +181,7 @@ function drawEnemies() {
       ctx.fill();
       ctx.fillStyle = pal.paper;
     }
-    if (e.def.elite) {
+    if (e.def.elite && !e.def.boss) {
       const w = e.r * 2.4;
       ctx.fillStyle = pal.desk;
       ctx.fillRect(e.x - w / 2, e.y - e.r - 13, w, 5);
@@ -597,6 +598,7 @@ function draw() {
   ctx.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
   ctx.lineJoin = 'round';
   drawGround();
+  drawStageWorld();
   drawOwn(drawZones);
   drawChests();
   drawOrbs();

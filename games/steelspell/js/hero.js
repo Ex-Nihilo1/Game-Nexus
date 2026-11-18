@@ -23,7 +23,7 @@ const CAST = {
     hero.igniteLeft = def.duration; // the passive: burning hits harder meanwhile (burnBoost)
     addZone({
       look: 'fire', x: hero.x, y: hero.y, r: def.radius, life: def.duration, tick: def.tick, timer: 0,
-      apply: e => hurtEnemy(e, e.maxHp * perTick, 'pure', false, null),
+      apply: e => hurtEnemy(e, e.maxHp * perTick * (e.def.boss ? BOSS.ignite : 1), 'pure', false, null),
     });
   },
   stash(def) {
@@ -104,8 +104,9 @@ function collideHero() {
     hero.y -= dy / d * overlap * share;
     e.x += dx / d * overlap * (1 - share);
     e.y += dy / d * overlap * (1 - share);
-    hurtHero(e.def.damage * rage);
-    prick(e, e.def.damage * rage);
+    const contact = e.def.damage * (e.def.boss ? bossRage() : rage);
+    hurtHero(contact);
+    prick(e, contact);
   });
 }
 

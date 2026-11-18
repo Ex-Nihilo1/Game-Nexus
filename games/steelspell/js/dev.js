@@ -23,6 +23,16 @@ function fnv1a(text) {
 
 function devPasswordOk(text) { return fnv1a(text) === DEV_PASSWORD_HASH; }
 
+// A minute later on every clock: the run's, and the world's and the stage's unless a boss fight
+// holds them.
+function devSkipMinute() {
+  elapsed += 60;
+  if (fight) return;
+  worldTime += 60;
+  if (inEndless()) endlessTime += 60;
+  else stageTime = Math.min(stageTime + 60, STAGE.length);
+}
+
 // Back to normal at the start of every run.
 function resetDev() {
   devSpeed = 1;
@@ -73,7 +83,16 @@ function showDevPanel() {
     row(t('dev.time'),
       ...DEV_SPEEDS.map(x => button(`×${formatNumber(x)}`, () => { devSpeed = x; }, { pressed: devSpeed === x, marks: x !== 1 })),
       button(t('dev.step'), () => update(1 / 60)),
-      button(t('dev.minute'), () => { elapsed += 60; }));
+      button(t('dev.minute'), devSkipMinute));
+
+    row(t('dev.stage', { stage: inEndless() ? t('dev.endless') : stage }),
+      button(t('dev.altar'), () => {
+        if (fight || inEndless() || altar) return;
+        stageTime = Math.max(stageTime, STAGE.altarAt);
+        placeAltar();
+      }),
+      button(t('dev.callBoss'), () => { if (!fight) startFight(!inEndless()); }),
+      button(t('dev.killBoss'), () => { if (fight) killEnemy(fight.boss); }));
 
     row(t('dev.hero'),
       button(t('dev.immortal'), () => { hero.immortal = !hero.immortal; }, { pressed: !!hero.immortal }),
