@@ -232,16 +232,16 @@ function itemName(item) { return t(`items.${item.id}.name`); }
 function itemText(item) { return t(`items.${item.id}.text`, itemParams(item)); }
 function activeName(a) { return t(`actives.${a.id}.name`); }
 function activeBlurb(a) { return t(`actives.${a.id}.blurb`, activeParams(a)); }
-// An active skill's cooldown and the weapon it brings, as its button on the start screen says.
+// An active skill's cooldown and its own weapon, as its button on the start screen says.
 function activeNote(a) {
-  const weapon = WEAPON_DEFS.find(d => d.id === a.freeWeapon);
+  const weapon = WEAPON_DEFS.find(d => d.id === a.ownWeapon);
   return weapon ? t('start.activeNote', { seconds: a.cooldown, weapon: nameOf(weapon) }) : t('start.cooldown', { seconds: a.cooldown });
 }
 
-// The weapon an active skill brings, then its own passive.
+// An active skill's own weapon, then its passive.
 function activePassive(a) {
   const params = activeParams(a);
-  const parts = a.freeWeapon ? [t('actives.freeWeapon', params)] : [];
+  const parts = a.ownWeapon ? [t('actives.ownWeapon', params)] : [];
   if (hasText(`actives.${a.id}.passive`)) parts.push(t(`actives.${a.id}.passive`, params));
   return parts.join(' ');
 }
@@ -330,6 +330,6 @@ function activeParams(a) {
   for (const [key, value] of Object.entries(a.buff || {})) {
     out[`buff.${key}`] = key === 'count' ? value : percent(key === 'haste' ? value : value - 1);
   }
-  if (a.freeWeapon) out.weapon = nameOf(WEAPON_DEFS.find(d => d.id === a.freeWeapon));
+  if (a.ownWeapon) out.weapon = nameOf(WEAPON_DEFS.find(d => d.id === a.ownWeapon));
   return out;
 }

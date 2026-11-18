@@ -159,6 +159,7 @@ function showCards(title, note, cards) {
       if (c.value) b.appendChild(el('span', 'card-value', c.value));
       b.appendChild(el('span', 'card-note', c.note));
       if (c.synergy) b.appendChild(el('span', 'card-synergy', c.synergy));
+      if (c.own) b.appendChild(el('span', 'card-own', c.own));
       b.appendChild(el('kbd', '', String(i + 1)));
       b.addEventListener('click', () => chooseCard(i));
       grid.appendChild(b);
@@ -211,8 +212,8 @@ function addPickRows(parent, rows, current, name, describe, onPick) {
   parent.appendChild(detail);
 }
 
-// The weapons a run can start with: an active skill that brings a weapon for free rules it out.
-function startersFor(active) { return WEAPONS.filter(d => !d.defense && d.id !== active.freeWeapon); }
+// The weapons a run can start with: all but the defensive ones.
+function startersFor() { return WEAPONS.filter(d => !d.defense); }
 
 // `keep` keeps the loadout picked on this screen instead of the last run's.
 function showStart(keep = false) {
@@ -224,7 +225,7 @@ function showStart(keep = false) {
     loadout.active = ACTIVES.find(a => a.id === last.active) || ACTIVES[0];
     loadout.weapon = WEAPONS.find(d => d.id === last.weapon && !d.defense) || WEAPONS[0];
   }
-  const starters = startersFor(loadout.active);
+  const starters = startersFor();
   if (!starters.includes(loadout.weapon)) loadout.weapon = starters[0];
   showPanel(p => {
     p.appendChild(el('h2', 'panel-title', t('start.title')));
@@ -238,13 +239,14 @@ function showStart(keep = false) {
     })), loadout.active, activeName, activeDescription, a => {
       const before = loadout.active;
       loadout.active = a;
-      if (before.freeWeapon !== a.freeWeapon) showStart(true); // the weapons on offer change
+      if (before.ownWeapon !== a.ownWeapon) showStart(true); // another weapon is marked
     });
 
     p.appendChild(el('h3', 'section-title', t('start.weapon')));
     addPickRows(p, ['magic', 'phys'].map(kind => ({
       label: kindName(kind),
       items: starters.filter(d => d.kind === kind),
+      note: d => (d.id === loadout.active.ownWeapon ? t('start.ownWeapon', { active: activeName(loadout.active) }) : ''),
     })), loadout.weapon, nameOf, d => `${blurbOf(d)} ${usesText(d)}`, d => { loadout.weapon = d; });
 
     const actions = el('div', 'panel-actions');

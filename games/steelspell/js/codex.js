@@ -83,8 +83,8 @@ function showWeaponWindow(d) {
     box.appendChild(el('span', `stamp ${d.kind}`, d.defense ? t('codex.defensive', { kind: kindName(d.kind) }) : kindName(d.kind)));
     const levels = [];
     for (let lv = 2; lv <= MAX_WEAPON_LEVEL; lv++) levels.push(t('codex.levelLine', { level: lv, text: levelText(d, lv) }));
-    const bringer = ACTIVES.find(a => a.freeWeapon === d.id);
-    windowLines(box, [blurbOf(d), usesText(d), bringer ? t('codex.freeWith', { active: activeName(bringer) }) : '']);
+    const owner = ACTIVES.find(a => a.ownWeapon === d.id);
+    windowLines(box, [blurbOf(d), usesText(d), owner ? t('codex.ownWeapon', { active: activeName(owner) }) : '']);
     box.appendChild(el('h4', 'codex-sub', t('codex.levels')));
     windowLines(box, [levels]);
     box.appendChild(el('h4', 'codex-sub', t('codex.evolutions', { max: MAX_WEAPON_LEVEL })));

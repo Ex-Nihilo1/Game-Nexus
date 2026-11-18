@@ -20,6 +20,7 @@ const CAST = {
   },
   ignite(def) {
     const perTick = def.share * def.tick / def.duration;
+    hero.igniteLeft = def.duration; // the passive: burning hits harder meanwhile (burnBoost)
     addZone({
       look: 'fire', x: hero.x, y: hero.y, r: def.radius, life: def.duration, tick: def.tick, timer: 0,
       apply: e => hurtEnemy(e, e.maxHp * perTick, 'pure', false, null),
@@ -151,6 +152,7 @@ function moveHero(dt) {
   walkFor(Math.hypot(mx, my) * pace * dt);
   hero.iframes = Math.max(0, hero.iframes - dt);
   hero.ghostLeft = Math.max(0, hero.ghostLeft - dt);
+  hero.igniteLeft = Math.max(0, hero.igniteLeft - dt);
   hero.hurtFlash = Math.max(0, hero.hurtFlash - dt);
   hero.critBoostLeft = Math.max(0, hero.critBoostLeft - dt);
   // Berserk's passive heals faster for the first `rageTime` seconds of Berserk.

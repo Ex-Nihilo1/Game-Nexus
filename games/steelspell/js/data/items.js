@@ -55,6 +55,7 @@ const ITEMS = [
   { id: 'filings', rarity: 'grey', gives: { magnet: 0.3 } },
   { id: 'mail', rarity: 'grey', gives: { armor: 15 } },
   { id: 'dice', rarity: 'grey', gives: { rerolls: 2 } },
+  { id: 'watch', rarity: 'grey', gives: { abilityHaste: 15 } },
 
   { id: 'hide', rarity: 'blue', gives: { vitality: 0.15, regen: 0.02 } },
   { id: 'lens', rarity: 'blue', gives: { size: 0.2, haste: 0.1 } },
@@ -66,6 +67,7 @@ const ITEMS = [
   { id: 'needle', rarity: 'blue', gives: { magicPen: 30 } },
   { id: 'thorned', rarity: 'blue', gives: { thorns: 1 } },
   { id: 'clover', rarity: 'blue', gives: { chestLuck: 0.25 } },
+  { id: 'sundial', rarity: 'blue', gives: { abilityHaste: 25, duration: 0.1 } },
 
   { id: 'bracers', rarity: 'purple', gives: { baseAttack: 50 } },
   { id: 'tome', rarity: 'purple', gives: { xp: 0.25 } },
@@ -82,6 +84,7 @@ const ITEMS = [
   { id: 'weakspot', rarity: 'purple', gives: { weakSpot: 0.25 } },
   { id: 'rubber', rarity: 'purple', gives: { ricochet: 0.6 } },
   { id: 'plate', rarity: 'purple', gives: { charges: 1, plateArmor: 25 } },
+  { id: 'spring', rarity: 'purple', gives: { abilityHaste: 40 } },
 
   { id: 'edge', rarity: 'legendary', gives: { pureShare: 0.3 } },
   { id: 'pact', rarity: 'legendary', gives: { hpToAttack: 0.5 } },

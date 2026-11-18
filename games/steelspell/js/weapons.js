@@ -169,8 +169,8 @@ function evoMerges(weaponId, evoId) {
   return SYNERGIES.filter(s => s.needs.includes(weaponId) && (!evoAsked(s, weaponId) || evoAsked(s, weaponId) === evoId));
 }
 
-// The two weapons leave, the merged one arrives at full strength, and the freed slot is
-// filled right away: the next choice is a new weapon.
+// The two weapons leave and the merged one arrives at full strength in their place. No new
+// weapon comes with it: new ones come at WEAPON_LEVELS and after the story bosses.
 function mergeWeapons(merge) {
   const parts = merge.needs.map(owned);
   const w = newWeapon(merge.id);
@@ -183,7 +183,6 @@ function mergeWeapons(merge) {
   hero.weapons = hero.weapons.filter(o => !parts.includes(o));
   hero.weapons.push(w);
   merges++;
-  queue.unshift('weapon');
   say(t('toasts.merged', { name: nameOf(merge) }));
 }
 

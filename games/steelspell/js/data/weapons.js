@@ -244,7 +244,7 @@ const EVOLUTIONS = {
 };
 
 // Two weapons that are both at the last level and evolved can merge into one of these: a
-// card offers it, both `needs` go, and a new weapon can be picked in the freed slot. A merged
+// card offers it, and both `needs` go. A merged
 // weapon arrives at full strength and has no levels: its numbers, and the `bonus` step it
 // starts with, stand for the two evolved weapons it replaces, and a little more. A merge opens
 // only when each weapon took the evolution named in `evos`: every one of the 40 evolutions

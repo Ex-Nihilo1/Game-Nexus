@@ -54,12 +54,20 @@ function hit(e, w, base, kind = w.def.kind, dot = false) {
   hurtEnemy(e, amount, kind, crits > 0, w, dot);
 }
 
+// Ignite's passive: while its fire lasts, a burning enemy's ticks (`dot` is 'burn') and the ticks
+// of fire weapons hit `burnBoost` times as hard. Ignite's own fire (no weapon) does not.
+function burnBoost(w, dot) {
+  if (!activeDef || !activeDef.burnBoost || !(hero.igniteLeft > 0)) return 1;
+  return dot === 'burn' || (dot && w && w.def.fire) ? activeDef.burnBoost : 1;
+}
+
+// `dot` marks a tick of damage over time: true, or 'burn' for a burning enemy's.
 function hurtEnemy(e, amount, kind, crit, w, dot = false) {
   const armor = armorFactor(e, kind);
   // Void Edge turns part of a hit pure; it never makes a hit weaker than it was.
   let factor = Math.max(armor, armor + (1 - armor) * gearValue('pureShare'));
   if (elapsed < (e.weakUntil || 0)) factor *= 1 + gearValue('weakSpot');
-  const dealt = amount * factor;
+  const dealt = amount * factor * burnBoost(w, dot);
   e.hp -= dealt;
   e.flash = 0.08;
   if (w) w.dealt += dealt;
@@ -272,11 +280,11 @@ function updateBurns(dt) {
     b.timer -= dt;
     if (b.timer <= 0) {
       b.timer += BURN_TICK;
-      hit(e, b.w, b.damage * b.stacks, undefined, true);
+      hit(e, b.w, b.damage * b.stacks, undefined, 'burn');
       // And a share of its max health: not raised by Damage, raised by fire bonuses, half on elites.
       if (!e.dead && !e.def.dummy) {
         const share = BURN_SHARE * BURN_TICK * b.stacks * (e.def.elite ? 0.5 : 1);
-        hurtEnemy(e, e.maxHp * share * fireBonus(b.w), b.w.def.kind, false, b.w, true);
+        hurtEnemy(e, e.maxHp * share * fireBonus(b.w), b.w.def.kind, false, b.w, 'burn');
       }
       let lit = 0;
       if (b.spread) {

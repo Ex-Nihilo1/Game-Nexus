@@ -400,9 +400,7 @@ function simJobs(params) {
   const jobs = [];
   for (let i = 0; i < runs; i++) {
     const active = params.get('active') || ACTIVES[i % ACTIVES.length].id;
-    // The weapon an active skill brings cannot be the first one, as on the start screen.
-    const free = (ACTIVES.find(a => a.id === active) || {}).freeWeapon;
-    const pool = starters.filter(id => id !== free);
+    const pool = starters;
     jobs.push({
       bot, cards: params.get('cards') || 'balanced', seed: seed + i,
       minutes: Number(params.get('minutes')) || 45,

@@ -112,17 +112,18 @@ const STATS = {
 // Active skills: one is picked before the run and sits on the Space key. Each also has a
 // passive for the whole run: `gives` adds to the hero like an item. `group` is where the start
 // screen lists it.
-// Every active skill brings a weapon of its own, `freeWeapon`, from the start and on top of the
-// one picked: that weapon cannot be the first pick then, and no card offers it again.
+// Every active skill has a weapon of its own, `ownWeapon`: it comes at no cost and with no bonus,
+// the start screen and the cards only mark it. Ignite's passive (`burnBoost`): while its fire
+// lasts, burning enemies and the ticks of fire weapons hit that many times as hard.
 const ACTIVES = [
-  { id: 'flash', group: 'mobility', cooldown: 40, distance: 190, critBoost: 0.25, critTime: 20, freeWeapon: 'shotgun' },
-  { id: 'ghost', group: 'mobility', cooldown: 120, duration: 5, speedBoost: 2, gives: { speed: 0.1, magnet: 0.25 }, freeWeapon: 'spear' },
+  { id: 'flash', group: 'mobility', cooldown: 40, distance: 190, critBoost: 0.25, critTime: 20, ownWeapon: 'shotgun' },
+  { id: 'ghost', group: 'mobility', cooldown: 120, duration: 5, speedBoost: 2, gives: { speed: 0.1, magnet: 0.25 }, ownWeapon: 'spear' },
   { id: 'berserk', group: 'damage', cooldown: 60, duration: 30, gives: { baseHp: 50, regen: 0.005 }, rageRegen: 0.05, rageTime: 10,
-    buff: { damage: 1.3, size: 1.25, haste: 0.25, count: 1 }, freeWeapon: 'sword' },
+    buff: { damage: 1.3, size: 1.25, haste: 0.25, count: 1 }, ownWeapon: 'sword' },
   { id: 'ignite', group: 'damage', cooldown: 120, duration: 8, radius: 270, tick: 0.5, share: 0.7,
-    gives: { fireDamage: 0.1 }, freeWeapon: 'flamethrower' },
-  { id: 'stash', group: 'economy', cooldown: 300, distance: 110, gives: { haste: 0.1 }, freeWeapon: 'drone' },
-  { id: 'inspiration', group: 'economy', cooldown: 100, share: 0.6, startLevels: 3, freeWeapon: 'aura' },
+    gives: { fireDamage: 0.1 }, burnBoost: 2, ownWeapon: 'flamethrower' },
+  { id: 'stash', group: 'economy', cooldown: 300, distance: 110, gives: { haste: 0.1 }, ownWeapon: 'drone' },
+  { id: 'inspiration', group: 'economy', cooldown: 100, share: 0.6, startLevels: 3, ownWeapon: 'aura' },
 ];
 const ACTIVE_GROUPS = ['mobility', 'damage', 'economy'];
 const BERSERK = ACTIVES.find(a => a.id === 'berserk');
