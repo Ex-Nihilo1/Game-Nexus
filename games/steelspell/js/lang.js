@@ -222,6 +222,7 @@ function statName(key) { return t(`stats.${key}.name`); }
 function statNames(keys) { return keys.map(statName).join(', '); }
 function usesText(def) { return t('ui.uses', { stats: statNames(def.scales) }); }
 function evoName(evo) { return t(`evolutions.${evo.id}.name`); }
+function evoNameOf(weaponId, evoId) { return evoName((EVOLUTIONS[weaponId] || []).find(e => e.id === evoId) || { id: evoId }); }
 function evoBlurb(def, evo) { return t(`evolutions.${evo.id}.blurb`, stepParams(def, evo)); }
 // What an evolution hands on to `merge`, the merged weapon it goes into.
 function inheritText(evo, merge) {

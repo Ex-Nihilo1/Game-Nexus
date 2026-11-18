@@ -116,14 +116,15 @@ function explode(x, y, r, w, base) {
   addFx({ type: 'ring', x, y, r, life: 0.3, pen: KINDS[w.def.kind].pen });
 }
 
-// `boost` multiplies the whole chain; a boosted chain loses nothing from jump to jump.
-function strikeChain(first, w, boost = 1) {
+// `boost` multiplies the whole chain; a boosted chain loses nothing from jump to jump. The bolt
+// comes from `origin` (the hero unless given) and starts at `base` damage (the weapon's own).
+function strikeChain(first, w, boost = 1, origin = hero, base = w.cfg.damage) {
   const d = w.cfg;
   const struck = new Set([first]);
-  const points = [{ x: hero.x, y: hero.y }, { x: first.x, y: first.y }];
+  const points = [{ x: origin.x, y: origin.y }, { x: first.x, y: first.y }];
   const falloff = boost > 1 ? 1 : d.falloff;
   let from = first;
-  let amount = d.damage * boost;
+  let amount = base * boost;
   hit(first, w, amount);
   for (let i = 0; i < d.jumps; i++) {
     const next = nearestEnemies(from.x, from.y, d.jumpRange, 1, struck)[0];

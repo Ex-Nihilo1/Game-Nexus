@@ -120,7 +120,7 @@ function bestByWeapon(records) {
 function weaponLabel(entry) {
   const [id, evoId] = entry.split(':');
   const def = WEAPON_DEFS.find(d => d.id === id);
-  if (!def) return entry;
+  if (!def) return hasText(`retired.${id}`) ? t(`retired.${id}`) : entry; // a weapon since taken out of the game
   const evo = (EVOLUTIONS[id] || []).find(e => e.id === evoId);
   return evo ? evoName(evo) : nameOf(def);
 }

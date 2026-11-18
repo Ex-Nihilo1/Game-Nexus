@@ -12,6 +12,11 @@
 // plain stat step writes its own. The names and blurbs of weapons, evolutions and merges are
 // there too, by id.
 const LEVEL_PLAN = [{ damage: 0.2 }, 'a', { size: 0.2 }, { damage: 0.25 }, 'b', { haste: 0.2 }, { damage: 0.3 }];
+// What the plain steps of LEVEL_PLAN add up to by the last level.
+const LEVEL_GAINS = LEVEL_PLAN.filter(step => typeof step === 'object').reduce((sum, step) => {
+  for (const key of ['damage', 'size', 'haste', 'duration']) if (step[key]) sum[key] = (sum[key] || 0) + step[key];
+  return sum;
+}, {});
 
 // `scales` lists the passive stats a weapon reads: this list is what makes a build. Every
 // weapon reads Crit chance and Crit damage: any of them can crit.
@@ -134,12 +139,10 @@ const EVOLUTIONS = {
   ],
   aura: [
     { id: 'emp', damage: 0.2, set: { emp: EMP },
-      inherit: { fireshield: { set: { emp: EMP } },
-        radiantlance: { set: { emp: EMP } },
+      inherit: { radiantlance: { set: { emp: EMP } },
         frosthalo: { set: { emp: EMP } } } },
     { id: 'sanctum', damage: -0.15, set: { ward: true },
       inherit: { frosthalo: { set: { ward: true } },
-        fireshield: { set: { ward: true } },
         radiantlance: { set: { ward: true } } } },
   ],
   meteor: [
@@ -196,11 +199,9 @@ const EVOLUTIONS = {
   ],
   shield: [
     { id: 'bulwark', add: { charges: 2 },
-      inherit: { bastion: { add: { charges: 2 } },
-        fireshield: { add: { charges: 2 } } } },
+      inherit: { bastion: { add: { charges: 2 } } } },
     { id: 'spiked', mul: { damage: 1.5 }, set: { thorns: 15 },
-      inherit: { bastion: { mul: { damage: 1.5 }, set: { thorns: 25 } },
-        fireshield: { mul: { damage: 1.5 }, set: { thorns: 25 } } } },
+      inherit: { bastion: { mul: { damage: 1.5 }, set: { thorns: 25 } } } },
   ],
   rocket: [
     { id: 'barrage', count: 2, damage: -0.2,
@@ -272,7 +273,8 @@ const EVOLUTIONS = {
 // Two weapons that are both at the last level and evolved can merge into one of these: a
 // card offers it, both `needs` go, and a new weapon can be picked in the freed slot. A merged
 // weapon arrives at full strength and has no levels: its numbers, and the `bonus` step it
-// starts with, stand for the two evolved weapons it replaces, and a little more.
+// starts with, stand for the two evolved weapons it replaces, and a little more. A merge with
+// `evos` opens only when each weapon took the evolution named there; one without takes any.
 const SYNERGIES = [
   { id: 'electrogun', gun: true, kind: 'hybrid', pen: 'green-ink', needs: ['pistol', 'chain'],
     scales: ['damage', 'critChance', 'haste', 'critDamage'],
@@ -281,9 +283,6 @@ const SYNERGIES = [
     scales: ['haste', 'damage', 'size', 'count', 'critChance', 'critDamage'],
     cooldown: 2.4, damage: 70, speed: 340, range: 345, r: 15, spread: 0.45, returnBoost: 1.25, slow: 0.4, slowTime: 2,
     bonus: { count: 2, size: 0.3, haste: 0.2 } },
-  { id: 'fireshield', halo: true, fire: true, kind: 'hybrid', pen: 'red-pencil', needs: ['shield', 'aura'],
-    scales: ['haste', 'damage', 'size', 'critChance', 'critDamage'],
-    cooldown: 12, charges: 3, damage: 160, radius: 130, tick: 0.4, auraDamage: 14 },
   { id: 'clusterrocket', fire: true, kind: 'hybrid', pen: 'red-pencil', needs: ['rocket', 'fireball'],
     scales: ['damage', 'haste', 'size', 'count', 'critChance', 'critDamage'],
     cooldown: 5, damage: 160, radius: 110, range: 520, speed: 220, accel: 700, turn: 8, life: 1.6, spread: 0.35,
@@ -347,5 +346,48 @@ const SYNERGIES = [
     tick: 0.3, damage: 30, length: 150, width: 40, turn: 10, push: 100, pushTime: 0.16,
     cooldown: 10, life: 10, clones: 1, hpShare: 1, big: 1.2,
     copy: { tick: 0.3, damage: 26, reach: 150, width: 40, speed: 160, seek: 300 } },
+
+  // The newer merges open only from one evolution of each weapon, `evos` (by weapon id), and
+  // keep nothing more from them: what those evolutions did is in their own numbers. They start
+  // with LEVEL_GAINS, so their numbers read like a weapon's at level 1. The numbers are
+  // starting ones, not yet measured against the evolutions they replace.
+  // Gunblade: a Sword's swing (`damage` on the arc) that fires a volley of pellets across it.
+  { id: 'gunblade', gun: true, kind: 'phys', pen: 'orange-pen', needs: ['sword', 'shotgun'], evos: { sword: 'parry', shotgun: 'sawnoff' },
+    scales: ['damage', 'haste', 'size', 'count', 'critChance', 'critDamage'],
+    cooldown: 1.4, damage: 60, reach: 100, arc: 2.44, swingGap: 0.14, parry: true,
+    pellets: 8, pelletDamage: 16, pierce: 2, range: 280, speed: 700,
+    bonus: LEVEL_GAINS },
+  // Blade Wraith: a Phase Dash (the top-level numbers; the ghost hurts with magic) whose blades
+  // circle the hero while the phase lasts, then fly out `flyOut` all around and come back.
+  { id: 'bladewraith', phases: true, kind: 'hybrid', pen: 'green-ink', needs: ['boomerang', 'phase'], evos: { boomerang: 'orbit', phase: 'shroud' },
+    scales: ['haste', 'speed', 'damage', 'size', 'duration', 'count', 'critChance', 'critDamage'],
+    cooldown: 10, duration: 2.4, damage: 25, tick: 0.25, radius: 72, moveBoost: 1.6, earlyCost: 1, ward: true,
+    blades: 3, bladeRadius: 90, bladeTurn: 5, bladeDamage: 30, bladeHit: 0.25, r: 14,
+    flyOut: 230, flySpeed: 340, flyDamage: 40,
+    bonus: LEVEL_GAINS },
+  // Starfall: meteors on the thickest crowds, and from every blast a bolt that jumps on.
+  { id: 'starfall', fire: true, kind: 'magic', pen: 'highlighter', needs: ['meteor', 'chain'], evos: { meteor: 'shower', chain: 'overcharge' },
+    scales: ['damage', 'haste', 'size', 'duration', 'count', 'critChance', 'critDamage'],
+    cooldown: 4, damage: 60, radius: 75, delay: 0.7, range: 420, meteors: 4,
+    crater: { life: 5, tick: 0.5, damage: 6, share: 0.8 },
+    boltDamage: 40, jumps: 4, jumpRange: 130, falloff: 1, fork: 0.5,
+    bonus: LEVEL_GAINS },
+  // Dragonfire: a Flamethrower's cone (physical) that throws fireballs while it burns (`ball...`,
+  // magic). Both leave the ground burning: `scorch` where the cone was, `burn` where a ball bursts.
+  { id: 'dragonfire', lasting: true, fire: true, kind: 'hybrid', pen: 'red-pencil', needs: ['flamethrower', 'fireball'], evos: { flamethrower: 'dragon', fireball: 'inferno' },
+    scales: ['damage', 'haste', 'size', 'duration', 'count', 'critChance', 'critDamage'],
+    cooldown: 4, life: 2, tick: 0.15, damage: 6, length: 225, cone: 1.22, turn: 3,
+    ballEvery: 0.3, ballDamage: 30, ballRadius: 45, ballRange: 420, ballSpeed: 320, ballFan: 0.25,
+    scorch: { life: 3, tick: 0.5, damage: 5 }, burn: { life: 3, tick: 0.5, damage: 3 },
+    bonus: LEVEL_GAINS },
+  // Black Frost: a flash of cold that sets enemies on fire (`burn` every BURN_TICK) and slows
+  // them, and ice arrows all around (`arrow...`; Count adds `perCount` arrows). What an arrow
+  // kills bursts into `shards`. Duration makes the slow and the burning last longer.
+  { id: 'blackfrost', kind: 'magic', pen: 'ice', needs: ['icearrow', 'iceflash'], evos: { icearrow: 'shatter', iceflash: 'darkice' },
+    scales: ['damage', 'haste', 'size', 'duration', 'count', 'critChance', 'critDamage'],
+    cooldown: 3, damage: 30, radius: 130, slow: 0.3, slowTime: 1.5, burn: 6, burnTime: 2,
+    arrows: 6, perCount: 2, arrowDamage: 40, speed: 440, life: 1.3, width: 11, widthGrowth: 3, length: 26,
+    shards: 3, shardDamage: 0.4,
+    bonus: LEVEL_GAINS },
 ];
 const WEAPON_DEFS = [...WEAPONS, ...SYNERGIES];

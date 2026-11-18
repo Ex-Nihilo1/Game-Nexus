@@ -142,14 +142,27 @@ function fullyGrown(w) {
   return !!w && w.level >= MAX_WEAPON_LEVEL && (!!w.evo || !EVOLUTIONS[w.def.id]);
 }
 
-// Two weapons can merge once both are at the last level and evolved.
+// Whether weapon `w` can still go into `merge`: a merge with `evos` takes one evolution of it.
+function evoFits(merge, w) {
+  return !merge.evos || !w.evo || w.evo === merge.evos[w.def.id];
+}
+
+// Two weapons can merge once both are at the last level and evolved, the way the merge asks.
 function readyMerges() {
-  return SYNERGIES.filter(s => s.needs.every(id => fullyGrown(owned(id))));
+  return SYNERGIES.filter(s => s.needs.every(id => {
+    const w = owned(id);
+    return fullyGrown(w) && (!s.evos || w.evo === s.evos[id]);
+  }));
 }
 
 // The merges a weapon would take part in with something the hero already has.
 function synergyPartners(id) {
-  return SYNERGIES.filter(s => s.needs.includes(id) && s.needs.some(n => n !== id && owned(n)));
+  return SYNERGIES.filter(s => s.needs.includes(id) && s.needs.some(n => n !== id && owned(n) && evoFits(s, owned(n))));
+}
+
+// The merges an evolution leads to: those that ask for it, and those that take any evolution.
+function evoMerges(weaponId, evoId) {
+  return SYNERGIES.filter(s => s.needs.includes(weaponId) && (!s.evos || s.evos[weaponId] === evoId));
 }
 
 // The two weapons leave, the merged one arrives at full strength, and the freed slot is

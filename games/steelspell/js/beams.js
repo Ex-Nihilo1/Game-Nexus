@@ -120,6 +120,55 @@ FIRE.flamethrower = function (w) {
   return true;
 };
 
+// ---- Dragonfire ----
+
+// A fireball out of the cone: it bursts at the first enemy it meets, or at the end of its
+// flight, for magic damage (the cone burns physical) and leaves the ground burning.
+function throwDragonBall(w, a) {
+  const d = w.cfg;
+  const radius = d.ballRadius * weaponSize(w);
+  const blast = s => {
+    eachEnemyNear(s.x, s.y, radius, e => hit(e, w, d.ballDamage, 'magic'));
+    addFx({ type: 'ring', x: s.x, y: s.y, r: radius, life: 0.3, pen: KINDS.magic.pen });
+    burnGround(w, s.x, s.y, radius * 0.8, d.burn);
+  };
+  launch({
+    look: 'ball', pen: d.pen, a, speed: d.ballSpeed, r: 7, life: d.ballRange / d.ballSpeed,
+    onHit: blast, onEnd: blast,
+  });
+}
+
+// The Flamethrower's cone, longer, that throws fireballs while it burns (Count adds balls to
+// every throw, in a fan) and leaves burning ground where it was.
+FIRE.dragonfire = function (w) {
+  const d = w.cfg;
+  const size = weaponSize(w);
+  const length = d.length * size;
+  const target = nearestEnemies(hero.x, hero.y, length * 1.2, 1)[0];
+  if (!target) return false;
+  addZone({
+    look: 'flame', pen: d.pen, x: hero.x, y: hero.y, r: length, a: aimAt(target), length,
+    half: Math.min(1.4, d.cone * (1 + (size - 1) * 0.5) / 2),
+    life: d.life * weaponDuration(w), tick: d.tick, timer: 0, w, ballIn: 0,
+    move: (z, dt) => {
+      moveFlame(z, dt);
+      z.ballIn -= dt;
+      if (z.ballIn > 0) return;
+      z.ballIn += d.ballEvery;
+      const n = shotCount(w);
+      for (let i = 0; i < n; i++) throwDragonBall(w, z.a + (i - (n - 1) / 2) * d.ballFan);
+    },
+    each: (z, fn) => eachEnemyInCone(z.x, z.y, z.a, z.length, z.half, fn),
+    apply: e => hit(e, w, d.damage, 'phys', true),
+    end: z => {
+      for (const share of [0.35, 0.65, 0.95]) {
+        burnGround(w, z.x + Math.cos(z.a) * z.length * share, z.y + Math.sin(z.a) * z.length * share, z.length * 0.22, d.scorch);
+      }
+    },
+  });
+  return true;
+};
+
 // ---- Hurricane ----
 
 // Drags enemies toward the middle (elites half as hard) and swallows enemy shots.

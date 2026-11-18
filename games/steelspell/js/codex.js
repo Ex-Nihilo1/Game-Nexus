@@ -59,11 +59,13 @@ function defOf(id) { return WEAPON_DEFS.find(d => d.id === id); }
 
 function mergesOf(id) { return SYNERGIES.filter(s => s.needs.includes(id)); }
 
-// A weapon or a merge as a tile. Pressing it opens its window.
-function codexTile(def, owned) {
+// A weapon or a merge as a tile. Pressing it opens its window. `evo` is the evolution a merge
+// asks of this weapon, if it asks for one.
+function codexTile(def, owned, evo = '') {
   const tile = el('button', `codex-tile ${def.kind}`);
   tile.appendChild(el('span', 'codex-tag', tagOf(def)));
   tile.appendChild(el('span', 'codex-tile-name', nameOf(def)));
+  if (evo) tile.appendChild(el('span', 'codex-evo', evo));
   if (owned) tile.appendChild(el('span', 'codex-mine', t('codex.yours')));
   tile.setAttribute('aria-label', t(owned ? 'codex.tileMine' : 'codex.tile', { name: nameOf(def), kind: kindName(def.kind) }));
   tile.addEventListener('click', () => (def.needs ? showMergeWindow(def) : showWeaponWindow(def)));
@@ -101,11 +103,14 @@ function showMergeWindow(m) {
   openCodexWindow(nameOf(m), box => {
     box.appendChild(el('span', `stamp ${m.kind}`, kindName(m.kind)));
     box.appendChild(recipeRow(m, true));
-    windowLines(box, [blurbOf(m), usesText(m)]);
-    box.appendChild(el('h4', 'codex-sub', t('codex.keeps')));
-    windowLines(box, [m.needs.flatMap(id => (EVOLUTIONS[id] || [])
+    const needs = m.evos && m.needs.map(id => t('codex.evoOf', { evo: evoNameOf(id, m.evos[id]), weapon: nameOf(defOf(id)) }));
+    windowLines(box, [blurbOf(m), usesText(m), needs ? t('codex.needsEvos', { list: needs.join(', ') }) : '']);
+    const kept = m.needs.flatMap(id => (EVOLUTIONS[id] || [])
       .filter(evo => evo.inherit && evo.inherit[m.id])
-      .map(evo => t('cards.fromEvo', { evo: evoName(evo), text: inheritText(evo, m) })))]);
+      .map(evo => t('cards.fromEvo', { evo: evoName(evo), text: inheritText(evo, m) })));
+    if (!kept.length) return;
+    box.appendChild(el('h4', 'codex-sub', t('codex.keeps')));
+    windowLines(box, [kept]);
   });
 }
 
@@ -129,7 +134,7 @@ function recipeRow(m, inWindow = false) {
   const kit = phase === 'paused' ? hero.weapons.map(w => w.def.id) : []; // marked only during a run
   m.needs.forEach((id, i) => {
     if (i) row.appendChild(el('span', 'codex-op', '+'));
-    row.appendChild(codexTile(defOf(id), kit.includes(id)));
+    row.appendChild(codexTile(defOf(id), kit.includes(id), m.evos ? evoNameOf(id, m.evos[id]) : ''));
   });
   row.appendChild(el('span', 'codex-op', '→'));
   const result = codexTile(m, kit.includes(m.id));

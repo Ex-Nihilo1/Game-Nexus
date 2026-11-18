@@ -324,9 +324,20 @@ function evolveCard(w, evo, branch) {
     tag: t('cards.evolution'),
     name: evoName(evo),
     value: '',
-    note: evoBlurb(w.def, evo),
+    note: [evoBlurb(w.def, evo), ...evoMergeLines(w.def.id, evo.id)].join(' '),
     pick: () => evolveWeapon(w, branch),
   };
+}
+
+// What an evolution card says about the merges the evolution leads to, and what each asks of
+// the other weapon.
+function evoMergeLines(weaponId, evoId) {
+  return evoMerges(weaponId, evoId).map(m => {
+    const partnerId = m.needs.find(id => id !== weaponId);
+    const params = { merge: nameOf(m), partner: nameOf(WEAPON_DEFS.find(d => d.id === partnerId)) };
+    if (!m.evos) return t('cards.evoMerges', params);
+    return t('cards.evoOpens', Object.assign(params, { evo: evoNameOf(partnerId, m.evos[partnerId]) }));
+  });
 }
 
 function mergeCard(merge) {
@@ -381,7 +392,11 @@ function weaponCards() {
   return chosen.map(d => {
     const merges = synergyPartners(d.id).map(s => {
       const partner = WEAPONS.find(o => s.needs.includes(o.id) && o !== d);
-      return t('cards.mergeWith', { partner: nameOf(partner), merge: nameOf(s) });
+      const params = { partner: nameOf(partner), merge: nameOf(s) };
+      if (!s.evos) return t('cards.mergeWith', params);
+      return t('cards.mergeWithEvos', Object.assign(params, {
+        evo: evoNameOf(d.id, s.evos[d.id]), partnerEvo: evoNameOf(partner.id, s.evos[partner.id]),
+      }));
     });
     return {
       type: 'weapon',

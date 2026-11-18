@@ -107,6 +107,52 @@ function moveOrbit(s, dt) {
   }
 }
 
+// Blade Wraith: while the phase lasts the blades circle the hero, hitting the same enemy once
+// in `hitEvery` seconds; then they fly out along their spokes and come back like boomerangs.
+function moveWraithBlade(s, dt) {
+  s.spin += 14 * dt;
+  if (s.back) return returnToHero(s, dt);
+  if (!s.out && hero.phaseLeft > 0) {
+    s.turn += s.orbitTurn * dt;
+    s.x = hero.x + Math.cos(s.turn) * s.orbitRadius;
+    s.y = hero.y + Math.sin(s.turn) * s.orbitRadius;
+    s.again -= dt;
+    if (s.again <= 0) {
+      s.again = s.hitEvery;
+      s.hits.clear();
+    }
+    return;
+  }
+  if (!s.out) {
+    s.out = true;
+    s.vx = Math.cos(s.turn) * s.speed;
+    s.vy = Math.sin(s.turn) * s.speed;
+    s.damage = s.flyDamage;
+    s.hits.clear();
+  }
+  flyOut(s, dt);
+  if (s.flown >= s.range) {
+    s.back = true;
+    s.hits.clear();
+  }
+}
+
+function sendWraithBlades(w) {
+  const d = w.cfg;
+  const n = d.blades + shotCount(w) - 1;
+  const radius = d.bladeRadius * weaponSize(w);
+  for (let i = 0; i < n; i++) {
+    const turn = i / n * TAU;
+    launch({
+      look: 'boomerang', pen: d.pen, a: turn, speed: d.flySpeed, r: d.r * weaponSize(w), life: Infinity, pierce: Infinity,
+      x: hero.x + Math.cos(turn) * radius, y: hero.y + Math.sin(turn) * radius,
+      turn, orbitRadius: radius, orbitTurn: d.bladeTurn, again: d.bladeHit, hitEvery: d.bladeHit,
+      damage: d.bladeDamage, flyDamage: d.flyDamage, range: d.flyOut, returnBoost: 1.25, flown: 0, back: false, out: false, spin: 0,
+      move: moveWraithBlade, onHit: (s, e) => hit(e, w, s.damage, 'phys'),
+    });
+  }
+}
+
 function throwBoomerangs(w, onHit) {
   const d = w.cfg;
   const target = nearestEnemies(hero.x, hero.y, AIM_RANGE, 1)[0];
@@ -159,7 +205,8 @@ function swing(w, angle, reach, damage = w.cfg.damage, onHit = null) {
 
 // ---- Meteor ----
 
-function fallMeteor(w, x, y) {
+// `then(radius)` runs right after the blast.
+function fallMeteor(w, x, y, then) {
   const d = w.cfg;
   const radius = d.radius * weaponSize(w);
   addFx({ type: 'telegraph', x, y, r: radius, life: d.delay, pen: d.pen });
@@ -173,7 +220,17 @@ function fallMeteor(w, x, y) {
         if (d.crater.slow) slow(e, d.crater.slow, d.crater.tick * 2);
       },
     });
+    if (then) then(radius);
   });
+}
+
+// Starfall: from a blast, a bolt to the nearest enemy past its edge (or inside it, if that is
+// all there is), and on from there as Chain Lightning jumps.
+function starfallBolt(w, x, y, radius) {
+  const d = w.cfg;
+  const near = nearestEnemies(x, y, radius + d.jumpRange, 12);
+  const first = near.find(e => Math.hypot(e.x - x, e.y - y) > radius) || near[0];
+  if (first) strikeChain(first, w, 1, { x, y }, d.boltDamage);
 }
 
 // ---- Rocket ----
@@ -315,8 +372,9 @@ function shootLine(w, target, boost, pierce) {
 
 // ---- Ice Arrow ----
 
-// `scale` is 1 for a real arrow, less for the shards of a Shatter.
-function shootArrow(w, x, y, a, scale) {
+// `scale` is 1 for a real arrow, less for the shards of a Shatter. `base` is the damage it
+// scales and `slowBy` how much it slows: the weapon's own unless given.
+function shootArrow(w, x, y, a, scale, base = w.cfg.damage, slowBy = w.cfg.slow) {
   const d = w.cfg;
   const size = weaponSize(w);
   const shard = scale < 1;
@@ -324,35 +382,40 @@ function shootArrow(w, x, y, a, scale) {
     look: 'arrow', pen: d.pen, x, y, a, speed: d.speed, life: shard ? 0.35 : d.life, pierce: Infinity,
     r: shard ? 6 : d.width * (1 + (size - 1) * d.widthGrowth), len: shard ? 10 : d.length * size,
     onHit: (s, e) => {
-      hit(e, w, d.damage * scale);
-      slow(e, d.slow, d.slowTime);
+      hit(e, w, base * scale);
+      if (slowBy) slow(e, slowBy, d.slowTime);
       if (d.freeze) freeze(e, d.freeze);
       if (!d.shards || shard || !e.dead) return;
-      for (let i = 0; i < d.shards; i++) shootArrow(w, e.x, e.y, s.a + (i - (d.shards - 1) / 2) * 0.7, d.shardDamage);
+      for (let i = 0; i < d.shards; i++) shootArrow(w, e.x, e.y, s.a + (i - (d.shards - 1) / 2) * 0.7, d.shardDamage, base, slowBy);
     },
   });
 }
 
 // ---- Shotgun and Railgun ----
 
-// Pellets in a narrow cone at the nearest enemy; a pellet hits one enemy (more with `pierce`).
+// `n` pellets in a fan `cone` wide around `aim`, each for `damage`; a pellet hits one enemy
+// (more with `pierce`).
+function firePellets(w, aim, cone, n, damage) {
+  const d = w.cfg;
+  for (let i = 0; i < n; i++) {
+    const a = aim + (n > 1 ? i / (n - 1) - 0.5 : 0) * cone + (rand() - 0.5) * 0.04;
+    launch({
+      look: 'pellet', pen: d.pen, a, speed: d.speed, r: 4, life: d.range / d.speed, pierce: d.pierce,
+      onHit: (s, e) => {
+        hit(e, w, damage);
+        if (d.knock) knockBack(e, s.a, d.knock, 0.12); // Double Barrel
+        ricochet(w, e, damage);
+      },
+    });
+  }
+}
+
+// Pellets in a narrow cone at the nearest enemy.
 function blastPellets(w) {
   const d = w.cfg;
   const target = nearestEnemies(hero.x, hero.y, d.range, 1)[0];
   if (!target) return false;
-  const aim = aimAt(target);
-  const n = d.pellets + (shotCount(w) - 1) * d.perCount;
-  for (let i = 0; i < n; i++) {
-    const a = aim + (n > 1 ? i / (n - 1) - 0.5 : 0) * d.cone + (rand() - 0.5) * 0.04;
-    launch({
-      look: 'pellet', pen: d.pen, a, speed: d.speed, r: 4, life: d.range / d.speed, pierce: d.pierce,
-      onHit: (s, e) => {
-        hit(e, w, d.damage);
-        if (d.knock) knockBack(e, s.a, d.knock, 0.12); // Double Barrel
-        ricochet(w, e, d.damage);
-      },
-    });
-  }
+  firePellets(w, aimAt(target), d.cone, d.pellets + (shotCount(w) - 1) * d.perCount, d.damage);
   return true;
 }
 
@@ -586,6 +649,67 @@ const FIRE = {
     const aim = aimAt(target);
     const n = shotCount(w);
     for (let i = 0; i < n; i++) later(i * d.swingGap, () => swing(w, aim + i * Math.PI, reach));
+    return true;
+  },
+
+  // Gunblade: every swing fires a volley of pellets across its arc. Count adds swings, every
+  // second one behind the hero, each with its own volley.
+  gunblade(w) {
+    const d = w.cfg;
+    const target = nearestEnemies(hero.x, hero.y, d.range, 1)[0];
+    if (!target) return false;
+    const reach = d.reach * weaponSize(w);
+    const aim = aimAt(target);
+    const n = shotCount(w);
+    for (let i = 0; i < n; i++) {
+      later(i * d.swingGap, () => {
+        swing(w, aim + i * Math.PI, reach);
+        firePellets(w, aim + i * Math.PI, d.arc, d.pellets, d.pelletDamage);
+      });
+    }
+    return true;
+  },
+
+  // Starfall: meteors on the thickest crowds, each a crowd of its own while there are crowds
+  // enough; Count adds meteors.
+  starfall(w) {
+    const d = w.cfg;
+    const n = d.meteors + shotCount(w) - 1;
+    const spots = [];
+    for (let i = 0; i < n; i++) {
+      const spot = densestSpot(hero.x, hero.y, d.range, spots);
+      if (!spot) break;
+      spots.push(spot);
+    }
+    if (!spots.length) return false;
+    for (let i = 0; i < n; i++) {
+      const spot = spots[i % spots.length];
+      const a = rand() * TAU;
+      const off = i < spots.length ? 0 : 50 + rand() * 30; // a crowd hit twice: not on the same spot
+      const x = spot.x + Math.cos(a) * off;
+      const y = spot.y + Math.sin(a) * off;
+      later(i * 0.15, () => fallMeteor(w, x, y, radius => starfallBolt(w, x, y, radius)));
+    }
+    return true;
+  },
+
+  // Black Frost: a flash of black ice that sets everything in it on fire and slows it, and
+  // ice arrows all around. Duration makes the slow and the burning last longer.
+  blackfrost(w) {
+    const d = w.cfg;
+    if (!nearestEnemies(hero.x, hero.y, AIM_RANGE, 1).length) return false;
+    const radius = d.radius * weaponSize(w);
+    const lasts = weaponDuration(w);
+    eachEnemyNear(hero.x, hero.y, radius, e => {
+      hit(e, w, d.damage);
+      if (e.dead) return;
+      slow(e, d.slow, d.slowTime * lasts);
+      ignite(e, w, d.burn, d.burnTime * lasts);
+    });
+    addFx({ type: 'ring', x: hero.x, y: hero.y, r: radius, life: 0.35, pen: d.pen });
+    const n = d.arrows + (shotCount(w) - 1) * d.perCount;
+    const turn = rand() * TAU;
+    for (let i = 0; i < n; i++) shootArrow(w, hero.x, hero.y, turn + i / n * TAU, 1, d.arrowDamage, 0);
     return true;
   },
 };

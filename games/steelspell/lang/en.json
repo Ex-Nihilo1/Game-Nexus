@@ -74,6 +74,9 @@
     "fromEvo": "From {evo}: {text}.",
     "mergeNote": "Both weapons go, and you pick a new one right away.",
     "mergeWith": "with {partner} into {merge}",
+    "mergeWithEvos": "with {partner} into {merge} ({evo} + {partnerEvo})",
+    "evoOpens": "Leads to {merge}, with {partner} evolved into {evo}.",
+    "evoMerges": "Leads to {merge}, with {partner} evolved either way.",
     "merges": "Merges {list} once both are at Lv {max} and evolved.",
     "reroll": "Reroll ({rerolls})",
     "skip": "Skip: heal {pct}%"
@@ -204,12 +207,14 @@
     "evoLine": "{name}: {text}",
     "merges": "Merges",
     "noMerges": "Merges with nothing.",
-    "mergeRule": "Once both weapons are at Lv {max} and evolved, a card offers the merge. A weapon goes into one merge only.",
+    "mergeRule": "Once both weapons are at Lv {max} and evolved, a card offers the merge. Where an evolution is named under a weapon, only that one opens the merge. A weapon goes into one merge only.",
     "keeps": "It keeps what the evolutions did",
+    "needsEvos": "Only these evolutions open it: {list}.",
+    "evoOf": "{evo} ({weapon})",
     "itemAdds": "Adds to {stats} at full value, on top of the cards.",
     "itemUnique": "Every item is one of a kind: a chest never offers one you have.",
     "weaponsNote": "Press a weapon to see its levels, evolutions and merges.",
-    "mergesNote": "Two weapons at their last level, both evolved, merge into one. A merge of two weapons of one kind keeps that kind.",
+    "mergesNote": "Two weapons at their last level, both evolved, merge into one; where an evolution is named under a weapon, only that one will do. A merge of two weapons of one kind keeps that kind.",
     "groupPhys": "Physical + physical",
     "groupMagic": "Magic + magic",
     "groupMixed": "Physical + magic",
@@ -355,7 +360,7 @@
     "siege": { "name": "Siege Edge", "text": "Physical hits ignore {armorPenPct}% of armor" },
     "hexlens": { "name": "Hex Lens", "text": "Magic hits ignore {magicPenPct}% of ward" },
     "weakspot": { "name": "Weak Spot", "text": "Every {weakSpot.every, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} hit on one enemy makes it take {weakSpot}% more damage from everything for {weakSpot.time} s" },
-    "rubber": { "name": "Rubber Bullets", "text": "Bullets of guns (Pistol, Shotgun, Railgun, ElectroGun, a copy's pistol) bounce on to one more enemy for {ricochet}% damage" },
+    "rubber": { "name": "Rubber Bullets", "text": "Bullets of guns (Pistol, Shotgun, Railgun, ElectroGun, Gunblade, a copy's pistol) bounce on to one more enemy for {ricochet}% damage" },
     "plate": { "name": "Bulwark Plate", "text": "+{charges, plural, one {# charge} other {# charges}} for a Shield. Without a Shield: +{plateArmor} Armor" },
     "edge": { "name": "Void Edge", "text": "{pureShare}% of all damage becomes pure" },
     "pact": { "name": "Blood Pact", "text": "{hpToAttack}% of your Health turns into Base attack" },
@@ -503,7 +508,6 @@
       "name": "EMP Aura",
       "blurb": "An enemy that stays in the aura for {emp.after} s in a row is stunned for {emp.stun} s; elites are slowed instead. Damage +{damage}%.",
       "inherit": {
-        "fireshield": "An enemy that stays in the aura for {emp.after} s is stunned for {emp.stun} s",
         "radiantlance": "An enemy that stays in the lance for {emp.after} s is stunned for {emp.stun} s",
         "frosthalo": "An enemy that stays in the aura for {emp.after} s is stunned for {emp.stun} s"
       }
@@ -513,7 +517,6 @@
       "blurb": "Enemy shots fade inside the aura. Damage -{damage}%.",
       "inherit": {
         "frosthalo": "Enemy shots fade inside the aura",
-        "fireshield": "Enemy shots fade inside the aura",
         "radiantlance": "Enemy shots fade inside the lance"
       }
     },
@@ -612,18 +615,12 @@
     "bulwark": {
       "name": "Bulwark",
       "blurb": "+{charges, plural, one {# charge} other {# charges}}.",
-      "inherit": {
-        "bastion": "+{charges, plural, one {# charge} other {# charges}}",
-        "fireshield": "+{charges, plural, one {# charge} other {# charges}}"
-      }
+      "inherit": { "bastion": "+{charges, plural, one {# charge} other {# charges}}" }
     },
     "spiked": {
       "name": "Spiked Shield",
       "blurb": "The blast is {damage}% stronger, and enemies that touch you get hurt.",
-      "inherit": {
-        "bastion": "The blast is {damage}% stronger, and enemies that touch you get hurt",
-        "fireshield": "The blast is {damage}% stronger, and enemies that touch you get hurt"
-      }
+      "inherit": { "bastion": "The blast is {damage}% stronger, and enemies that touch you get hurt" }
     },
     "barrage": {
       "name": "Barrage",
@@ -755,10 +752,6 @@
       "name": "Ice Boomerang", "tag": "IB",
       "blurb": "Flies further and slows what survives. Physical going out, magic coming back."
     },
-    "fireshield": {
-      "name": "Fire Shield", "tag": "FS",
-      "blurb": "A burning aura. Stores up to {charges, plural, one {# charge} other {# charges}}: a charge blocks one hit and blasts the whole aura."
-    },
     "clusterrocket": {
       "name": "Cluster Rocket", "tag": "CR",
       "blurb": "Right after its blast the rocket bursts into {minis, plural, one {# small rocket} other {# small rockets}}, each after an enemy of its own. Count adds rockets."
@@ -806,6 +799,29 @@
     "phantomlancer": {
       "name": "Phantom Lancer", "tag": "PL",
       "blurb": "Your Spear, and copies of you that carry the same spear. The more health you have, the harder the copies hit."
+    },
+    "gunblade": {
+      "name": "Gunblade", "tag": "GB",
+      "blurb": "A sword swing right next to you that fires a volley of {pellets, plural, one {# pellet} other {# pellets}} across its whole arc; every pellet hits up to {pierce, plural, one {# enemy} other {# enemies}}. A swing sends enemy shots back where they came from. Count adds swings, every second one behind you, each with its own volley."
+    },
+    "bladewraith": {
+      "name": "Blade Wraith", "tag": "BW",
+      "blurb": "On cooldown you turn into a ghost that moves faster and hurts everything around you with magic, while {blades, plural, one {# blade circles} other {# blades circle}} you. When the phase ends the blades fly out all around and come back, cutting everything on their way. A hit triggers the phase early and is blocked, and the cooldown stays as it is. Enemy shots fade near you. Count adds blades."
+    },
+    "starfall": {
+      "name": "Starfall", "tag": "SF",
+      "blurb": "{meteors, plural, one {# meteor falls} other {# meteors fall}} on the thickest crowds, and from every blast a bolt of lightning jumps from enemy to enemy; every jump has a {fork}% chance to fork. The craters keep burning, longer with Duration. Count adds meteors."
+    },
+    "dragonfire": {
+      "name": "Dragonfire", "tag": "DF",
+      "blurb": "A long cone of fire toward the nearest enemy, physical, that throws fireballs while it burns: they fly beyond the cone and burst at the first enemy, magic. The cone and the blasts both leave the ground burning. Count adds fireballs to every throw."
+    },
+    "blackfrost": {
+      "name": "Black Frost", "tag": "BF",
+      "blurb": "A flash of black ice around you sets everything in it on fire and slows it by {slow}%, and {arrows, plural, one {# ice arrow flies} other {# ice arrows fly}} out of it in every direction, piercing the whole line. What an arrow kills bursts into {shards, plural, one {# piercing shard} other {# piercing shards}}. Count adds {perCount, plural, one {# arrow} other {# arrows}}."
     }
+  },
+  "retired": {
+    "fireshield": "Fire Shield"
   }
 }

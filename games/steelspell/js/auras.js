@@ -132,11 +132,6 @@ const TICK = {
     rechargeShield(w, dt);
   },
 
-  fireshield(w, dt) {
-    rechargeShield(w, dt);
-    pulseAura(w, dt, w.cfg.auraDamage);
-  },
-
   // Pike Wall: a second spear points the other way.
   spear(w, dt) {
     const d = w.cfg;
@@ -157,21 +152,39 @@ const TICK = {
     });
   },
 
-  // Blink Strike ends the phase with a blast; Shroud fades enemy shots around the hero.
   phase(w, dt) {
-    const d = w.cfg;
-    if (hero.phaseLeft > 0) {
-      hero.phaseLeft -= dt;
-      if (d.ward) eraseEnemyShots(hero.x, hero.y, auraRadius(w) * 1.3);
-      w.pulse -= dt;
-      if (w.pulse <= 0) {
-        w.pulse += d.tick;
-        eachEnemyNear(hero.x, hero.y, auraRadius(w), e => hit(e, w, d.damage, undefined, true));
-      }
-      if (hero.phaseLeft <= 0 && d.burst) explode(hero.x, hero.y, auraRadius(w) * 1.6, w, d.burst);
-      return;
+    tickPhase(w, dt);
+  },
+
+  // Blade Wraith: the ghost hurts with magic, and its blades (physical) come out with every
+  // phase, however it started.
+  bladewraith(w, dt) {
+    tickPhase(w, dt, 'magic');
+    if (hero.phaseLeft > 0 && !w.bladesOut) {
+      w.bladesOut = true;
+      sendWraithBlades(w);
+    } else if (hero.phaseLeft <= 0) {
+      w.bladesOut = false;
     }
-    w.timer -= dt;
-    if (w.timer <= 0) startPhase(w, false);
   },
 };
+
+// A phase on its cooldown: the hero is a ghost that hurts everything around, with damage of
+// `kind` (the weapon's own unless given). Blink Strike ends it with a blast; Shroud fades
+// enemy shots around the hero.
+function tickPhase(w, dt, kind) {
+  const d = w.cfg;
+  if (hero.phaseLeft > 0) {
+    hero.phaseLeft -= dt;
+    if (d.ward) eraseEnemyShots(hero.x, hero.y, auraRadius(w) * 1.3);
+    w.pulse -= dt;
+    if (w.pulse <= 0) {
+      w.pulse += d.tick;
+      eachEnemyNear(hero.x, hero.y, auraRadius(w), e => hit(e, w, d.damage, kind, true));
+    }
+    if (hero.phaseLeft <= 0 && d.burst) explode(hero.x, hero.y, auraRadius(w) * 1.6, w, d.burst);
+    return;
+  }
+  w.timer -= dt;
+  if (w.timer <= 0) startPhase(w, false);
+}
