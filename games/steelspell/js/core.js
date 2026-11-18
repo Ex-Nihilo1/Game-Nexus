@@ -19,7 +19,7 @@ const view = { w: 0, h: 0, cssW: 0, cssH: 0, scale: 1 };
 const cam = { x: 0, y: 0 };
 const keys = new Set();
 const stick = { active: false, id: 0, ax: 0, ay: 0, x: 0, y: 0 };
-const loadout = { active: ACTIVES[0], weapon: WEAPONS[0] };
+const loadout = { active: ACTIVES[0] }; // the run starts with its weapon
 
 let pal = {};
 let dirty = true;

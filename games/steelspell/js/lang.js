@@ -239,7 +239,7 @@ function activeNote(a) {
   return weapon ? t('start.activeNote', { seconds: a.cooldown, weapon: nameOf(weapon) }) : t('start.cooldown', { seconds: a.cooldown });
 }
 
-// An active skill's own weapon, then its passive.
+// The weapon a run with this active skill starts with, then its passive.
 function activePassive(a) {
   const params = activeParams(a);
   const parts = a.ownWeapon ? [t('actives.ownWeapon', params)] : [];

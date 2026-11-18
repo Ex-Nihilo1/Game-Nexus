@@ -161,7 +161,6 @@ function showCards(title, note, cards) {
       if (c.value) b.appendChild(el('span', 'card-value', c.value));
       b.appendChild(el('span', 'card-note', c.note));
       if (c.synergy) b.appendChild(el('span', 'card-synergy', c.synergy));
-      if (c.own) b.appendChild(el('span', 'card-own', c.own));
       b.appendChild(el('kbd', '', String(i + 1)));
       b.addEventListener('click', () => chooseCard(i));
       grid.appendChild(b);
@@ -214,9 +213,6 @@ function addPickRows(parent, rows, current, name, describe, onPick) {
   parent.appendChild(detail);
 }
 
-// The weapons a run can start with: all but the defensive ones.
-function startersFor() { return WEAPONS.filter(d => !d.defense); }
-
 // `keep` keeps the loadout picked on this screen instead of the last run's.
 function showStart(keep = false) {
   phase = 'start';
@@ -225,10 +221,7 @@ function showStart(keep = false) {
   if (!keep) {
     const last = loadJson(LAST_KEY) || {};
     loadout.active = ACTIVES.find(a => a.id === last.active) || ACTIVES[0];
-    loadout.weapon = WEAPONS.find(d => d.id === last.weapon && !d.defense) || WEAPONS[0];
   }
-  const starters = startersFor();
-  if (!starters.includes(loadout.weapon)) loadout.weapon = starters[0];
   showPanel(p => {
     p.appendChild(el('h2', 'panel-title', t('start.title')));
     p.appendChild(el('p', 'panel-note', t('start.note', {
@@ -241,17 +234,14 @@ function showStart(keep = false) {
       items: ACTIVES.filter(a => a.group === group),
       note: activeNote,
     })), loadout.active, activeName, activeDescription, a => {
-      const before = loadout.active;
       loadout.active = a;
-      if (before.ownWeapon !== a.ownWeapon) showStart(true); // another weapon is marked
+      weaponLine.textContent = startWeaponText(a);
     });
 
+    // The first weapon is the active skill's own: shown, not picked.
     p.appendChild(el('h3', 'section-title', t('start.weapon')));
-    addPickRows(p, ['magic', 'phys'].map(kind => ({
-      label: kindName(kind),
-      items: starters.filter(d => d.kind === kind),
-      note: d => (d.id === loadout.active.ownWeapon ? t('start.ownWeapon', { active: activeName(loadout.active) }) : ''),
-    })), loadout.weapon, nameOf, d => `${blurbOf(d)} ${usesText(d)}`, d => { loadout.weapon = d; });
+    const weaponLine = el('p', 'pick-detail', startWeaponText(loadout.active));
+    p.appendChild(weaponLine);
 
     const actions = el('div', 'panel-actions');
     const save = loadSave();
@@ -404,7 +394,13 @@ function applyPageTexts() {
 
 function beginFromMenu() {
   clearSave();
-  startRun(loadout.active.id, loadout.weapon.id);
+  startRun(loadout.active.id, loadout.active.ownWeapon);
+}
+
+// What the start screen says of the weapon a run starts with.
+function startWeaponText(a) {
+  const d = WEAPONS.find(w => w.id === a.ownWeapon);
+  return `${t('start.weaponLine', { weapon: nameOf(d), active: activeName(a) })} ${blurbOf(d)} ${usesText(d)}`;
 }
 
 function addFigure(parent, label, value) {

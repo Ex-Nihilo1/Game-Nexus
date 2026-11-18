@@ -415,7 +415,6 @@ function weaponCards(all = false) {
       value: '',
       note: `${blurbOf(d)} ${usesText(d)}`,
       synergy: merges.length ? t('cards.merges', { list: orList(merges), max: MAX_WEAPON_LEVEL }) : '',
-      own: d.id === activeDef.ownWeapon ? t('cards.ownWeapon', { active: activeName(activeDef) }) : '',
       pick: () => addWeapon(d.id),
     };
   });

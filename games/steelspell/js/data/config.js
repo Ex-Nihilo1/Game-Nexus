@@ -116,9 +116,9 @@ const STATS = {
 // Active skills: one is picked before the run and sits on the Space key. Each also has a
 // passive for the whole run: `gives` adds to the hero like an item. `group` is where the start
 // screen lists it.
-// Every active skill has a weapon of its own, `ownWeapon`: it comes at no cost and with no bonus,
-// the start screen and the cards only mark it. Ignite's passive (`burnBoost`): while its fire
-// lasts, burning enemies and the ticks of fire weapons hit that many times as hard.
+// Every active skill has a weapon of its own, `ownWeapon`, and a run starts with it: there is no
+// other first weapon. Ignite's passive (`burnBoost`): while its fire lasts, burning enemies and
+// the ticks of fire weapons hit that many times as hard.
 const ACTIVES = [
   { id: 'flash', group: 'mobility', cooldown: 40, distance: 190, critBoost: 0.25, critTime: 20, ownWeapon: 'shotgun' },
   { id: 'ghost', group: 'mobility', cooldown: 120, duration: 5, speedBoost: 2, gives: { speed: 0.1, magnet: 0.25 }, ownWeapon: 'spear' },

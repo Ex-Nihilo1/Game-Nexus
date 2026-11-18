@@ -22,7 +22,7 @@ const LEVEL_GAINS = LEVEL_PLAN.filter(step => typeof step === 'object').reduce((
 // weapon reads Crit chance and Crit damage: any of them can crit.
 // `fire: true` marks a weapon that burns, for items that favor fire; `lasting: true` one
 // whose attack stays for a while, for the Echo Stone.
-// Weapons marked `defense` cannot be the first pick, as they barely attack.
+// Weapons marked `defense` barely attack; no active skill starts a run with one.
 // Whirlwinds (Hurricane, Fire Tornado, Storm Lance) hold no one: an enemy that stays inside
 // one for `after` seconds in a row is pushed out of it, once, at least `distance` units and
 // always past its edge, over `time` seconds. Elites stand their ground.

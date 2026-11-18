@@ -6,7 +6,8 @@
 //            collects orbs) | brawl (kite, but walks at the enemy: for melee weapons) | dummy
 //   cards    random | balanced (weapons and damage first) | xp (XP first)
 //   runs     how many runs, each with the next seed      seed     the first seed
-//   minutes  where to stop a run (default 45)            weapon, active   fix the loadout
+//   minutes  where to stop a run (default 45)            active   fix the active skill (the run
+//            starts with its weapon); weapon   start with another weapon instead, to compare
 //   after    with sim=afk: play as kite for this many minutes, then stand still
 //   god=1    a death does not end the run: deaths are counted, three in a minute end it
 //   meta     0 (default) | max: Camp upgrades for the run
@@ -398,15 +399,13 @@ function simJobs(params) {
     }));
   }
   const only = params.get('only') || '';
-  const starters = WEAPONS.filter(d => !d.defense && (!only || d.kind === only)).map(d => d.id);
   const jobs = [];
   for (let i = 0; i < runs; i++) {
     const active = params.get('active') || ACTIVES[i % ACTIVES.length].id;
-    const pool = starters;
     jobs.push({
       bot, cards: params.get('cards') || 'balanced', seed: seed + i,
       minutes: Number(params.get('minutes')) || 45,
-      weapon: params.get('weapon') || pool[i % pool.length],
+      weapon: params.get('weapon') || (ACTIVES.find(a => a.id === active) || ACTIVES[0]).ownWeapon,
       active,
       god: params.get('god') === '1', meta: params.get('meta') || '0', after: Number(params.get('after')) || 0,
       patch: params.get('patch') || '', only, altar: Number(params.get('altar')) || 0,

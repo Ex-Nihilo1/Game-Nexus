@@ -42,11 +42,11 @@
   },
   "start": {
     "title": "Choose your loadout",
-    "note": "Three stages, each ending in a boss. At minute {altar} of a stage an altar rises: touch it to call the boss. The longer you put it off, the stronger the boss gets, and at minute {length} it comes by itself. After the third boss, survive as long as you can. New weapons come at levels {levels}, and after every boss you pick any weapon you like. A weapon grows to level {max} through level-up cards, then evolves one of two ways, and two evolved weapons of a pair can merge into a stronger one.",
+    "note": "Three stages, each ending in a boss. At minute {altar} of a stage an altar rises: touch it to call the boss. The longer you put it off, the stronger the boss gets, and at minute {length} it comes by itself. After the third boss, survive as long as you can. You start with the weapon of your active skill. New weapons come at levels {levels}, and after every stage boss you pick any weapon you like. A weapon grows to level {max} through level-up cards, then evolves one of two ways, and two evolved weapons of a pair can merge into a stronger one.",
     "active": "Active skill",
     "weapon": "First weapon",
+    "weaponLine": "{weapon}, the weapon of {active}.",
     "cooldown": "{seconds} s",
-    "ownWeapon": "{active}'s weapon",
     "activeNote": "{seconds} s · {weapon}",
     "passive": "Passive: {text}",
     "continue": "Continue · {time}, level {level}",
@@ -83,7 +83,6 @@
     "merge": "Merge",
     "fromEvo": "From {evo}: {text}.",
     "mergeNote": "Both weapons go, and the merged one takes their place.",
-    "ownWeapon": "The own weapon of your {active}",
     "mergeWith": "with {partner} into {merge}",
     "mergeWithEvos": "with {partner} into {merge} ({evos})",
     "evoOpens": "Leads to {merge}, with {partner} evolved into {evo}.",
@@ -312,9 +311,9 @@
       "Tanks come in the third stage: Iron Tanks need magic, Ward Tanks need physical damage, and the Colossus has a lot of health."
     ],
     "actives": "Active skills",
-    "activesNote": "Every active skill has a weapon of its own. It comes at no cost and with no bonus: it is only marked whenever it is offered.",
+    "activesNote": "Every active skill has a weapon of its own, and a run starts with it: there is no other first weapon. More weapons come with levels and after every stage boss.",
     "abilityHaste": "Ability Haste shortens the active skill's cooldown: 100 / (100 + Ability Haste) of it is left, so 50 leaves two thirds of it and it never reaches zero. Only items give it. Weapons do not read it, and Haste does not touch the active skill.",
-    "ownWeapon": "The own weapon of {active}: marked whenever it is offered."
+    "ownWeapon": "A run with {active} starts with it."
   },
   "toasts": {
     "merged": "Merged: {name}!",
@@ -363,7 +362,7 @@
     "economy": "Economy"
   },
   "actives": {
-    "ownWeapon": "Its own weapon is {weapon}: it is marked whenever it is offered.",
+    "ownWeapon": "A run starts with its weapon, {weapon}.",
     "flash": {
       "name": "Flash",
       "passive": "After a blink: +{critBoost}% crit chance for {critTime} s.",
