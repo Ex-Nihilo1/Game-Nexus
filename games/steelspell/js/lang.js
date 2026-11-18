@@ -20,6 +20,7 @@
 // To add a language, add lang/<id>.json and a line here. Each name is in its own language.
 const LANGUAGES = [
   { id: 'en', name: 'English' },
+  { id: 'ru', name: 'Русский' },
 ];
 const LANG_KEY = 'games.steelspell.lang';
 const TEXTS_IN_WORKER = typeof importScripts === 'function';

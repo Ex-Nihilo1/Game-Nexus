@@ -282,14 +282,14 @@
     "evoLine": "{name}: {text}",
     "merges": "Merges",
     "noMerges": "Merges with nothing.",
-    "mergeRule": "Once both weapons are at Lv {max} and evolved, a card offers the merge. Where an evolution is named under a weapon, only that one opens the merge. A weapon goes into one merge only.",
+    "mergeRule": "Once both weapons are at Lv {max} and took the evolutions named under them, a card offers the merge. Every evolution opens exactly one merge, and a weapon goes into one merge only.",
     "keeps": "It keeps what the evolutions did",
     "needsEvos": "Only these evolutions open it: {list}.",
     "evoOf": "{evo} ({weapon})",
     "itemAdds": "Adds to {stats} at full value, on top of the cards.",
     "itemUnique": "Every item is one of a kind: a chest never offers one you have.",
     "weaponsNote": "Press a weapon to see its levels, evolutions and merges.",
-    "mergesNote": "Two weapons at their last level, both evolved, merge into one; where an evolution is named under a weapon, only that one will do. A merge of two weapons of one kind keeps that kind.",
+    "mergesNote": "Two weapons at their last level, each with the evolution named under it, merge into one. A merge of two weapons of one kind keeps that kind.",
     "groupPhys": "Physical + physical",
     "groupMagic": "Magic + magic",
     "groupMixed": "Physical + magic",
@@ -308,11 +308,11 @@
     "armorLines": [
       "Armor blunts physical hits and ward blunts magic ones: a hit does 100 / (100 + armor) of its damage, so 100 halves it and damage never vanishes. A hybrid hit meets the average of the two.",
       "Penetration lowers armor (physical) or ward (magic) before a hit; past zero the hit does more, up to twice. Railgun and Frost Halo take armor or ward off enemies, never more than half.",
-      "Burning also takes {burn}% of an enemy's max health per second for every stack, half on elites.",
-      "Tanks come from minute {tanksFrom}: Iron Tanks need magic, Ward Tanks need physical damage, and the Colossus has a lot of health."
+      "Burning also takes {burn}% of an enemy's max health per second for every stack, half on elites and an eighth on bosses.",
+      "Tanks come in the third stage: Iron Tanks need magic, Ward Tanks need physical damage, and the Colossus has a lot of health."
     ],
     "actives": "Active skills",
-    "activesNote": "Every active skill brings a weapon of its own for free, from the start and on top of the one you pick. That weapon cannot be your first one then.",
+    "activesNote": "Every active skill has a weapon of its own. It comes at no cost and with no bonus: it is only marked whenever it is offered.",
     "abilityHaste": "Ability Haste shortens the active skill's cooldown: 100 / (100 + Ability Haste) of it is left, so 50 leaves two thirds of it and it never reaches zero. Only items give it. Weapons do not read it, and Haste does not touch the active skill.",
     "ownWeapon": "The own weapon of {active}: marked whenever it is offered."
   },
