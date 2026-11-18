@@ -59,7 +59,8 @@ function simScore(card, job) {
   const item = card.type === 'item' && ITEMS.find(i => i.id === card.id);
   if (job.cards === 'xp' && (card.key === 'xp' || (item && item.gives.xp))) return 500;
   if (card.type === 'merge') return 400;
-  if (card.type === 'evolve') return 100 + simRand();
+  // Every evolution leads to one merge: the bot takes the one whose partner it already has.
+  if (card.type === 'evolve') return 100 + (simEvoHasPartner(card.id) ? 10 : 0) + simRand();
   if (card.type === 'weapon') {
     const def = WEAPON_DEFS.find(d => d.id === card.id);
     if (job.only && def.kind !== job.only) return -100;
@@ -68,6 +69,11 @@ function simScore(card, job) {
   if (card.type === 'upgrade') return 55 + simRand() * 5;
   if (item) return SIM_RARITY_SCORE[item.rarity] + simRand() * 5;
   return (SIM_STAT_SCORE[card.key] || 1) + simRand();
+}
+
+function simEvoHasPartner(evoId) {
+  const weaponId = Object.keys(EVOLUTIONS).find(id => EVOLUTIONS[id].some(evo => evo.id === evoId));
+  return evoMerges(weaponId, evoId).some(m => m.needs.some(id => id !== weaponId && owned(id) && evoFits(m, owned(id))));
 }
 
 function simPickCard(job) {

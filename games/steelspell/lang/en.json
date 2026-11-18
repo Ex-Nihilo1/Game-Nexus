@@ -496,8 +496,7 @@
   "evolutions": {
     "inferno": {
       "name": "Inferno Orb",
-      "blurb": "Every blast leaves the ground burning for {burn.life} s.",
-      "inherit": { "clusterrocket": "The small rockets leave the ground burning for {burn.life} s" }
+      "blurb": "Every blast leaves the ground burning for {burn.life} s."
     },
     "scatter": {
       "name": "Scatter Flame",
@@ -516,8 +515,7 @@
     },
     "shower": {
       "name": "Meteor Shower",
-      "blurb": "{meteors, plural, one {# more meteor} other {# more meteors}} per cast, each of them smaller.",
-      "inherit": { "meteordrone": "{extraMeteors, plural, =1 {Two meteors fall at every spot instead of one} other {# more meteors fall around every spot}}, each a little smaller" }
+      "blurb": "{meteors, plural, one {# more meteor} other {# more meteors}} per cast, each of them smaller."
     },
     "cataclysm": {
       "name": "Cataclysm",
@@ -531,8 +529,7 @@
     },
     "overcharge": {
       "name": "Overcharge",
-      "blurb": "Every jump has a {fork}% chance to fork to one more enemy.",
-      "inherit": { "electrogun": "Every jump has a {fork}% chance to fork to one more enemy" }
+      "blurb": "Every jump has a {fork}% chance to fork to one more enemy."
     },
     "glacier": {
       "name": "Glacier Lance",
@@ -541,8 +538,7 @@
     },
     "shatter": {
       "name": "Shatter",
-      "blurb": "What it kills bursts into {shards, plural, one {# piercing ice shard} other {# piercing ice shards}}.",
-      "inherit": { "iceboomerang": "What it kills bursts into {shards, plural, one {# piercing ice shard} other {# piercing ice shards}}" }
+      "blurb": "What it kills bursts into {shards, plural, one {# piercing ice shard} other {# piercing ice shards}}."
     },
     "blink": {
       "name": "Blink Strike",
@@ -551,24 +547,17 @@
     },
     "shroud": {
       "name": "Shroud",
-      "blurb": "Lasts {duration}% longer and fades enemy shots near you.",
-      "inherit": { "emberstep": "The phase lasts {duration}% longer and fades enemy shots near you" }
+      "blurb": "Lasts {duration}% longer and fades enemy shots near you."
     },
     "pike": {
       "name": "Pike Wall",
       "blurb": "A second spear points behind you.",
-      "inherit": {
-        "phantomlancer": "A second spear points behind you",
-        "radiantlance": "A second oval reaches behind you"
-      }
+      "inherit": { "radiantlance": "A second oval reaches behind you" }
     },
     "javelin": {
       "name": "Javelin",
       "blurb": "Every {javelin, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} strike throws a piercing javelin across the screen.",
-      "inherit": {
-        "phantomlancer": "Every {javelin, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} strike throws a piercing javelin",
-        "radiantlance": "Every {javelin, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} strike throws a piercing javelin"
-      }
+      "inherit": { "phantomlancer": "Every {javelin, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} strike throws a piercing javelin" }
     },
     "glaive": {
       "name": "Glaive",
@@ -577,24 +566,17 @@
     },
     "orbit": {
       "name": "Orbit Blades",
-      "blurb": "Circles around you for {orbit} s before it comes back.",
-      "inherit": { "iceboomerang": "Circles around you for {orbit} s before it comes back" }
+      "blurb": "Circles around you for {orbit} s before it comes back."
     },
     "revolver": {
       "name": "Revolver",
       "blurb": "Every 6th shot deals {sixth}x damage and goes through everything.",
-      "inherit": {
-        "railgun": "Every 6th volley deals {sixth}x damage",
-        "electrogun": "Every 6th shot deals {sixth}x damage, and its chain loses nothing"
-      }
+      "inherit": { "railgun": "Every 6th volley deals {sixth}x damage" }
     },
     "dual": {
       "name": "Dual Wield",
       "blurb": "+{targets, plural, one {# target} other {# targets}}, and bullets knock enemy shots out of the air.",
-      "inherit": {
-        "railgun": "+{rays, plural, one {# beam} other {# beams}}, and they knock enemy shots out of the air",
-        "electrogun": "{targets, plural, =2 {Two chains} other {# chains}} per shot, and they knock enemy shots out of the air"
-      }
+      "inherit": { "electrogun": "{targets, plural, =2 {Two chains} other {# chains}} per shot, and they knock enemy shots out of the air" }
     },
     "great": {
       "name": "Greatsword",
@@ -603,8 +585,7 @@
     },
     "parry": {
       "name": "Parry Blade",
-      "blurb": "A swing sends enemy shots back where they came from. Damage +{damage}%.",
-      "inherit": { "bastion": "Swings send enemy shots back. Swing damage +{swingDamage}%" }
+      "blurb": "A swing sends enemy shots back where they came from. Damage +{damage}%."
     },
     "bulwark": {
       "name": "Bulwark",
@@ -613,24 +594,17 @@
     },
     "spiked": {
       "name": "Spiked Shield",
-      "blurb": "The blast is {damage}% stronger, and enemies that touch you get hurt.",
-      "inherit": { "bastion": "The blast is {damage}% stronger, and enemies that touch you get hurt" }
+      "blurb": "The blast is {damage}% stronger, and enemies that touch you get hurt."
     },
     "barrage": {
       "name": "Barrage",
       "blurb": "+{count, plural, one {# rocket} other {# rockets}}, each {damage}% weaker.",
-      "inherit": {
-        "bomber": "Rockets drop {dropEvery}% more often, each {damage}% weaker",
-        "clusterrocket": "+{count, plural, one {# rocket} other {# rockets}}, each {damage}% weaker"
-      }
+      "inherit": { "clusterrocket": "+{count, plural, one {# rocket} other {# rockets}}, each {damage}% weaker" }
     },
     "nuke": {
       "name": "Nuke",
       "blurb": "One rocket with a blast {radius}% wider that leaves fallout. Count makes it hit harder instead.",
-      "inherit": {
-        "bomber": "Blasts {radius}% wider that leave fallout",
-        "clusterrocket": "One rocket with a blast {radius}% wider that leaves fallout. Count makes it hit harder instead"
-      }
+      "inherit": { "bomber": "Blasts {radius}% wider that leave fallout" }
     },
     "prism": {
       "name": "Prism",
@@ -639,13 +613,11 @@
     },
     "sweeper": {
       "name": "Sweeper",
-      "blurb": "The beam sweeps a {sweep}° arc instead of following a target. Width +{width}%, damage +{damage}%.",
-      "inherit": { "stormlance": "Beams {beamWidth}% wider. Damage +{damage}%" }
+      "blurb": "The beam sweeps a {sweep}° arc instead of following a target. Width +{width}%, damage +{damage}%."
     },
     "dragon": {
       "name": "Dragon's Breath",
-      "blurb": "The cone is {length}% longer and leaves burning ground behind.",
-      "inherit": { "firetornado": "The ground it leaves burning is wider and {scorch.life, plural, =100 {lasts twice as long} other {lasts #% longer}}" }
+      "blurb": "The cone is {length}% longer and leaves burning ground behind."
     },
     "napalm": {
       "name": "Napalm",
@@ -655,34 +627,22 @@
     "twin": {
       "name": "Twin Gales",
       "blurb": "+{count, plural, one {# whirlwind} other {# whirlwinds}}. Damage +{damage}%.",
-      "inherit": {
-        "stormlance": "+{count, plural, one {# whirlwind} other {# whirlwinds}}. Damage +{damage}%",
-        "firetornado": "+{count, plural, one {# tornado} other {# tornadoes}}. Damage +{damage}%"
-      }
+      "inherit": { "firetornado": "+{count, plural, one {# tornado} other {# tornadoes}}. Damage +{damage}%" }
     },
     "eye": {
       "name": "Eye of the Storm",
       "blurb": "The whirlwinds circle around you instead of wandering, and pull {pull}% harder.",
-      "inherit": {
-        "stormlance": "The whirlwinds circle around you, and pull {pull}% harder",
-        "firetornado": "The tornadoes circle around you instead of wandering, and pull {pull}% harder"
-      }
+      "inherit": { "stormlance": "The whirlwinds circle around you, and pull {pull}% harder" }
     },
     "wildfire": {
       "name": "Wildfire",
       "blurb": "Enemies that touch the trail keep burning and set fire to those next to them.",
-      "inherit": {
-        "emberstep": "Enemies that touch the fire keep burning and light their neighbors",
-        "pyretwins": "Enemies that touch the trail keep burning and light their neighbors"
-      }
+      "inherit": { "pyretwins": "Enemies that touch the trail keep burning and light their neighbors" }
     },
     "comet": {
       "name": "Comet Tail",
       "blurb": "The trail is {radius}% wider and burns hotter the faster you move.",
-      "inherit": {
-        "emberstep": "The trail is {trail.radius}% wider and burns hotter the faster you move",
-        "pyretwins": "The trail is {trail.radius}% wider"
-      }
+      "inherit": { "emberstep": "The trail is {trail.radius}% wider and burns hotter the faster you move" }
     },
     "double": {
       "name": "Double Barrel",
@@ -691,13 +651,11 @@
     },
     "sawnoff": {
       "name": "Sawn-off",
-      "blurb": "The cone is {cone, plural, =100 {twice as wide} other {#% wider}}.",
-      "inherit": { "railgun": "The cone is {cone, plural, =100 {twice as wide} other {#% wider}}" }
+      "blurb": "The cone is {cone, plural, =100 {twice as wide} other {#% wider}}."
     },
     "darkice": {
       "name": "Dark Ice",
-      "blurb": "The flash sets enemies on fire, and every flash on the same enemy slows it {chillGrow}% more, up to +{chillMax}%.",
-      "inherit": { "frosthalo": "The flash sets enemies on fire and slows harder with every flash, up to +{chillMax}%" }
+      "blurb": "The flash sets enemies on fire, and every flash on the same enemy slows it {chillGrow}% more, up to +{chillMax}%."
     },
     "permafrost": {
       "name": "Permafrost",
@@ -707,34 +665,22 @@
     "gunner": {
       "name": "Gunslinger",
       "blurb": "Every copy also shoots like a Pistol, for magic damage.",
-      "inherit": {
-        "pyretwins": "Every copy also shoots like a Pistol",
-        "phantomlancer": "Every copy also shoots like a Pistol"
-      }
+      "inherit": { "phantomlancer": "Every copy also shoots like a Pistol" }
     },
     "twins": {
       "name": "Twin Copies",
       "blurb": "{clones, plural, =2 {Two copies} other {# copies}} at once, each with {hpShare}% of your health.",
-      "inherit": {
-        "pyretwins": "{clones, plural, =2 {Two copies} other {# copies}}, each with {hpShare}% of your health",
-        "phantomlancer": "{clones, plural, =2 {Two copies} other {# copies}}, each with {hpShare}% of your health"
-      }
+      "inherit": { "pyretwins": "{clones, plural, =2 {Two copies} other {# copies}}, each with {hpShare}% of your health" }
     },
     "squadron": {
       "name": "Squadron",
       "blurb": "+{drones, plural, one {# drone} other {# drones}}: one on every diagonal.",
-      "inherit": {
-        "bomber": "+{drones, plural, one {# drone} other {# drones}}",
-        "meteordrone": "+{drones, plural, one {# drone} other {# drones}}"
-      }
+      "inherit": { "bomber": "+{drones, plural, one {# drone} other {# drones}}" }
     },
     "guardian": {
       "name": "Guardian",
       "blurb": "Circles around you for {guard} s at a time and catches enemy shots.",
-      "inherit": {
-        "bomber": "The drones catch enemy shots on their way",
-        "meteordrone": "The drones catch enemy shots on their way"
-      }
+      "inherit": { "meteordrone": "The drones catch enemy shots on their way" }
     }
   },
   "merges": {
