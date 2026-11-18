@@ -615,6 +615,7 @@ function draw() {
   drawWarnings();
   drawEnemyShots();
   drawNumbers();
+  drawDevOverlay();
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (phase !== 'start' && phase !== 'menu') {
     drawHud();

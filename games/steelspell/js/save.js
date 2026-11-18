@@ -15,7 +15,7 @@ function snapshot() {
   const pending = phase === 'choosing' && choice ? [choice.kind, ...queue] : [...queue];
   return {
     version: runVersionNow, saved: new Date().toISOString().slice(0, 10),
-    seed, startWeapon, active: activeDef.id, activeCd, rerolls, merges, elitesKilled,
+    seed, startWeapon, active: activeDef.id, activeCd, rerolls, merges, elitesKilled, cheated,
     level, xp, xpNext, elapsed, kills, spawnBudget, nextElite, nextRing, wildOrbTimer, magnetTimer, walked,
     upgrades, gear, items: items.map(item => item.id), metaBonus, queue: pending,
     hero: { hp: hero.hp, lives: hero.lives, windAt: hero.windAt, hurtBy: hero.hurtBy },
@@ -55,6 +55,7 @@ function continueRun() {
   metaBonus = save.metaBonus || {};
   resetWorld();
   seed = save.seed; startWeapon = save.startWeapon; activeCd = save.activeCd; rerolls = save.rerolls;
+  cheated = !!save.cheated;
   merges = save.merges; elitesKilled = save.elitesKilled; level = save.level; xp = save.xp; xpNext = save.xpNext;
   elapsed = save.elapsed; kills = save.kills; spawnBudget = save.spawnBudget; nextElite = save.nextElite;
   nextRing = save.nextRing; wildOrbTimer = save.wildOrbTimer; magnetTimer = save.magnetTimer; walked = save.walked;

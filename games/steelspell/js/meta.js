@@ -78,6 +78,7 @@ function refundCamp() {
 
 // Saves the run that has just ended, and returns what the end screen says about it.
 function recordRun() {
+  if (cheated) return { place: 0, bestWith: false, glory: 0, cheated: true };
   const records = loadRecords();
   const run = {
     version: runVersionNow, time: elapsed, level, kills, active: activeDef.id, start: startWeapon,

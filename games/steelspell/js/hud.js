@@ -84,6 +84,7 @@ function drawHud() {
 
   hudText(formatTime(elapsed), W / 2, 28, 22, 'ink', 'center');
   hudText(t('hud.kills', { kills }), W - 74, 30, 13, 'ink-muted', 'right');
+  if (cheated) hudText(t('hud.dev'), W - 74, 48, 13, 'red-pencil', 'right');
   if (toastLeft > 0) hudText(toast, W / 2, 54, 17, 'red-pencil', 'center');
 
   drawWeaponTiles(H);
@@ -272,7 +273,7 @@ function showStart(keep = false) {
 
     const hints = el('p', 'hints');
     const lines = textList('start.hints', { chestSlots: CHEST_SLOTS });
-    if (DEV) lines.push('Dev keys: [L] level up · [G] weapon pick · [I] open a chest · [K] die and revive · [R] reset active · [T] skip a minute · [E] elite · [F] shooters · [O] fill the horde · [H] immortal · [M] max a weapon');
+    if (devMode()) lines.push(t('dev.keys'));
     lines.forEach((line, i) => {
       if (i) hints.appendChild(el('br'));
       addHint(hints, line);
@@ -316,6 +317,7 @@ function showSettings(from) {
     row.append(slider, shown);
     p.appendChild(row);
     p.appendChild(el('p', 'panel-note', t('settings.attackAlphaNote')));
+    addDevSettings(p, from);
     if (LANGUAGES.length > 1) {
       const lang = el('label', 'setting');
       lang.append(el('span', 'setting-name', t('settings.language')), languagePicker(() => showSettings(from)));
@@ -327,6 +329,49 @@ function showSettings(from) {
     actions.appendChild(back);
     p.appendChild(actions);
   });
+}
+
+// Developer mode, behind its password (see js/dev.js).
+function addDevSettings(p, from) {
+  p.appendChild(el('h3', 'section-title', t('settings.dev')));
+  if (!settings.devUnlocked) {
+    const line = el('div', 'setting');
+    const field = el('input', 'dev-password');
+    field.type = 'password';
+    field.autocomplete = 'off';
+    field.setAttribute('aria-label', t('settings.devPassword'));
+    field.placeholder = t('settings.devPassword');
+    const unlock = el('button', '', t('settings.devUnlock'));
+    const said = el('span', 'setting-name', '');
+    const tryIt = () => {
+      if (!devPasswordOk(field.value)) {
+        said.textContent = t('settings.devWrong');
+        return;
+      }
+      settings.devUnlocked = true;
+      saveSettings();
+      showSettings(from);
+    };
+    unlock.addEventListener('click', tryIt);
+    field.addEventListener('keydown', e => {
+      e.stopPropagation(); // the letters are typed, not walked or pressed as shortcuts
+      if (e.key === 'Enter') tryIt();
+    });
+    line.append(field, unlock, said);
+    p.appendChild(line);
+    return;
+  }
+  const line = el('label', 'setting');
+  const box = el('input', '');
+  box.type = 'checkbox';
+  box.checked = !!settings.dev;
+  box.addEventListener('change', () => {
+    settings.dev = box.checked;
+    saveSettings();
+  });
+  line.append(box, el('span', 'setting-name', t('settings.devMode')));
+  p.appendChild(line);
+  p.appendChild(el('p', 'panel-note', t('settings.devNote')));
 }
 
 // The language: the texts load again, and the screen with them (`after`).
@@ -488,6 +533,11 @@ function showPause() {
     const quit = el('button', '', t('pause.end'));
     quit.addEventListener('click', endRun);
     actions.append(resume, codex, setup, keep, quit);
+    if (devMode()) {
+      const dev = el('button', '', t('pause.dev'));
+      dev.addEventListener('click', showDevPanel);
+      actions.appendChild(dev);
+    }
     p.appendChild(actions);
   });
 }
@@ -500,6 +550,7 @@ function togglePause() {
     phase = 'playing';
     hideOverlay();
     dirty = true;
+    if (queue.length) nextChoice(); // levels the developer panel gave
   }
 }
 
@@ -511,7 +562,8 @@ function showEnd(result) {
     if (result.place === 1) notes.push(t('end.best'));
     else if (result.place) notes.push(t('end.place', { place: result.place }));
     if (result.bestWith && result.place !== 1) notes.push(t('end.bestWith', { weapon: nameOf(WEAPONS.find(d => d.id === startWeapon)) }));
-    notes.push(t('end.glory', { glory: result.glory }));
+    if (result.cheated) notes.push(t('end.cheated'));
+    else notes.push(t('end.glory', { glory: result.glory }));
     p.appendChild(el('p', 'panel-note', notes.join(' ')));
     const figures = el('div', 'figures');
     addFigure(figures, t('end.time'), formatTime(elapsed));

@@ -46,6 +46,7 @@ function addEnemy(type, a = rand() * TAU) {
 }
 
 function spawnEnemies(dt) {
+  if (devHold) return; // the developer panel holds the horde back
   let wave = WAVES[0];
   for (const w of WAVES) if (elapsed >= w.at) wave = w;
   spawnBudget += wave.rate * dt;

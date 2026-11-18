@@ -53,7 +53,11 @@ function update(dt) {
 function loop(time = 0) {
   const dt = Math.min(0.05, (time - lastTime) / 1000);
   lastTime = time;
-  if (phase === 'playing') update(dt);
+  if (phase === 'playing') {
+    // The developer panel can slow time down or speed it up; faster runs more steps, not longer ones.
+    if (devSpeed >= 1) for (let i = 0; i < devSpeed; i++) update(dt);
+    else update(dt * devSpeed);
+  }
   if (dirty) draw();
   requestAnimationFrame(loop);
 }
@@ -98,7 +102,10 @@ document.addEventListener('keydown', e => {
     default:
       if (phase === 'choosing' && e.code === 'KeyR') rerollChoice();
       else if (phase === 'choosing' && e.code === 'KeyX') skipChoice();
-      else if (DEV && phase === 'playing') devKey(e.code);
+      else if (devMode() && e.code === 'F1') {
+        e.preventDefault();
+        openDevPanel();
+      } else if (devMode() && phase === 'playing') devKey(e.code);
   }
 });
 document.addEventListener('keyup', e => keys.delete(e.code));

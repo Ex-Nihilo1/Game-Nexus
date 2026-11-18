@@ -556,6 +556,8 @@ function simBoot() {
 // ---- Dev keys (with ?dev in the URL) ----
 
 function devKey(code) {
+  if (!/^Key[LGIRTEFOMHK]$/.test(code)) return;
+  cheated = true;
   if (code === 'KeyL') gainXp(xpNext - xp);
   else if (code === 'KeyG') enqueueChoice('weapon');
   else if (code === 'KeyI') enqueueChoice(pickWeighted(CHEST_ROLL));
