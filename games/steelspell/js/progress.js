@@ -335,8 +335,9 @@ function evoMergeLines(weaponId, evoId) {
   return evoMerges(weaponId, evoId).map(m => {
     const partnerId = m.needs.find(id => id !== weaponId);
     const params = { merge: nameOf(m), partner: nameOf(WEAPON_DEFS.find(d => d.id === partnerId)) };
-    if (!m.evos) return t('cards.evoMerges', params);
-    return t('cards.evoOpens', Object.assign(params, { evo: evoNameOf(partnerId, m.evos[partnerId]) }));
+    const asked = evoAsked(m, partnerId);
+    if (!asked) return t('cards.evoMerges', params);
+    return t('cards.evoOpens', Object.assign(params, { evo: evoNameOf(partnerId, asked) }));
   });
 }
 
@@ -393,10 +394,9 @@ function weaponCards() {
     const merges = synergyPartners(d.id).map(s => {
       const partner = WEAPONS.find(o => s.needs.includes(o.id) && o !== d);
       const params = { partner: nameOf(partner), merge: nameOf(s) };
-      if (!s.evos) return t('cards.mergeWith', params);
-      return t('cards.mergeWithEvos', Object.assign(params, {
-        evo: evoNameOf(d.id, s.evos[d.id]), partnerEvo: evoNameOf(partner.id, s.evos[partner.id]),
-      }));
+      const asked = s.needs.filter(id => evoAsked(s, id)).map(id => evoNameOf(id, evoAsked(s, id)));
+      if (!asked.length) return t('cards.mergeWith', params);
+      return t('cards.mergeWithEvos', Object.assign(params, { evos: asked.join(' + ') }));
     });
     return {
       type: 'weapon',

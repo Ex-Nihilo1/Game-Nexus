@@ -74,7 +74,7 @@
     "fromEvo": "From {evo}: {text}.",
     "mergeNote": "Both weapons go, and you pick a new one right away.",
     "mergeWith": "with {partner} into {merge}",
-    "mergeWithEvos": "with {partner} into {merge} ({evo} + {partnerEvo})",
+    "mergeWithEvos": "with {partner} into {merge} ({evos})",
     "evoOpens": "Leads to {merge}, with {partner} evolved into {evo}.",
     "evoMerges": "Leads to {merge}, with {partner} evolved either way.",
     "merges": "Merges {list} once both are at Lv {max} and evolved.",
@@ -507,18 +507,12 @@
     "emp": {
       "name": "EMP Aura",
       "blurb": "An enemy that stays in the aura for {emp.after} s in a row is stunned for {emp.stun} s; elites are slowed instead. Damage +{damage}%.",
-      "inherit": {
-        "radiantlance": "An enemy that stays in the lance for {emp.after} s is stunned for {emp.stun} s",
-        "frosthalo": "An enemy that stays in the aura for {emp.after} s is stunned for {emp.stun} s"
-      }
+      "inherit": { "frosthalo": "An enemy that stays in the aura for {emp.after} s in a row freezes for {emp.stun} s; elites are slowed instead" }
     },
     "sanctum": {
       "name": "Sanctum",
       "blurb": "Enemy shots fade inside the aura. Damage -{damage}%.",
-      "inherit": {
-        "frosthalo": "Enemy shots fade inside the aura",
-        "radiantlance": "Enemy shots fade inside the lance"
-      }
+      "inherit": { "radiantlance": "Enemy shots fade inside the lance" }
     },
     "shower": {
       "name": "Meteor Shower",
@@ -806,7 +800,7 @@
     },
     "bladewraith": {
       "name": "Blade Wraith", "tag": "BW",
-      "blurb": "On cooldown you turn into a ghost that moves faster and hurts everything around you with magic, while {blades, plural, one {# blade circles} other {# blades circle}} you. When the phase ends the blades fly out all around and come back, cutting everything on their way. A hit triggers the phase early and is blocked, and the cooldown stays as it is. Enemy shots fade near you. Count adds blades."
+      "blurb": "On cooldown you turn into a ghost that moves faster and hurts everything around you with magic, while {blades, plural, one {# blade circles} other {# blades circle}} you. When the phase ends the blades fly out all around and come back, cutting everything on their way. Whatever the ghost or the blades touch loses {shredWard}% of its ward for {shredTime} s, more with every phase, up to half of it, so all your magic hits harder. A hit triggers the phase early and is blocked, and the cooldown stays as it is. Enemy shots fade near you. Count adds blades."
     },
     "starfall": {
       "name": "Starfall", "tag": "SF",
@@ -818,7 +812,11 @@
     },
     "blackfrost": {
       "name": "Black Frost", "tag": "BF",
-      "blurb": "A flash of black ice around you sets everything in it on fire and slows it by {slow}%, and {arrows, plural, one {# ice arrow flies} other {# ice arrows fly}} out of it in every direction, piercing the whole line. What an arrow kills bursts into {shards, plural, one {# piercing shard} other {# piercing shards}}. Count adds {perCount, plural, one {# arrow} other {# arrows}}."
+      "blurb": "A flash of black ice around you also takes {healthHit}% of every enemy's max health (half on elites and tanks), sets everything in it on fire and slows it by {slow}%, and {arrows, plural, one {# ice arrow flies} other {# ice arrows fly}} out of it in every direction, piercing the whole line. What an arrow kills bursts into {shards, plural, one {# piercing shard} other {# piercing shards}}. Count adds {perCount, plural, one {# arrow} other {# arrows}}."
+    },
+    "mirrorshield": {
+      "name": "Mirror Shield", "tag": "MS",
+      "blurb": "Stores up to {charges, plural, one {# charge} other {# charges}}: a charge blocks one hit, blasts everything nearby and sends the hit back, turning the beam all the way round you. Every few seconds a wide beam sweeps a {sweep}° arc across the nearest enemy, burns the enemy shots it crosses and takes {shredArmor}% of the armor off every enemy it passes for {shredTime} s, more with every pass, up to half of it, so all your physical damage hits harder. Enemies that touch you get hurt. Count adds beams."
     }
   },
   "retired": {

@@ -253,7 +253,10 @@ function campText(up) {
 
 // Fields that hold a share (shown as a percent), an angle (shown in degrees), or the time
 // between two things (a step that multiplies one makes them come that much more often).
-const SHARE_FIELDS = new Set(['slow', 'fork', 'hpShare', 'chillGrow', 'chillMax', 'eliteSlow', 'armorScale', 'share', 'critBoost', 'rageRegen']);
+const SHARE_FIELDS = new Set([
+  'slow', 'fork', 'hpShare', 'chillGrow', 'chillMax', 'eliteSlow', 'armorScale', 'share', 'critBoost', 'rageRegen',
+  'shredWard', 'shredArmor', 'healthHit',
+]);
 const ANGLE_FIELDS = new Set(['cone', 'sweep']);
 const PERIOD_FIELDS = new Set(['tick', 'dropEvery']);
 // What items, the Camp and the active skills give: these are shares, the rest are amounts.

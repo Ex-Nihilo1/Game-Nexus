@@ -139,11 +139,9 @@ const EVOLUTIONS = {
   ],
   aura: [
     { id: 'emp', damage: 0.2, set: { emp: EMP },
-      inherit: { radiantlance: { set: { emp: EMP } },
-        frosthalo: { set: { emp: EMP } } } },
+      inherit: { frosthalo: { set: { emp: EMP } } } },
     { id: 'sanctum', damage: -0.15, set: { ward: true },
-      inherit: { frosthalo: { set: { ward: true } },
-        radiantlance: { set: { ward: true } } } },
+      inherit: { radiantlance: { set: { ward: true } } } },
   ],
   meteor: [
     { id: 'shower', add: { meteors: 2 }, mul: { radius: 0.85, damage: 0.9, 'crater.damage': 0.9 },
@@ -293,7 +291,9 @@ const SYNERGIES = [
     cooldown: 4.5, damage: 200, passDamage: 110, speed: 490, span: 330, r: 22, radius: 88, delay: 0.7, drones: 2,
     bonus: { size: 0.3 },
     crater: { life: 5, tick: 0.5, damage: 20, share: 0.8 } },
-  { id: 'radiantlance', kind: 'hybrid', pen: 'green-ink', needs: ['spear', 'aura'],
+  // The Aura's two evolutions go to its two merges: Sanctum to the Radiant Lance, EMP Aura to
+  // the Frost Halo. The other weapon of each still takes either evolution.
+  { id: 'radiantlance', kind: 'hybrid', pen: 'green-ink', needs: ['spear', 'aura'], evos: { aura: 'sanctum' },
     scales: ['speed', 'damage', 'size', 'critChance', 'critDamage'],
     tick: 0.3, damage: 42, long: 150, wide: 80, shift: 78, length: 146, turn: 10, push: 70, pushTime: 0.16 },
   // It grows from `grow.from` by `perSecond`, half as fast past `slowAt`, up to `max`, and
@@ -331,7 +331,7 @@ const SYNERGIES = [
     cooldown: 3, damage: 70, speed: 630, span: 620, r: 22, drones: 2,
     dropEvery: 200, dropRange: 220, rocketDamage: 40, radius: 95,
     bonus: { size: 0.2 } },
-  { id: 'frosthalo', halo: true, kind: 'magic', pen: 'ice', needs: ['aura', 'iceflash'],
+  { id: 'frosthalo', halo: true, kind: 'magic', pen: 'ice', needs: ['aura', 'iceflash'], evos: { aura: 'emp' },
     scales: ['damage', 'haste', 'size', 'duration', 'critChance', 'critDamage'],
     tick: 0.4, damage: 9, radius: 120, cooldown: 3, flashDamage: 40, slow: 0.6, slowTime: 1.5, wardShred: 30,
     bonus: { damage: 0.6, size: 0.3, haste: 0.3 } },
@@ -357,13 +357,18 @@ const SYNERGIES = [
     cooldown: 1.4, damage: 60, reach: 100, arc: 2.44, swingGap: 0.14, parry: true,
     pellets: 8, pelletDamage: 16, pierce: 2, range: 280, speed: 700,
     bonus: LEVEL_GAINS },
+  // Support merges (Blade Wraith, Black Frost, Mirror Shield) hit about a third softer than the
+  // others and help the whole kit instead: they take a share of the ward or the armor off what
+  // they touch (`shredWard`, `shredArmor`, for `shredTime` seconds; it adds up to SHRED_MAX of
+  // it), or hit for a share of max health.
   // Blade Wraith: a Phase Dash (the top-level numbers; the ghost hurts with magic) whose blades
-  // circle the hero while the phase lasts, then fly out `flyOut` all around and come back.
+  // circle the hero while the phase lasts, then fly out `flyOut` all around and come back. What
+  // the ghost or the blades touch loses ward, once a phase.
   { id: 'bladewraith', phases: true, kind: 'hybrid', pen: 'green-ink', needs: ['boomerang', 'phase'], evos: { boomerang: 'orbit', phase: 'shroud' },
     scales: ['haste', 'speed', 'damage', 'size', 'duration', 'count', 'critChance', 'critDamage'],
-    cooldown: 10, duration: 2.4, damage: 25, tick: 0.25, radius: 72, moveBoost: 1.6, earlyCost: 1, ward: true,
-    blades: 3, bladeRadius: 90, bladeTurn: 5, bladeDamage: 30, bladeHit: 0.25, r: 14,
-    flyOut: 230, flySpeed: 340, flyDamage: 40,
+    cooldown: 10, duration: 2.4, damage: 18, tick: 0.25, radius: 72, moveBoost: 1.6, earlyCost: 1, ward: true,
+    blades: 3, bladeRadius: 90, bladeTurn: 5, bladeDamage: 21, bladeHit: 0.25, r: 14,
+    flyOut: 230, flySpeed: 340, flyDamage: 28, shredWard: 0.2, shredTime: 10,
     bonus: LEVEL_GAINS },
   // Starfall: meteors on the thickest crowds, and from every blast a bolt that jumps on.
   { id: 'starfall', fire: true, kind: 'magic', pen: 'highlighter', needs: ['meteor', 'chain'], evos: { meteor: 'shower', chain: 'overcharge' },
@@ -380,14 +385,26 @@ const SYNERGIES = [
     ballEvery: 0.3, ballDamage: 30, ballRadius: 45, ballRange: 420, ballSpeed: 320, ballFan: 0.25,
     scorch: { life: 3, tick: 0.5, damage: 5 }, burn: { life: 3, tick: 0.5, damage: 3 },
     bonus: LEVEL_GAINS },
-  // Black Frost: a flash of cold that sets enemies on fire (`burn` every BURN_TICK) and slows
-  // them, and ice arrows all around (`arrow...`; Count adds `perCount` arrows). What an arrow
-  // kills bursts into `shards`. Duration makes the slow and the burning last longer.
+  // Black Frost: a flash of cold that also takes `healthHit` of max health (half on elites and
+  // tanks), sets enemies on fire (`burn` every BURN_TICK; a new flash makes it last, it adds
+  // no stack) and slows them, and ice arrows all around (`arrow...`; Count adds `perCount`
+  // arrows). What an arrow kills bursts into `shards`. Duration makes the slow and the burning
+  // last longer.
   { id: 'blackfrost', kind: 'magic', pen: 'ice', needs: ['icearrow', 'iceflash'], evos: { icearrow: 'shatter', iceflash: 'darkice' },
     scales: ['damage', 'haste', 'size', 'duration', 'count', 'critChance', 'critDamage'],
-    cooldown: 3, damage: 30, radius: 130, slow: 0.3, slowTime: 1.5, burn: 6, burnTime: 2,
-    arrows: 6, perCount: 2, arrowDamage: 40, speed: 440, life: 1.3, width: 11, widthGrowth: 3, length: 26,
+    cooldown: 3, damage: 20, healthHit: 0.01, radius: 130, slow: 0.3, slowTime: 1.5, burn: 6, burnTime: 2,
+    arrows: 6, perCount: 2, arrowDamage: 28, speed: 440, life: 1.3, width: 11, widthGrowth: 3, length: 26,
     shards: 3, shardDamage: 0.4,
+    bonus: LEVEL_GAINS },
+  // Mirror Shield: a Shield (`cooldown` between charges, `charges`, `damage` of the blast, and
+  // Spiked Shield's `thorns`) with a beam on a timer of its own (`beam...`) that sweeps a
+  // `sweep` arc, burns the enemy shots it crosses and takes armor off what it passes, once a
+  // pass. A charge that takes a hit sends the beam all the way round the hero in `spin` s.
+  { id: 'mirrorshield', mirror: true, kind: 'hybrid', pen: 'red-pencil', needs: ['shield', 'laser'], evos: { shield: 'spiked', laser: 'sweeper' },
+    scales: ['haste', 'damage', 'size', 'duration', 'count', 'critChance', 'critDamage'],
+    cooldown: 12, charges: 3, damage: 105, radius: 110, thorns: 25,
+    beamCooldown: 4, beamDamage: 5, beamTick: 0.1, beamLength: 380, beamWidth: 15, beamLife: 1.5, sweep: 2.1, spin: 0.8,
+    shredArmor: 0.1, shredTime: 8,
     bonus: LEVEL_GAINS },
 ];
 const WEAPON_DEFS = [...WEAPONS, ...SYNERGIES];

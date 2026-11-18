@@ -55,6 +55,7 @@ function hurtHero(amount, kind = 'phys', source = 'touch') {
     hero.iframes = HERO.iframes;
     explode(hero.x, hero.y, auraRadius(shield), shield, shield.cfg.damage);
     eraseEnemyShots(hero.x, hero.y, auraRadius(shield)); // the blast clears the air too
+    if (shield.cfg.mirror) mirrorSpin(shield); // Mirror Shield sends the hit back as a beam
     return;
   }
   const dash = phaseWeapon();

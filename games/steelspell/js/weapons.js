@@ -142,16 +142,20 @@ function fullyGrown(w) {
   return !!w && w.level >= MAX_WEAPON_LEVEL && (!!w.evo || !EVOLUTIONS[w.def.id]);
 }
 
-// Whether weapon `w` can still go into `merge`: a merge with `evos` takes one evolution of it.
+// The evolution `merge` asks of weapon `id`, or '' if it takes either.
+function evoAsked(merge, id) { return (merge.evos && merge.evos[id]) || ''; }
+
+// Whether weapon `w` can still go into `merge`: not if it took another evolution than asked.
 function evoFits(merge, w) {
-  return !merge.evos || !w.evo || w.evo === merge.evos[w.def.id];
+  const asked = evoAsked(merge, w.def.id);
+  return !asked || !w.evo || w.evo === asked;
 }
 
 // Two weapons can merge once both are at the last level and evolved, the way the merge asks.
 function readyMerges() {
   return SYNERGIES.filter(s => s.needs.every(id => {
     const w = owned(id);
-    return fullyGrown(w) && (!s.evos || w.evo === s.evos[id]);
+    return fullyGrown(w) && (!evoAsked(s, id) || w.evo === evoAsked(s, id));
   }));
 }
 
@@ -160,9 +164,9 @@ function synergyPartners(id) {
   return SYNERGIES.filter(s => s.needs.includes(id) && s.needs.some(n => n !== id && owned(n) && evoFits(s, owned(n))));
 }
 
-// The merges an evolution leads to: those that ask for it, and those that take any evolution.
+// The merges an evolution leads to: those that ask for it, and those that take either.
 function evoMerges(weaponId, evoId) {
-  return SYNERGIES.filter(s => s.needs.includes(weaponId) && (!s.evos || s.evos[weaponId] === evoId));
+  return SYNERGIES.filter(s => s.needs.includes(weaponId) && (!evoAsked(s, weaponId) || evoAsked(s, weaponId) === evoId));
 }
 
 // The two weapons leave, the merged one arrives at full strength, and the freed slot is

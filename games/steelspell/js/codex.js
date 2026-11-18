@@ -103,8 +103,9 @@ function showMergeWindow(m) {
   openCodexWindow(nameOf(m), box => {
     box.appendChild(el('span', `stamp ${m.kind}`, kindName(m.kind)));
     box.appendChild(recipeRow(m, true));
-    const needs = m.evos && m.needs.map(id => t('codex.evoOf', { evo: evoNameOf(id, m.evos[id]), weapon: nameOf(defOf(id)) }));
-    windowLines(box, [blurbOf(m), usesText(m), needs ? t('codex.needsEvos', { list: needs.join(', ') }) : '']);
+    const needs = m.needs.filter(id => evoAsked(m, id))
+      .map(id => t('codex.evoOf', { evo: evoNameOf(id, evoAsked(m, id)), weapon: nameOf(defOf(id)) }));
+    windowLines(box, [blurbOf(m), usesText(m), needs.length ? t('codex.needsEvos', { list: needs.join(', ') }) : '']);
     const kept = m.needs.flatMap(id => (EVOLUTIONS[id] || [])
       .filter(evo => evo.inherit && evo.inherit[m.id])
       .map(evo => t('cards.fromEvo', { evo: evoName(evo), text: inheritText(evo, m) })));
@@ -134,7 +135,7 @@ function recipeRow(m, inWindow = false) {
   const kit = phase === 'paused' ? hero.weapons.map(w => w.def.id) : []; // marked only during a run
   m.needs.forEach((id, i) => {
     if (i) row.appendChild(el('span', 'codex-op', '+'));
-    row.appendChild(codexTile(defOf(id), kit.includes(id), m.evos ? evoNameOf(id, m.evos[id]) : ''));
+    row.appendChild(codexTile(defOf(id), kit.includes(id), evoAsked(m, id) ? evoNameOf(id, evoAsked(m, id)) : ''));
   });
   row.appendChild(el('span', 'codex-op', '→'));
   const result = codexTile(m, kit.includes(m.id));

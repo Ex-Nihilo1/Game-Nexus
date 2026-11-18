@@ -86,6 +86,51 @@ FIRE.laser = function (w) {
   return true;
 };
 
+// ---- Mirror Shield ----
+
+// A beam out of the shield that turns `span` over its `life`: a Sweeper's arc, or all the way
+// round when a charge sends a hit back. Magic damage. It burns the enemy shots it crosses and
+// takes a share of the armor off every enemy it passes, once a beam.
+function mirrorBeam(w, a, span, life) {
+  const d = w.cfg;
+  const size = weaponSize(w);
+  const shredded = new Set();
+  addZone({
+    look: 'laser', pen: d.pen, x: hero.x, y: hero.y, r: d.beamLength * size, a, length: d.beamLength * size,
+    half: d.beamWidth * size / 2, life, turn: span / life, tick: d.beamTick, timer: 0, w,
+    move: (z, dt) => {
+      z.x = hero.x;
+      z.y = hero.y;
+      z.a += z.turn * dt;
+      eraseShotsOnLine(z.x, z.y, z.x + Math.cos(z.a) * z.length, z.y + Math.sin(z.a) * z.length, z.half);
+    },
+    each: (z, fn) => eachEnemyOnLance(z.x, z.y, z.a, z.length, z.half, fn),
+    apply: e => {
+      hit(e, w, d.beamDamage, 'magic', true);
+      if (e.dead || shredded.has(e)) return;
+      shredded.add(e);
+      shredShare(e, 'armor', d.shredArmor, d.shredTime * weaponDuration(w));
+    },
+  });
+}
+
+// On its timer the beam sweeps its arc across the nearest enemy; Count adds beams, spread
+// evenly around the hero.
+function sweepMirrorBeams(w) {
+  const d = w.cfg;
+  const target = nearestEnemies(hero.x, hero.y, d.beamLength * weaponSize(w), 1)[0];
+  if (!target) return false;
+  const n = shotCount(w);
+  const aim = aimAt(target) - d.sweep / 2;
+  const life = d.beamLife * weaponDuration(w);
+  for (let i = 0; i < n; i++) mirrorBeam(w, aim + i * TAU / n, d.sweep, life);
+  return true;
+}
+
+function mirrorSpin(w) {
+  mirrorBeam(w, rand() * TAU, TAU, w.cfg.spin);
+}
+
 // ---- Flamethrower ----
 
 function moveFlame(z, dt) {

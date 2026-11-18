@@ -34,6 +34,13 @@ function shred(e, which, amount, seconds, stack = true) {
   e[`${key}Until`] = elapsed + seconds;
 }
 
+// The same as a share of the enemy's own armor or ward: the support merges take it this way.
+// It adds up with every other shred, to SHRED_MAX of it at most.
+function shredShare(e, which, share, seconds) {
+  const base = which === 'armor' ? e.armor : e.ward;
+  if (base > 0) shred(e, which, base * share, seconds, true);
+}
+
 // One hit from a weapon: base damage, then stats, crit, and the enemy's armor. `kind` only
 // says which armor it meets: the upgrades it uses are always those of the weapon itself.
 // `dot` marks damage over time: its numbers are shown summed up, a few times a second.

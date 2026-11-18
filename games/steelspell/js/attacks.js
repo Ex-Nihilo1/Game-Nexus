@@ -148,7 +148,11 @@ function sendWraithBlades(w) {
       x: hero.x + Math.cos(turn) * radius, y: hero.y + Math.sin(turn) * radius,
       turn, orbitRadius: radius, orbitTurn: d.bladeTurn, again: d.bladeHit, hitEvery: d.bladeHit,
       damage: d.bladeDamage, flyDamage: d.flyDamage, range: d.flyOut, returnBoost: 1.25, flown: 0, back: false, out: false, spin: 0,
-      move: moveWraithBlade, onHit: (s, e) => hit(e, w, s.damage, 'phys'),
+      move: moveWraithBlade,
+      onHit: (s, e) => {
+        hit(e, w, s.damage, 'phys');
+        wraithShred(w, e);
+      },
     });
   }
 }
@@ -702,6 +706,8 @@ const FIRE = {
     const lasts = weaponDuration(w);
     eachEnemyNear(hero.x, hero.y, radius, e => {
       hit(e, w, d.damage);
+      // A share of max health, magic like the rest, half on elites and tanks; not on a dummy.
+      if (!e.dead && !e.def.dummy) hurtEnemy(e, e.maxHp * d.healthHit * (e.def.elite || e.def.tank ? 0.5 : 1), 'magic', false, w);
       if (e.dead) return;
       slow(e, d.slow, d.slowTime * lasts);
       ignite(e, w, d.burn, d.burnTime * lasts);
