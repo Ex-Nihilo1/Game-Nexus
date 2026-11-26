@@ -136,30 +136,39 @@ function endRun() {
 }
 
 // Sends the run to the account (nothing happens for guests) and adds where it
-// landed on the leaderboards to the end screen.
-// It carries most of the end screen, with the names of this version, so the
+// landed on the leaderboards to the end screen. A run with a developer cheat is not sent.
+// It carries most of the end screen, with the names of this version in English, so the
 // leaderboard can show the build without the game's data.
 function reportRun() {
+  if (cheated) return;
+  const names = inEnglish(() => ({
+    active: activeName(activeDef),
+    start: nameOf(WEAPONS.find(d => d.id === startWeapon)),
+    weapons: hero.weapons.map(w => (w.evo ? [nameOf(w.def), weaponName(w)] : [weaponName(w), ''])),
+    kinds: hero.weapons.map(w => kindName(w.def.kind)),
+    items: items.map(itemName),
+    stats: Object.fromEntries(Object.keys(STATS).map(key => [key, statName(key)])),
+  }));
   const picks = [];
   for (const key of Object.keys(STATS)) {
     const n = upgrades[key];
-    if (n) picks.push({ name: STATS[key].name, strong: Math.min(n, STRONG_PICKS), weak: Math.max(0, n - STRONG_PICKS) });
+    if (n) picks.push({ name: names.stats[key], strong: Math.min(n, STRONG_PICKS), weak: Math.max(0, n - STRONG_PICKS) });
   }
   Nexus.finishRun({
     version: runVersionNow, time: elapsed, level, kills, elites: elitesKilled, merges,
-    active: activeDef.id, activeName: activeDef.name,
-    start: startWeapon, startName: WEAPONS.find(d => d.id === startWeapon).name,
+    active: activeDef.id, activeName: names.active,
+    start: startWeapon, startName: names.start,
     health: Math.round(hero.maxHp),
-    weapons: hero.weapons.map(w => ({
+    weapons: hero.weapons.map((w, i) => ({
       id: w.def.id,
-      name: w.evo ? w.def.name : weaponName(w),
+      name: names.weapons[i][0],
       evo: w.evo || '',
-      evoName: w.evo ? weaponName(w) : '',
+      evoName: names.weapons[i][1],
       level: w.level || 0,
-      kind: KINDS[w.def.kind].name,
+      kind: names.kinds[i],
       dealt: Math.round(w.dealt),
     })),
-    items: items.map(item => ({ id: item.id, name: item.name, rarity: item.rarity })),
+    items: items.map((item, i) => ({ id: item.id, name: names.items[i], rarity: item.rarity })),
     hurt: {
       touch: Math.round(hero.hurtBy.touch), shot: Math.round(hero.hurtBy.shot), strike: Math.round(hero.hurtBy.strike),
     },

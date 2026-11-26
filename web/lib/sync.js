@@ -23,7 +23,8 @@
     chronomancer: { name: 'Chronomancer', keys: ['chronoguard-v2'] },
     steelspell: {
       name: 'Steel & Spell',
-      keys: ['games.steelspell.save', 'games.steelspell.records', 'games.steelspell.meta', 'games.steelspell.last', 'games.steelspell.best'],
+      keys: ['games.steelspell.save', 'games.steelspell.records', 'games.steelspell.meta', 'games.steelspell.last', 'games.steelspell.best',
+        'games.steelspell.settings', 'games.steelspell.lang'],
     },
   };
   const groupOf = {};

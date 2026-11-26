@@ -95,6 +95,18 @@ function rawText(key) {
 
 function hasText(key) { return typeof rawText(key) === 'string'; }
 
+// What `fn` returns with every text taken from English, whatever language is in use: the
+// leaderboards show one language to everyone.
+function inEnglish(fn) {
+  const own = texts;
+  texts = englishTexts;
+  textParts.clear();
+  try { return fn(); } finally {
+    texts = own;
+    textParts.clear();
+  }
+}
+
 // The text under `key` with `params` filled in. A text that is missing shows its key, and a
 // missing parameter its placeholder, so that a gap is easy to spot.
 function t(key, params = {}) {
