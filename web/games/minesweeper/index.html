@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Minesweeper</title>
   <link rel="stylesheet" href="../../lib/theme.css">
+  <script src="../../lib/i18n.js"></script>
+  <script src="../../lib/i18n-ru.js"></script>
+  <script src="ru.js"></script>
   <script src="../../lib/theme.js"></script>
   <script src="../../lib/api.js"></script>
   <script src="../../lib/sync.js" data-game="minesweeper"></script>
@@ -138,15 +141,15 @@
   <div class="page">
     <header class="app-header">
       <div>
-        <a class="back-link" href="../../index.html">&larr; Game Nexus</a>
-        <h1 class="app-title">Minesweeper</h1>
+        <a class="back-link" href="../../index.html" data-i18n>&larr; Game Nexus</a>
+        <h1 class="app-title" data-i18n>Minesweeper</h1>
         <div class="app-status" id="status"></div>
       </div>
       <div class="theme-controls"></div>
     </header>
 
     <main>
-      <div class="toolbar">
+      <div class="toolbar" data-i18n-all>
         <div class="hud">
           <label class="setting">
             <span class="setting-label">Width</span>
@@ -174,14 +177,14 @@
       </div>
 
       <div class="modes">
-        <div class="tabs" role="tablist" id="modes" aria-label="Mode"></div>
+        <div class="tabs" role="tablist" id="modes" aria-label="Mode" data-i18n-aria-label></div>
         <p class="mode-note" id="mode-note"></p>
       </div>
 
       <div class="field-wrap">
         <div class="field" id="field"></div>
       </div>
-      <p class="hint">Click to open &middot; right-click to flag &middot; click a number with all its flags placed to open around it.</p>
+      <p class="hint" data-i18n-html>Click to open &middot; right-click to flag &middot; click a number with all its flags placed to open around it.</p>
     </main>
   </div>
 

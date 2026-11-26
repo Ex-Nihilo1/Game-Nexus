@@ -8,7 +8,7 @@ const Nexus = (function () {
   const PENDING_KEY = 'nexus.pending';
 
   async function call(method, path, body) {
-    if (!online) return { ok: false, status: 0, data: { error: 'Open Game Nexus from its server to use accounts.' } };
+    if (!online) return { ok: false, status: 0, data: { error: tr('Open Game Nexus from its server to use accounts.') } };
     try {
       const res = await fetch(root + 'api/' + path, {
         method,
@@ -18,9 +18,11 @@ const Nexus = (function () {
       });
       let data = null;
       try { data = await res.json(); } catch (e) { /* empty or not JSON */ }
-      return { ok: res.ok, status: res.status, data: data || {} };
+      data = data || {};
+      if (typeof data.error === 'string') data.error = tr(data.error); // the server writes English
+      return { ok: res.ok, status: res.status, data };
     } catch (e) {
-      return { ok: false, status: 0, data: { error: 'The server cannot be reached.' } };
+      return { ok: false, status: 0, data: { error: tr('The server cannot be reached.') } };
     }
   }
 
@@ -100,24 +102,27 @@ const Nexus = (function () {
   // ---- End screens ----
 
   function formatValue(value, unit) {
-    if (unit === 'speed') return `${value.toFixed(2)} clicks/s`;
+    const fixed = (n, digits) => I18n.num(n, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    if (unit === 'speed') return tr('{n} clicks/s', { n: fixed(value, 2) });
     if (unit === 'seconds') {
-      if (value < 60) return `${value.toFixed(1)} s`;
+      if (value < 60) return tr('{n} s', { n: fixed(value, 1) });
       const s = Math.floor(value);
       const h = Math.floor(s / 3600);
       const mm = String(Math.floor(s / 60) % 60).padStart(h ? 2 : 1, '0');
       return `${h ? h + ':' : ''}${mm}:${String(s % 60).padStart(2, '0')}`;
     }
-    return Math.round(value).toLocaleString('en-US');
+    return I18n.num(Math.round(value));
   }
 
   // What an end screen says about the server's answer: one line per board, or a
-  // reminder to confirm the email. Empty for guests.
+  // reminder to choose a name. Empty for guests.
   function rankLines(answer) {
     if (!answer) return [];
-    if (!answer.named) return ['Choose a display name to appear on the leaderboards.'];
-    return (answer.ranks || []).map(r =>
-      `${r.isNew ? 'New best: ' : ''}#${r.rank} on ${r.title} (${formatValue(r.value, r.unit)})`);
+    if (!answer.named) return [tr('Choose a display name to appear on the leaderboards.')];
+    return (answer.ranks || []).map(r => {
+      const vars = { rank: r.rank, board: tr(r.title), value: formatValue(r.value, r.unit) };
+      return r.isNew ? tr('New best: #{rank} on {board} ({value})', vars) : tr('#{rank} on {board} ({value})', vars);
+    });
   }
 
   return {

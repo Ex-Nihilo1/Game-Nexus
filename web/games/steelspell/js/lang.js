@@ -22,7 +22,6 @@ const LANGUAGES = [
   { id: 'en', name: 'English' },
   { id: 'ru', name: 'Русский' },
 ];
-const LANG_KEY = 'games.steelspell.lang';
 const TEXTS_IN_WORKER = typeof importScripts === 'function';
 
 let langId = 'en';
@@ -34,15 +33,10 @@ let numberFormat = null;
 
 // ---- Loading ----
 
-function savedLanguage() {
-  try { return localStorage.getItem(LANG_KEY); } catch (e) { return null; }
-}
-
-// The language picked in the menu, else the first of the browser's that the game has.
+// The site's language (lib/i18n.js), else the first of the browser's that the game has.
 function pickLanguage() {
   const known = id => LANGUAGES.some(l => l.id === id);
-  const saved = savedLanguage();
-  if (known(saved)) return saved;
+  if (typeof I18n !== 'undefined' && known(I18n.lang)) return I18n.lang;
   for (const tag of navigator.languages || [navigator.language || 'en']) {
     const base = String(tag).toLowerCase().split('-')[0];
     if (known(base)) return base;
@@ -69,10 +63,10 @@ async function loadTexts(id = pickLanguage()) {
   return !!english;
 }
 
-// The menu's choice is remembered for the next visit.
+// The choice is the site's: every page and game follows it, and it syncs with the
+// account. The game redraws itself when it changes (hud.js).
 function setLanguage(id) {
-  try { localStorage.setItem(LANG_KEY, id); } catch (e) { /* private mode etc. */ }
-  return loadTexts(id);
+  if (typeof I18n !== 'undefined') I18n.set(id);
 }
 
 const textsReady = TEXTS_IN_WORKER ? Promise.resolve(false) : loadTexts();

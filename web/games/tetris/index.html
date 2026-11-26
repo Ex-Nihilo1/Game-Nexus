@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tetris</title>
   <link rel="stylesheet" href="../../lib/theme.css">
+  <script src="../../lib/i18n.js"></script>
+  <script src="../../lib/i18n-ru.js"></script>
+  <script src="ru.js"></script>
   <script src="../../lib/theme.js"></script>
   <script src="../../lib/api.js"></script>
   <script src="../../lib/sync.js" data-game="tetris"></script>
@@ -53,7 +56,7 @@
 <body>
   <div class="page">
     <header class="app-header">
-      <div>
+      <div data-i18n-all>
         <a class="back-link" href="../../index.html">&larr; Game Nexus</a>
         <h1 class="app-title">Tetris</h1>
       </div>
@@ -63,7 +66,7 @@
     <main class="tetris-layout">
       <canvas id="board" width="300" height="600"></canvas>
 
-      <aside class="side">
+      <aside class="side" data-i18n-all>
         <section>
           <h2 class="section-title">Next</h2>
           <canvas id="next" width="120" height="120"></canvas>

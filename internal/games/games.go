@@ -59,8 +59,8 @@ type Board struct {
 // All lists the games in menu order.
 var All = []*Game{tetris, minesweeper, towerDefense, chronomancer, steelSpell}
 
-// Shared keys sync for everyone: the colour scheme and light/dark mode.
-var SharedKeys = []string{"games.scheme", "games.mode"}
+// Shared keys sync for everyone: the colour scheme, light/dark mode and the language.
+var SharedKeys = []string{"games.scheme", "games.mode", "games.lang"}
 
 var byID = map[string]*Game{}
 var saveKeys = map[string]*Game{}

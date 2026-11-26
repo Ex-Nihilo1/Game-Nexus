@@ -133,7 +133,10 @@ function el(tag, className, text) {
   return node;
 }
 
+let lastPanel = null; // drawn again in another language
+
 function showPanel(build) {
+  lastPanel = build;
   panelEl.textContent = '';
   build(panelEl);
   overlayEl.hidden = false;
@@ -313,7 +316,7 @@ function showSettings(from) {
     addDevSettings(p, from);
     if (LANGUAGES.length > 1) {
       const lang = el('label', 'setting');
-      lang.append(el('span', 'setting-name', t('settings.language')), languagePicker(() => showSettings(from)));
+      lang.append(el('span', 'setting-name', t('settings.language')), languagePicker());
       p.appendChild(lang);
     }
     const actions = el('div', 'panel-actions');
@@ -367,8 +370,8 @@ function addDevSettings(p, from) {
   p.appendChild(el('p', 'panel-note', t('settings.devNote')));
 }
 
-// The language: the texts load again, and the screen with them (`after`).
-function languagePicker(after) {
+// The language: the texts load again, and the screen with them (see below).
+function languagePicker() {
   const pick = el('select', 'lang-pick');
   pick.setAttribute('aria-label', t('settings.language'));
   for (const lang of LANGUAGES) {
@@ -377,12 +380,23 @@ function languagePicker(after) {
     option.selected = lang.id === langId;
     pick.appendChild(option);
   }
-  pick.addEventListener('change', () => setLanguage(pick.value).then(() => {
+  pick.addEventListener('change', () => setLanguage(pick.value));
+  return pick;
+}
+
+// Another language, from this picker or the header's: the texts load, and the page and
+// the panel on screen are drawn again with them. Cards already dealt keep their words.
+if (typeof I18n !== 'undefined' && !TEXTS_IN_WORKER) {
+  I18n.onChange(id => loadTexts(id).then(() => {
     applyPageTexts();
     showBest();
-    after();
+    if (activeDef && !activeBtn.hidden) {
+      setText(activeNameEl, activeName(activeDef));
+      activeBtn.title = activeBlurb(activeDef);
+    }
+    if (!overlayEl.hidden && lastPanel) showPanel(lastPanel);
+    dirty = true;
   }));
-  return pick;
 }
 
 // The few words of the page outside the canvas and the panels.

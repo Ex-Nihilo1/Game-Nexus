@@ -18,11 +18,11 @@
 
   function render(box, user) {
     box.textContent = '';
-    if (!location.pathname.includes('/leaderboards/')) box.appendChild(link('leaderboards/', 'Leaderboards', 'text-link'));
+    if (!location.pathname.includes('/leaderboards/')) box.appendChild(link('leaderboards/', tr('Leaderboards'), 'text-link'));
     if (!Nexus.online) return;
     if (!user) {
       if (!location.pathname.includes('/account/')) {
-        box.appendChild(link('api/auth/google?back=' + encodeURIComponent(here()), 'Sign in', 'button'));
+        box.appendChild(link('api/auth/google?back=' + encodeURIComponent(here()), tr('Sign in'), 'button'));
       }
       return;
     }
@@ -35,18 +35,18 @@
     button.setAttribute('aria-haspopup', 'menu');
     button.setAttribute('aria-expanded', 'false');
     button.innerHTML = CHEVRON;
-    button.prepend(document.createTextNode(user.displayName || 'Choose a name'));
+    button.prepend(document.createTextNode(user.displayName || tr('Choose a name')));
 
     const menu = document.createElement('div');
     menu.className = 'menu';
     menu.setAttribute('role', 'menu');
     menu.hidden = true;
     const items = user.displayName
-      ? [link('leaderboards/?player=' + encodeURIComponent(user.displayName), 'Your stats'), link('account/', 'Account')]
-      : [link('account/?back=' + encodeURIComponent(here()), 'Account: choose a name')];
+      ? [link('leaderboards/?player=' + encodeURIComponent(user.displayName), tr('Your stats')), link('account/', tr('Account'))]
+      : [link('account/?back=' + encodeURIComponent(here()), tr('Account: choose a name'))];
     const signOut = document.createElement('button');
     signOut.type = 'button';
-    signOut.textContent = 'Sign out';
+    signOut.textContent = tr('Sign out');
     signOut.addEventListener('click', async () => {
       await Nexus.call('POST', 'auth/logout', {});
       Nexus.setUser(null);
@@ -88,6 +88,7 @@
     render(box, null);
     Nexus.userReady.then(user => render(box, user));
     document.addEventListener('nexususer', e => render(box, e.detail));
+    document.addEventListener('langchange', () => render(box, Nexus.user()));
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);

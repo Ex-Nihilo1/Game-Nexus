@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Account - Game Nexus</title>
   <link rel="stylesheet" href="../lib/theme.css">
+  <script src="../lib/i18n.js"></script>
+  <script src="../lib/i18n-ru.js"></script>
   <script src="../lib/theme.js"></script>
   <script src="../lib/api.js"></script>
   <script src="../lib/sync.js"></script>
@@ -30,14 +32,14 @@
 <body>
   <div class="page">
     <header class="app-header">
-      <div>
+      <div data-i18n-all>
         <a class="back-link" href="../index.html">&larr; Game Nexus</a>
         <h1 class="app-title">Account</h1>
       </div>
       <div class="theme-controls"></div>
     </header>
 
-    <main class="account-page">
+    <main class="account-page" data-i18n-all>
       <p class="message" id="page-message" role="status"></p>
 
       <!-- Signed out -->
@@ -149,10 +151,10 @@
     $('reauth').href = signInURL('/account/#delete');
 
     const ERRORS = {
-      cancelled: 'Sign-in was cancelled.',
-      failed: 'Signing in with Google did not work. Try again.',
-      unavailable: 'Signing in is not set up on this server.',
-      busy: 'Too many sign-ins from here. Wait a minute and try again.',
+      cancelled: tr('Sign-in was cancelled.'),
+      failed: tr('Signing in with Google did not work. Try again.'),
+      unavailable: tr('Signing in is not set up on this server.'),
+      busy: tr('Too many sign-ins from here. Wait a minute and try again.'),
     };
     if (params.get('error')) say($('page-message'), ERRORS[params.get('error')] || ERRORS.failed);
 
@@ -167,7 +169,7 @@
 
     bind($('choose-form'), async (v, form) => {
       const r = await Nexus.call('PATCH', 'me', { displayName: v.displayName });
-      if (!r.ok) return say(formMessage(form), r.data.error || 'That did not work. Try again.');
+      if (!r.ok) return say(formMessage(form), r.data.error || tr('That did not work. Try again.'));
       Nexus.setUser(r.data.user);
       const back = backTarget();
       if (back && back !== '/account/') location.href = back;
@@ -175,10 +177,10 @@
     });
     bind($('name-form'), async (v, form) => {
       const r = await Nexus.call('PATCH', 'me', { displayName: v.displayName });
-      if (!r.ok) return say(formMessage(form), r.data.error || 'That did not work. Try again.');
+      if (!r.ok) return say(formMessage(form), r.data.error || tr('That did not work. Try again.'));
       Nexus.setUser(r.data.user);
       render(r.data.user);
-      say(formMessage(form), 'Saved.', true);
+      say(formMessage(form), tr('Saved.'), true);
     });
     $('signout').addEventListener('click', async () => {
       await Nexus.call('POST', 'auth/logout', {});
@@ -189,15 +191,15 @@
       Nexus.setUser(null);
     });
     $('delete-button').addEventListener('click', async () => {
-      if (!confirm('Delete your Game Nexus account for good? This cannot be undone.')) return;
+      if (!confirm(tr('Delete your Game Nexus account for good? This cannot be undone.'))) return;
       const r = await Nexus.call('DELETE', 'me');
       if (r.ok) {
         if (Nexus.sync) Nexus.sync.forget();
         Nexus.setUser(null);
-        say($('page-message'), 'Your account is deleted.', true);
+        say($('page-message'), tr('Your account is deleted.'), true);
         return;
       }
-      say($('delete-message'), r.data.error || 'That did not work. Try again.');
+      say($('delete-message'), r.data.error || tr('That did not work. Try again.'));
       $('reauth').hidden = !r.data.reauth;
     });
 
@@ -206,7 +208,7 @@
     if (!Nexus.online) {
       show('guest-view');
       $('google').hidden = true;
-      say($('page-message'), 'Accounts work when Game Nexus is opened from its server, not from a file.');
+      say($('page-message'), tr('Accounts work when Game Nexus is opened from its server, not from a file.'));
     } else {
       Nexus.userReady.then(user => {
         render(user);

@@ -17,7 +17,7 @@ var steelSpell = &Game{
 	Name: "Steel & Spell",
 	SaveKeys: []string{
 		"games.steelspell.save", "games.steelspell.records", "games.steelspell.meta",
-		"games.steelspell.last", "games.steelspell.best", "games.steelspell.settings", "games.steelspell.lang",
+		"games.steelspell.last", "games.steelspell.best", "games.steelspell.settings",
 	},
 	Boards: []Board{
 		{ID: "time", Title: "Longest run", Metric: "time", Unit: "seconds", Desc: true,

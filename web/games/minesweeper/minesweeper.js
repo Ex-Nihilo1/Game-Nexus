@@ -103,7 +103,7 @@ function buildTabs(el, options, key, pick) {
     tab.className = 'tab';
     tab.setAttribute('role', 'tab');
     tab.dataset.id = o.id;
-    tab.textContent = o.name;
+    tab.textContent = tr(o.name);
     tab.addEventListener('click', () => {
       if (state === 'playing') return;
       pick(o);
@@ -181,7 +181,7 @@ function newGame() {
   minePctValueEl.textContent = `${minePct}% · ${mineTotal}`;
   markTabs(modesEl, mode.id);
   lockSettings(false);
-  modeNoteEl.textContent = mode.note;
+  modeNoteEl.textContent = tr(mode.note);
   updateHud();
   setStatus(''); // the status line only carries crucial notes, like a forced guess
   fitField();
@@ -285,7 +285,7 @@ function placeSolvable(start) {
     }
     if (best === goal) return true;
   } while (performance.now() < deadline);
-  setStatus(`No guess-free board found in time · this one may need a guess`);
+  setStatus(() => tr('No guess-free board found in time · this one may need a guess'));
   return false;
 }
 
@@ -662,7 +662,7 @@ function reveal(start) {
   if (mine[start]) {
     // Forgiving mode spares a hit only when logic offered no safe cell.
     if (mode.id === 'forgiving' && !hasSafeMove() && relocateMine(start)) {
-      setStatus(`Forced guess · mine moved, keep going`);
+      setStatus(() => tr('Forced guess · mine moved, keep going'));
     } else {
       lose(start);
       return;
@@ -716,7 +716,7 @@ function win() {
     }
   }
   fieldEl.classList.add('done');
-  resultEl.textContent = 'CLEARED';
+  resultEl.textContent = tr('CLEARED');
   resultEl.className = 'stamp good';
   updateHud();
   setStatus(''); // the stamp and timer already say it
@@ -735,7 +735,7 @@ function lose(hit) {
     }
   }
   fieldEl.classList.add('done');
-  resultEl.textContent = 'BOOM';
+  resultEl.textContent = tr('BOOM');
   resultEl.className = 'stamp bad';
   setStatus('');
   report(false);
@@ -749,7 +749,7 @@ function report(won) {
   const stats = { won, seconds, cols, rows, minePct, mode: mode.id };
   if (won) stats.bbbv = threeBV();
   Nexus.finishRun(stats).then(answer => {
-    if (state === game && won) setStatus(Nexus.rankLines(answer).join(' · '));
+    if (state === game && won) setStatus(() => Nexus.rankLines(answer).join(' · '));
   });
 }
 
@@ -793,8 +793,11 @@ function updateHud() {
   minesLeftEl.textContent = mineTotal - flags;
 }
 
+// `text` may be a function, so the line can be said again in another language.
+let statusText = '';
 function setStatus(text) {
-  statusEl.textContent = text;
+  statusText = text;
+  statusEl.textContent = typeof text === 'function' ? text() : text;
 }
 
 // ---- Timer ----
@@ -848,6 +851,13 @@ bindSlider(widthEl, () => size.cols, v => { size.cols = v; }, saveSize);
 bindSlider(heightEl, () => size.rows, v => { size.rows = v; }, saveSize);
 bindSlider(minePctEl, () => minePct, v => { minePct = v; }, () => localStorage.setItem(MINE_PCT_KEY, minePct));
 buildTabs(modesEl, MODES, MODE_KEY, o => { mode = o; });
+I18n.onChange(() => {
+  for (const t of modesEl.querySelectorAll('.tab')) t.textContent = tr(MODES.find(m => m.id === t.dataset.id).name);
+  modeNoteEl.textContent = tr(mode.note);
+  if (state === 'won') resultEl.textContent = tr('CLEARED');
+  if (state === 'lost') resultEl.textContent = tr('BOOM');
+  setStatus(statusText);
+});
 // Browser zoom also fires resize: then keep the board's zoom so the browser's
 // zoom takes effect. A real window resize re-fits the board.
 window.addEventListener('resize', () => {

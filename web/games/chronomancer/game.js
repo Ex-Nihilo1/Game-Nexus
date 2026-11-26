@@ -163,7 +163,7 @@ const unlocked=id=>!(run.mode==='noMagic'&&id==='academy')&&(['barracks','farm',
 let staleTab=false;
 function reloadLatest(){if(staleTab)return;staleTab=true;window.location?.reload();}
 function save(){if(staleTab)return;try{let latest;try{latest=JSON.parse(localStorage.getItem(KEY));}catch(e){}if((latest?.epoch||0)>saveEpoch){reloadLatest();return;}localStorage.setItem(KEY,JSON.stringify({schema:2,epoch:saveEpoch,meta,run,logs}));}catch(e){$('saveLabel').textContent='Сохранение недоступно в этом браузере';}}
-function log(text){logs.unshift({text,time:new Date().toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'})});logs=logs.slice(0,25);renderLog();}
+function log(text){logs.unshift({text,time:new Date().toLocaleTimeString(typeof I18n!=='undefined'?I18n.locale:'ru',{hour:'2-digit',minute:'2-digit'})});logs=logs.slice(0,25);renderLog();}
 function renderLog(){$('log').replaceChildren(...logs.map(l=>{const d=document.createElement('div'),time=document.createElement('time'),s=document.createElement('span');d.className='log-row';time.textContent=l.time;s.textContent=l.text;d.append(time,s);return d;}));}
 function toast(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').classList.remove('show'),2400);}
 function show(html){$('modal').classList.toggle('loop-planner',Boolean(loopPlan));$('modalContent').innerHTML=html;if(!$('modal').open)$('modal').showModal();}
@@ -480,7 +480,7 @@ function openArmy(){
   '<button class="cancel" id="closeModal">Вернуться в город</button>');
 }
 function formatArmyStat(value){
- return Number(value.toFixed(2)).toLocaleString('ru-RU');
+ return Number(value.toFixed(2)).toLocaleString(typeof I18n!=='undefined'?I18n.locale:'ru-RU');
 }
 function update(){
  $('time').textContent=Math.floor(run.time);$('shards').textContent=meta.shards;$('recordTotal').textContent=`Общий пул: ${meta.eternityRecord} ✧`;$('income').textContent=`Победа: +${waveReward()} ◷`;$('lootEarned').textContent=`Добыча: +${run.waveLoot} ◷`;$('loop').textContent=String(meta.loop).padStart(2,'0');$('best').textContent=meta.best;$('hpText').textContent=`${Math.ceil(Math.max(0,run.hp))} / ${maxHP()}`;$('hpBar').style.width=`${Math.max(0,run.hp/maxHP()*100)}%`;$('hpBar').style.background=run.hp/maxHP()<.3?'#d2878c':'#a4dfb0';

@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Game Nexus</title>
   <link rel="stylesheet" href="lib/theme.css">
+  <script src="lib/i18n.js"></script>
+  <script src="lib/i18n-ru.js"></script>
   <script src="lib/theme.js"></script>
   <script src="lib/api.js"></script>
   <script src="lib/sync.js"></script>
@@ -64,14 +66,14 @@
   <div class="page">
     <header class="app-header">
       <div>
-        <h1 class="app-title">Game Nexus</h1>
+        <h1 class="app-title" data-i18n>Game Nexus</h1>
       </div>
       <div class="theme-controls"></div>
     </header>
 
     <main>
       <ul class="game-list" id="game-list"></ul>
-      <div class="coming-soon">More games coming. Add one in web/lib/games.js. <span id="version"></span></div>
+      <div class="coming-soon"><span data-i18n>More games coming. Add one in web/lib/games.js.</span> <span id="version"></span></div>
     </main>
   </div>
 
@@ -82,22 +84,22 @@
       const li = document.createElement('li');
       // Games made by someone else credit their author inside the Play button
       // (and under the blurb on phones, where the button is hidden).
-      const credit = game.author ? `by ${game.author}` : '';
+      const credit = game.author ? tr('by {author}', { author: game.author }) : '';
       li.innerHTML =
         `<a class="game-row" href="${game.href}">` +
           `<span class="thumb paper">${game.thumb}</span>` +
           `<span class="game-info">` +
-            `<span class="game-name">${game.name}</span>` +
-            `<span class="game-blurb">${game.blurb}</span>` +
+            `<span class="game-name">${tr(game.name)}</span>` +
+            `<span class="game-blurb">${tr(game.blurb)}</span>` +
             (credit ? `<span class="game-credit">${credit}</span>` : '') +
           `</span>` +
           (credit
-            ? `<span class="button primary credit">Play<small>${credit}</small></span>`
-            : `<span class="button primary">Play</span>`) +
+            ? `<span class="button primary credit">${tr('Play')}<small>${credit}</small></span>`
+            : `<span class="button primary">${tr('Play')}</span>`) +
         `</a>`;
       list.appendChild(li);
     }
-    document.getElementById('version').textContent = `· Game Nexus ${NEXUS_VERSION}`;
+    document.getElementById('version').textContent = `· ${tr('Game Nexus')} ${NEXUS_VERSION}`;
   </script>
 </body>
 </html>

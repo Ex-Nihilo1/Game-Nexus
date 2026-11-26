@@ -16,7 +16,7 @@
   // Every key that syncs, by what it belongs to. The server keeps the same list in
   // internal/games, and a Go test checks that the two match.
   const SYNCED = {
-    settings: { name: 'Settings', keys: ['games.scheme', 'games.mode'] },
+    settings: { name: 'Settings', keys: ['games.scheme', 'games.mode', 'games.lang'] },
     tetris: { name: 'Tetris', keys: ['games.tetris.best'] },
     minesweeper: { name: 'Minesweeper', keys: ['games.minesweeper.size', 'games.minesweeper.minePct', 'games.minesweeper.mode'] },
     towerdefense: { name: 'Tower Defense', keys: ['games.towerdefense.best', 'games.towerdefense.map'] },
@@ -24,7 +24,7 @@
     steelspell: {
       name: 'Steel & Spell',
       keys: ['games.steelspell.save', 'games.steelspell.records', 'games.steelspell.meta', 'games.steelspell.last', 'games.steelspell.best',
-        'games.steelspell.settings', 'games.steelspell.lang'],
+        'games.steelspell.settings'],
     },
   };
   const groupOf = {};
@@ -229,6 +229,7 @@
     // Linked only once every conflict is settled: a page closed while the player is
     // still choosing links again next time, and asks again.
     if (linking) put(OWNER_KEY, String(user.id));
+    if (applied.length) document.dispatchEvent(new CustomEvent('nexussync', { detail: applied }));
     reloadIfNeeded(applied);
     await push(false);
   }
@@ -272,7 +273,7 @@
     }
     const applied = [];
     for (const [group, list] of byGroup) {
-      const keep = group === 'settings' ? 'account' : await ask(SYNCED[group].name);
+      const keep = group === 'settings' ? 'account' : await ask(tr(SYNCED[group].name));
       for (const c of list) {
         if (keep === 'account') {
           apply(c.key, c.value, c.rev);
@@ -319,11 +320,10 @@
           'background:var(--paper,#1A3150);color:var(--ink,#E8EFF7)';
         const title = document.createElement('h2');
         title.id = 'nexus-sync-title';
-        title.textContent = `${gameName}: two different copies`;
+        title.textContent = tr('{game}: two different copies', { game: gameName });
         title.style.cssText = 'margin:0 0 8px;font-size:16px;font-weight:600';
         const text = document.createElement('p');
-        text.textContent = 'This device and your account both have progress in this game, and they differ. ' +
-          'Keep one; the other is replaced.';
+        text.textContent = tr('This device and your account both have progress in this game, and they differ. Keep one; the other is replaced.');
         text.style.cssText = 'margin:0 0 16px;line-height:1.45';
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end';
@@ -338,8 +338,8 @@
           row.appendChild(b);
           return b;
         };
-        button("Keep this device's", false, 'device');
-        const first = button("Use the account's", true, 'account');
+        button(tr("Keep this device's"), false, 'device');
+        const first = button(tr("Use the account's"), true, 'account');
         panel.append(title, text, row);
         box.appendChild(panel);
         document.body.appendChild(box);

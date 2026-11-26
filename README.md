@@ -11,7 +11,7 @@ first sign-in.
 | Path | What |
 |---|---|
 | `web/` | The site: the menu, `account/`, `leaderboards/`, `games/<id>/` |
-| `web/lib/` | Shared by every page: `theme.*`, `api.js` (API client, run reports), `sync.js` (save sync), `account.js` (header menu) |
+| `web/lib/` | Shared by every page: `i18n.js` (English and Russian; `i18n-ru.js` holds the shared Russian), `theme.*`, `api.js` (API client, run reports), `sync.js` (save sync), `account.js` (header menu) |
 | `cmd/nexus/` | The server |
 | `cmd/fake-google/` | A stand-in for Google's sign-in, for development and tests only |
 | `api/openapi.yaml` | OpenAPI spec |
@@ -23,10 +23,16 @@ first sign-in.
 ## Adding a game
 
 1. Make `web/games/<id>/index.html`, and add the game to `web/lib/games.js` for the menu.
-2. Load `api.js`, `sync.js` (with `data-game="<id>"`) and `account.js` after `theme.js`, as the other games do.
-3. List its localStorage keys in `web/lib/sync.js` and in a new `internal/games/<id>.go`, with
-   its stats, checks and boards. A Go test checks that the two key lists match.
-4. Call `Nexus.startRun('<id>')` when a game starts and `Nexus.finishRun(stats)` when it ends.
+2. Load `i18n.js`, `i18n-ru.js` and the game's own `ru.js` first, then `theme.js`, `api.js`,
+   `sync.js` (with `data-game="<id>"`) and `account.js`, as the other games do.
+3. Write the game's text in English and show it through `tr()`, or mark static HTML with
+   `data-i18n`; put the Russian in `web/games/<id>/ru.js`. `I18n.missing` in the browser
+   console lists what is still untranslated. Register `I18n.onChange` to redraw in the
+   other language; without it the page reloads.
+4. List its localStorage keys in `web/lib/sync.js`, in a new `internal/games/<id>.go`, with
+   its stats, checks and boards, and in the `SaveKey` list of `api/openapi.yaml`. Go tests
+   check that the three lists match.
+5. Call `Nexus.startRun('<id>')` when a game starts and `Nexus.finishRun(stats)` when it ends.
 
 ## Running it locally
 

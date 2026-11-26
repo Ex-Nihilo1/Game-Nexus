@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"game-nexus/internal/games"
 )
 
 // Every route in internal/server/server.go must be in openapi.yaml, and the spec
@@ -69,5 +71,39 @@ func TestSpecMatchesRoutes(t *testing.T) {
 	}
 	if len(extra) > 0 {
 		t.Errorf("routes in the spec the server does not have:\n  %s", strings.Join(extra, "\n  "))
+	}
+}
+
+// The SaveKey enum must list exactly the keys that sync (internal/games).
+func TestSpecSaveKeys(t *testing.T) {
+	spec, err := os.ReadFile("openapi.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var documented []string
+	in, enum := false, false
+	for _, line := range strings.Split(strings.ReplaceAll(string(spec), "\r\n", "\n"), "\n") {
+		switch {
+		case line == "    SaveKey:":
+			in = true
+		case in && line == "      enum:":
+			enum = true
+		case enum && strings.HasPrefix(line, "        - "):
+			documented = append(documented, strings.TrimPrefix(line, "        - "))
+		case enum:
+			in, enum = false, false
+		}
+	}
+	if len(documented) == 0 {
+		t.Fatal("no SaveKey enum in openapi.yaml; has its layout changed?")
+	}
+	server := append([]string{}, games.SharedKeys...)
+	for _, g := range games.All {
+		server = append(server, g.SaveKeys...)
+	}
+	sort.Strings(documented)
+	sort.Strings(server)
+	if strings.Join(documented, " ") != strings.Join(server, " ") {
+		t.Errorf("SaveKey enum:\n  %v\nkeys that sync:\n  %v", documented, server)
 	}
 }

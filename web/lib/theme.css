@@ -162,6 +162,17 @@ a { color: inherit; }
   font-size: 15px;
 }
 
+/* EN | RU, joined into one control */
+.lang-switch { display: inline-flex; }
+.lang-btn {
+  width: 32px;
+  padding: 0;
+  font: 600 12px var(--font-condensed);
+  letter-spacing: .04em;
+}
+.lang-btn:first-child { border-radius: 3px 0 0 3px; }
+.lang-btn:last-child { margin-left: -1px; border-radius: 0 3px 3px 0; }
+
 /* ---- Controls ---- */
 button, .button {
   display: inline-flex;

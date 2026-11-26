@@ -69,8 +69,8 @@ const Theme = (function () {
         const b = document.createElement('button');
         b.className = 'swatch';
         b.dataset.scheme = s.id;
-        b.title = s.name;
-        b.setAttribute('aria-label', s.name + ' colors');
+        b.title = tr(s.name);
+        b.setAttribute('aria-label', tr('{scheme} colors', { scheme: tr(s.name) }));
         b.addEventListener('click', () => setScheme(s.id));
         box.appendChild(b);
       }
@@ -78,6 +78,7 @@ const Theme = (function () {
       toggle.className = 'mode-toggle';
       toggle.addEventListener('click', toggleMode);
       box.appendChild(toggle);
+      if (typeof I18n !== 'undefined') box.appendChild(I18n.switchControl());
     });
     updateControls();
   }
@@ -96,7 +97,7 @@ const Theme = (function () {
     const dark = resolvedMode() === 'dark';
     document.querySelectorAll('.mode-toggle').forEach(b => {
       b.innerHTML = dark ? SUN_ICON : MOON_ICON;
-      b.title = dark ? 'Switch to light' : 'Switch to dark';
+      b.title = tr(dark ? 'Switch to light' : 'Switch to dark');
       b.setAttribute('aria-label', b.title);
     });
   }
@@ -125,6 +126,7 @@ const Theme = (function () {
   apply();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', buildControls);
   else buildControls();
+  document.addEventListener('langchange', buildControls);
 
   return { palette, setScheme, toggleMode, SCHEMES };
 })();

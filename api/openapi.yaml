@@ -823,6 +823,7 @@ components:
       enum:
         - games.scheme
         - games.mode
+        - games.lang
         - games.tetris.best
         - games.minesweeper.size
         - games.minesweeper.minePct
@@ -835,6 +836,7 @@ components:
         - games.steelspell.meta
         - games.steelspell.last
         - games.steelspell.best
+        - games.steelspell.settings
     SaveInfo:
       type: object
       required: [key, rev, removed, device, updatedAt]

@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tower Defense</title>
   <link rel="stylesheet" href="../../lib/theme.css">
+  <script src="../../lib/i18n.js"></script>
+  <script src="../../lib/i18n-ru.js"></script>
+  <script src="ru.js"></script>
   <script src="../../lib/theme.js"></script>
   <script src="../../lib/api.js"></script>
   <script src="../../lib/sync.js" data-game="towerdefense"></script>
@@ -107,8 +110,8 @@
   <div class="page">
     <header class="app-header">
       <div>
-        <a class="back-link" href="../../index.html">&larr; Game Nexus</a>
-        <h1 class="app-title">Tower Defense</h1>
+        <a class="back-link" href="../../index.html" data-i18n>&larr; Game Nexus</a>
+        <h1 class="app-title" data-i18n>Tower Defense</h1>
         <div class="app-status" id="status"></div>
       </div>
       <div class="theme-controls"></div>
@@ -116,8 +119,8 @@
 
     <main>
       <div class="toolbar">
-        <div class="tabs" role="tablist" id="maps" aria-label="Map"></div>
-        <div class="hud">
+        <div class="tabs" role="tablist" id="maps" aria-label="Map" data-i18n-aria-label></div>
+        <div class="hud" data-i18n-all>
           <span><span class="label">Gold</span><span class="figure" id="gold">0</span></span>
           <span><span class="label">Lives</span><span class="figure" id="lives">0</span></span>
           <span><span class="label">Wave</span><span class="figure" id="wave">0</span></span>
@@ -134,7 +137,7 @@
 
         <aside class="side">
           <section>
-            <div class="wave-controls">
+            <div class="wave-controls" data-i18n-all>
               <button class="primary" id="next-wave">Next wave</button>
               <button id="pause" aria-pressed="false">Pause</button>
               <button id="speed" aria-pressed="false">Speed &times;2</button>
@@ -143,7 +146,7 @@
           </section>
 
           <section>
-            <h2 class="section-title">Build</h2>
+            <h2 class="section-title" data-i18n>Build</h2>
             <div class="tower-grid" id="tower-grid"></div>
           </section>
 
@@ -163,10 +166,10 @@
       </div>
 
       <section class="guide">
-        <h2 class="section-title">Enemies</h2>
+        <h2 class="section-title" data-i18n>Enemies</h2>
         <ul class="guide-list" id="guide"></ul>
       </section>
-      <p class="hint">
+      <p class="hint" data-i18n-html>
         <kbd>1</kbd>&ndash;<kbd>6</kbd> pick a tower &middot; click a square to build &middot; click a tower to inspect &middot;
         <kbd>U</kbd> upgrade &middot; <kbd>S</kbd> sell &middot; <kbd>Esc</kbd> or right-click to cancel &middot;
         <kbd>Space</kbd> next wave &middot; <kbd>P</kbd> pause &middot; <kbd>F</kbd> speed

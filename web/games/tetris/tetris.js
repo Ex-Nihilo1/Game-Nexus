@@ -113,7 +113,7 @@ let clearRows = []; // full rows currently being animated away
 let clearElapsed = 0;
 let state = 'start'; // 'start' | 'playing' | 'clearing' | 'paused' | 'over'
 let startedAt = 0; // when this game began (performance.now())
-let overNotes = []; // what the server says about a finished game, under GAME OVER
+let overAnswer = null; // what the server says about a finished game, shown under GAME OVER
 
 // The best score on this device; it syncs with the account like any save.
 const BEST_KEY = 'games.tetris.best';
@@ -313,7 +313,7 @@ function loadBest() {
 // does nothing for guests). The ranks it brings back show under GAME OVER.
 function gameOver() {
   state = 'over';
-  overNotes = [];
+  overAnswer = null;
   if (score > best.score) {
     best = { score, lines };
     try { localStorage.setItem(BEST_KEY, JSON.stringify(best)); } catch (e) { /* private mode */ }
@@ -321,7 +321,7 @@ function gameOver() {
   updateHud();
   const seconds = (performance.now() - startedAt) / 1000;
   Nexus.finishRun({ score, lines, level, seconds }).then(answer => {
-    overNotes = Nexus.rankLines(answer);
+    overAnswer = answer;
     dirty = true;
   });
 }
@@ -468,9 +468,11 @@ function draw() {
 
   drawNext();
 
-  if (state === 'start') drawOverlay('Tetris', 'Press Enter to start', pal.ink, false);
-  else if (state === 'paused') drawOverlay('Paused', 'Press P to resume', pal.ink, false);
-  else if (state === 'over') drawOverlay('GAME OVER', 'Press Enter to restart', pal['red-pencil'], true, overNotes);
+  if (state === 'start') drawOverlay(tr('Tetris'), tr('Press Enter to start'), pal.ink, false);
+  else if (state === 'paused') drawOverlay(tr('Paused'), tr('Press P to resume'), pal.ink, false);
+  else if (state === 'over') {
+    drawOverlay(tr('GAME OVER'), tr('Press Enter to restart'), pal['red-pencil'], true, Nexus.rankLines(overAnswer));
+  }
 }
 
 // ---- Game loop ----
@@ -529,6 +531,7 @@ document.addEventListener('keydown', e => {
 });
 
 document.addEventListener('themechange', readTheme);
+I18n.onChange(() => { dirty = true; });
 // Browser zoom also fires resize: then keep the board's size so the zoom takes
 // effect, and only match the new pixel ratio. A real window resize re-fits it.
 window.addEventListener('resize', () => {

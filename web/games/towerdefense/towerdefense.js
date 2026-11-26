@@ -131,13 +131,13 @@ const TOWERS = [
 
 // How a level's numbers are shown in the side panel.
 const STATS = [
-  { key: 'damage', name: 'Damage', show: v => v },
-  { key: 'rate', name: 'Shots / s', show: v => v },
-  { key: 'range', name: 'Range', show: v => v + ' cells' },
-  { key: 'splash', name: 'Blast', show: v => v + ' cells' },
+  { key: 'damage', name: 'Damage', show: v => I18n.num(v) },
+  { key: 'rate', name: 'Shots / s', show: v => I18n.num(v) },
+  { key: 'range', name: 'Range', show: v => tr('{n} cells', { n: I18n.num(v) }) },
+  { key: 'splash', name: 'Blast', show: v => tr('{n} cells', { n: I18n.num(v) }) },
   { key: 'slow', name: 'Slows by', show: v => Math.round(v * 100) + '%' },
-  { key: 'heal', name: 'Repairs', show: v => v + ' hp / s' },
-  { key: 'income', name: 'Pays', show: v => `${v} / ${INCOME_EVERY} s` },
+  { key: 'heal', name: 'Repairs', show: v => tr('{n} hp / s', { n: I18n.num(v) }) },
+  { key: 'income', name: 'Pays', show: v => tr('{n} / {every} s', { n: v, every: INCOME_EVERY }) },
 ];
 
 // An enemy with `attack` fights towers on the way; a melee one stops to do it.
@@ -223,7 +223,7 @@ let selected = null; // built tower shown in the side panel
 let hover = null; // { c, r } under the mouse
 let notice = '';
 let startedAt = 0; // when the first wave of this game began (performance.now())
-let overNotes = []; // what the server says about a finished game, under the result
+let overAnswer = null; // what the server says about a finished game, shown under the result
 let noticeTime = 0;
 let lastTime = 0;
 let dirty = true; // true when the screen needs a redraw
@@ -294,7 +294,7 @@ function buildWave(n, m) {
 function describeWave(n, m) {
   const counts = {};
   for (const s of buildWave(n, m)) counts[s.type] = (counts[s.type] || 0) + 1;
-  return Object.keys(counts).map(t => `${counts[t]} ${ENEMIES[t].name}`).join(' · ');
+  return Object.keys(counts).map(t => tr('{n} {enemy}', { n: counts[t], enemy: tr(ENEMIES[t].name) })).join(' · ');
 }
 
 // ---- Game setup ----
@@ -316,7 +316,7 @@ function newGame() {
   armed = null;
   selected = null;
   notice = '';
-  overNotes = [];
+  overAnswer = null;
   resultEl.textContent = '';
   resultEl.className = 'stamp';
   drawMap();
@@ -356,7 +356,7 @@ function build(def, c, r) {
   if (!canBuild(c, r) || towerCount(def) >= TOWER_LIMIT) return;
   const s = def.levels[0];
   if (gold < s.cost) {
-    say(`Not enough gold for a ${def.name}`);
+    say(tr('Not enough gold for a {tower}', { tower: tr(def.name) }));
     return;
   }
   gold -= s.cost;
@@ -377,7 +377,7 @@ function build(def, c, r) {
   grid[r * COLS + c] = t;
   if (towerCount(def) >= TOWER_LIMIT) {
     armed = null;
-    say(`All ${TOWER_LIMIT} ${def.name}s built · upgrade them for more power`);
+    say(tr('All {n} {tower}s built · upgrade them for more power', { n: TOWER_LIMIT, tower: tr(def.name) }));
   }
   dirty = true;
 }
@@ -392,7 +392,7 @@ function upgrade(t) {
   const cost = upgradeCost(t);
   if (cost === null) return;
   if (gold < cost) {
-    say(`Not enough gold to upgrade the ${t.def.name}`);
+    say(tr('Not enough gold to upgrade the {tower}', { tower: tr(t.def.name) }));
     return;
   }
   gold -= cost;
@@ -427,7 +427,7 @@ function damageTower(t, amount) {
   t.hit = 0.15;
   if (t.hp <= 0) {
     addRing(t.x, t.y, CELL, 'red-pencil');
-    say(`${t.def.name} destroyed`);
+    say(tr('{tower} destroyed', { tower: tr(t.def.name) }));
     removeTower(t);
   }
 }
@@ -476,7 +476,7 @@ function finishWave() {
   if (wave >= map.waves) {
     phase = 'won';
     clearEffects();
-    resultEl.textContent = 'CLEARED';
+    resultEl.textContent = tr('CLEARED');
     resultEl.className = 'stamp good';
     saveBest();
     markMapTabs();
@@ -491,7 +491,7 @@ function lose() {
   phase = 'lost';
   lives = 0;
   clearEffects();
-  resultEl.textContent = 'OVERRUN';
+  resultEl.textContent = tr('OVERRUN');
   resultEl.className = 'stamp bad';
   markMapTabs();
   dirty = true;
@@ -501,12 +501,12 @@ function lose() {
 // Sends a finished game to the account (nothing happens for guests). The ranks it
 // brings back show under the result.
 function report(won) {
-  overNotes = [];
+  overAnswer = null;
   const seconds = (performance.now() - startedAt) / 1000;
   const game = map;
   Nexus.finishRun({ map: map.id, won, lives: Math.max(0, lives), wave, seconds }).then(answer => {
     if (map !== game || (phase !== 'won' && phase !== 'lost')) return;
-    overNotes = Nexus.rankLines(answer);
+    overAnswer = answer;
     dirty = true;
   });
 }
@@ -1122,11 +1122,13 @@ function draw() {
   drawGhost();
 
   if (phase === 'won') {
-    drawOverlay('CLEARED', `${lives} of ${map.lives} lives left · Enter to play again`, pal['green-ink'], true, overNotes);
+    drawOverlay(tr('CLEARED'), tr('{lives} of {all} lives left · Enter to play again', { lives, all: map.lives }),
+      pal['green-ink'], true, Nexus.rankLines(overAnswer));
   } else if (phase === 'lost') {
-    drawOverlay('OVERRUN', `Fell on wave ${wave} of ${map.waves} · Enter to try again`, pal['red-pencil'], true, overNotes);
+    drawOverlay(tr('OVERRUN'), tr('Fell on wave {wave} of {all} · Enter to try again', { wave, all: map.waves }),
+      pal['red-pencil'], true, Nexus.rankLines(overAnswer));
   } else if (paused) {
-    drawOverlay('Paused', 'Press P to resume', pal.ink, false);
+    drawOverlay(tr('Paused'), tr('Press P to resume'), pal.ink, false);
   }
 
   updateHud();
@@ -1149,10 +1151,10 @@ function markMapTabs() {
   mapsEl.querySelectorAll('.tab').forEach(tab => {
     tab.setAttribute('aria-selected', String(tab.dataset.id === map.id));
     tab.disabled = locked;
-    tab.title = locked ? 'Press New game to change map' : '';
+    tab.title = locked ? tr('Press New game to change map') : '';
   });
-  const record = best[map.id] ? ` Best: ${best[map.id]} of ${map.lives} lives left.` : '';
-  mapNoteEl.textContent = `${map.level} · ${map.waves} waves · ${map.note}${record}`;
+  const record = best[map.id] ? ' ' + tr('Best: {best} of {all} lives left.', { best: best[map.id], all: map.lives }) : '';
+  mapNoteEl.textContent = `${tr(map.level)} · ${tr('{n} waves', { n: map.waves })} · ${tr(map.note)}${record}`;
 }
 
 // The status line only carries notices that nothing else on screen shows,
@@ -1173,9 +1175,9 @@ function updateHud() {
   speedBtn.setAttribute('aria-pressed', String(speed === 2));
   if (phase === 'wave') {
     const left = spawnQueue.length + enemies.length;
-    setText(waveNoteEl, `${left} ${left === 1 ? 'enemy' : 'enemies'} left in this wave`);
+    setText(waveNoteEl, tr('{n} enemies left in this wave', { n: left }));
   } else if (phase === 'build') {
-    setText(waveNoteEl, `Wave ${wave + 1}: ${describeWave(wave + 1, map)}`);
+    setText(waveNoteEl, tr('Wave {n}: {enemies}', { n: wave + 1, enemies: describeWave(wave + 1, map) }));
   } else {
     setText(waveNoteEl, '');
   }
@@ -1187,7 +1189,7 @@ function updateHud() {
     b.setAttribute('aria-pressed', String(armed === def));
     b.classList.toggle('poor', gold < def.levels[0].cost);
     b.disabled = full;
-    b.title = full ? `Limit of ${TOWER_LIMIT} reached. Upgrade or sell one.` : def.blurb;
+    b.title = full ? tr('Limit of {n} reached. Upgrade or sell one.', { n: TOWER_LIMIT }) : tr(def.blurb);
     setText(b.querySelector('.count'), `${built}/${TOWER_LIMIT}`);
   });
   canvas.classList.toggle('armed', !!armed);
@@ -1203,17 +1205,17 @@ function updateInspector() {
   const def = t ? t.def : armed;
   inspectActionsEl.hidden = !t;
   if (!def) {
-    setText(inspectNameEl, 'Nothing selected');
+    setText(inspectNameEl, tr('Nothing selected'));
     setText(inspectLevelEl, '');
-    setText(inspectBlurbEl, `Pick a tower above, then click an empty square. Up to ${TOWER_LIMIT} of each type.`);
+    setText(inspectBlurbEl, tr('Pick a tower above, then click an empty square. Up to {n} of each type.', { n: TOWER_LIMIT }));
     if (statsKey) inspectStatsEl.textContent = '';
     statsKey = '';
     return;
   }
 
-  setText(inspectNameEl, def.name);
-  setText(inspectLevelEl, t ? `Level ${t.level + 1} of 3` : `Costs ${def.levels[0].cost}`);
-  setText(inspectBlurbEl, def.blurb);
+  setText(inspectNameEl, tr(def.name));
+  setText(inspectLevelEl, t ? tr('Level {n} of 3', { n: t.level + 1 }) : tr('Costs {cost}', { cost: def.levels[0].cost }));
+  setText(inspectBlurbEl, tr(def.blurb));
 
   const now = t ? t.stats : def.levels[0];
   const next = t ? def.levels[t.level + 1] : null;
@@ -1222,12 +1224,12 @@ function updateInspector() {
   if (key !== statsKey) {
     statsKey = key;
     const change = (v, nv, show) => (nv !== undefined && nv !== v ? `${show(v)} → ${show(nv)}` : show(v));
-    let html = statsRow('Health', next ? `${hp}/${now.hp} → ${next.hp}` : `${hp}/${now.hp}`);
+    let html = statsRow(tr('Health'), next ? `${hp}/${now.hp} → ${next.hp}` : `${hp}/${now.hp}`);
     for (const stat of STATS) {
       if (now[stat.key] !== undefined) {
-        html += statsRow(stat.name, change(now[stat.key], next && next[stat.key], stat.show));
+        html += statsRow(tr(stat.name), change(now[stat.key], next ? next[stat.key] : undefined, stat.show));
       } else if (next && next[stat.key] !== undefined) {
-        html += statsRow(stat.name, `none → ${stat.show(next[stat.key])}`);
+        html += statsRow(tr(stat.name), `${tr('none')} → ${stat.show(next[stat.key])}`);
       }
     }
     inspectStatsEl.innerHTML = html;
@@ -1235,9 +1237,9 @@ function updateInspector() {
 
   if (t) {
     const cost = upgradeCost(t);
-    setText(upgradeBtn, cost === null ? 'Max level' : `Upgrade · ${cost}`);
+    setText(upgradeBtn, cost === null ? tr('Max level') : tr('Upgrade · {cost}', { cost }));
     upgradeBtn.disabled = cost === null || gold < cost;
-    setText(sellBtn, `Sell · ${sellValue(t)}`);
+    setText(sellBtn, tr('Sell · {value}', { value: sellValue(t) }));
   }
 }
 
@@ -1256,7 +1258,7 @@ function buildMapTabs() {
     tab.className = 'tab';
     tab.setAttribute('role', 'tab');
     tab.dataset.id = m.id;
-    tab.textContent = m.name;
+    tab.textContent = tr(m.name);
     tab.addEventListener('click', () => pickMap(m));
     mapsEl.appendChild(tab);
   }
@@ -1269,7 +1271,7 @@ function buildTowerButtons() {
     b.dataset.id = def.id;
     b.appendChild(iconCanvas());
     const text = document.createElement('span');
-    text.innerHTML = `<span>${def.name}</span><span class="cost">${def.levels[0].cost} gold</span>`;
+    text.innerHTML = `<span>${tr(def.name)}</span><span class="cost">${tr('{n} gold', { n: def.levels[0].cost })}</span>`;
     b.appendChild(text);
     const count = document.createElement('span');
     count.className = 'count';
@@ -1287,7 +1289,7 @@ function buildGuide() {
     icon.dataset.enemy = id;
     li.appendChild(icon);
     const text = document.createElement('span');
-    text.innerHTML = `<strong>${def.name}</strong><span class="label">${def.note}</span>`;
+    text.innerHTML = `<strong>${tr(def.name)}</strong><span class="label">${tr(def.note)}</span>`;
     li.appendChild(text);
     guideEl.appendChild(li);
   }
@@ -1388,7 +1390,7 @@ function loop(time = 0) {
 
 function arm(def) {
   if (towerCount(def) >= TOWER_LIMIT) {
-    say(`Limit is ${TOWER_LIMIT} ${def.name}s · upgrade or sell one`);
+    say(tr('Limit is {n} {tower}s · upgrade or sell one', { n: TOWER_LIMIT, tower: tr(def.name) }));
     return;
   }
   armed = armed === def ? null : def;
@@ -1502,6 +1504,22 @@ window.addEventListener('resize', () => {
 buildMapTabs();
 buildTowerButtons();
 buildGuide();
+// Another language: the tabs, tower buttons and enemy guide are made again; the rest
+// is redrawn every frame.
+I18n.onChange(() => {
+  mapsEl.textContent = '';
+  towerGridEl.textContent = '';
+  guideEl.textContent = '';
+  buildMapTabs();
+  buildTowerButtons();
+  buildGuide();
+  drawIcons();
+  markMapTabs();
+  if (phase === 'won') resultEl.textContent = tr('CLEARED');
+  if (phase === 'lost') resultEl.textContent = tr('OVERRUN');
+  statsKey = '';
+  dirty = true;
+});
 readTheme();
 newGame();
 fitBoard(true); // after newGame, which fills in the map note above the board
