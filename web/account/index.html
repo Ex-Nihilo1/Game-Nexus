@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account - Game Nexus</title>
+  <link rel="stylesheet" href="../lib/theme.css">
+  <script src="../lib/i18n.js"></script>
+  <script src="../lib/i18n-ru.js"></script>
+  <script src="../lib/theme.js"></script>
+  <script src="../lib/api.js"></script>
+  <script src="../lib/sync.js"></script>
+  <script src="../lib/account.js"></script>
+  <style>
+    .account-page { max-width: 440px; }
+    .account-page section { padding: 18px 0; border-bottom: 1px solid var(--rule); }
+    .account-page section:first-child { padding-top: 0; }
+    .account-page form .button-row, .button-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .account-page .row .figure { font-size: 15px; overflow-wrap: anywhere; text-align: right; }
+    .google {
+      gap: 10px;
+      height: 40px;
+      padding: 0 18px 0 14px;
+      font-size: 14px;
+      background: var(--paper);
+    }
+    .google svg { flex: none; }
+    .danger { border-color: var(--red-pencil); color: var(--red-pencil); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="app-header">
+      <div data-i18n-all>
+        <a class="back-link" href="../index.html">&larr; Game Nexus</a>
+        <h1 class="app-title">Account</h1>
+      </div>
+      <div class="theme-controls"></div>
+    </header>
+
+    <main class="account-page" data-i18n-all>
+      <p class="message" id="page-message" role="status"></p>
+
+      <!-- Signed out -->
+      <section id="guest-view" hidden>
+        <p>Your progress, saves and leaderboard places live in your account, on every device.</p>
+        <p class="label">Progress already on this device moves into your account.</p>
+        <div class="button-row" style="margin-top:16px">
+          <a class="button google" id="google" href="#">
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            Sign in with Google
+          </a>
+        </div>
+      </section>
+
+      <!-- First sign-in: a name for the leaderboards -->
+      <section id="choose-view" hidden>
+        <h2 class="section-title">Choose a display name</h2>
+        <form id="choose-form">
+          <p class="message bad" data-message></p>
+          <p class="label">Shown on the leaderboards instead of your Google name. You can change it later.</p>
+          <label class="field"><span class="label">Display name, 3 to 24 characters</span>
+            <input type="text" name="displayName" minlength="3" maxlength="24" required autofocus></label>
+          <div class="button-row"><button class="primary" type="submit">Save</button></div>
+        </form>
+      </section>
+
+      <!-- Signed in -->
+      <div id="user-view" hidden>
+        <section>
+          <div class="row"><span class="label">Display name</span><span class="figure" id="me-name"></span></div>
+          <div class="row"><span class="label">Signed in with</span><span class="figure">Google</span></div>
+          <div class="button-row" style="margin-top:12px">
+            <a class="button" id="my-stats" href="../leaderboards/">Your stats</a>
+          </div>
+        </section>
+
+        <section>
+          <h2 class="section-title">Display name</h2>
+          <form id="name-form">
+            <p class="message" data-message></p>
+            <label class="field"><span class="label">New display name</span>
+              <input type="text" name="displayName" minlength="3" maxlength="24" required></label>
+            <div class="button-row"><button type="submit">Save</button></div>
+          </form>
+        </section>
+
+        <section>
+          <h2 class="section-title">Sign out</h2>
+          <div class="button-row">
+            <button type="button" id="signout">Sign out</button>
+            <button type="button" id="signout-all">Sign out on every device</button>
+          </div>
+        </section>
+
+        <section id="delete">
+          <h2 class="section-title">Delete account</h2>
+          <p class="message bad" id="delete-message" role="status"></p>
+          <p class="label">Your saves, results and leaderboard places are deleted for good. Progress on this device stays here.</p>
+          <div class="button-row" style="margin-top:12px">
+            <button class="danger" type="button" id="delete-button">Delete my account</button>
+            <a class="button" id="reauth" href="#" hidden>Sign in with Google again</a>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const views = ['guest-view', 'choose-view', 'user-view'];
+    const show = id => views.forEach(v => { $(v).hidden = v !== id; });
+    const params = new URLSearchParams(location.search);
+
+    function say(el, text, good) {
+      el.textContent = text || '';
+      el.classList.toggle('good', !!good);
+      el.classList.toggle('bad', !good);
+    }
+    const formMessage = form => form.querySelector('[data-message]');
+    const values = form => Object.fromEntries(new FormData(form));
+
+    // Run a form: disable it while the request is out, show the server's message on failure.
+    function bind(form, send) {
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const buttons = form.querySelectorAll('button');
+        buttons.forEach(b => { b.disabled = true; });
+        say(formMessage(form), '');
+        try {
+          await send(values(form), form);
+        } finally {
+          buttons.forEach(b => { b.disabled = false; });
+        }
+      });
+    }
+
+    // Where to go once done: back to the page that sent the player here.
+    function backTarget() {
+      const back = params.get('back');
+      return back && back.startsWith('/') && !back.startsWith('//') ? back : null;
+    }
+    const signInURL = back => '../api/auth/google?back=' + encodeURIComponent(back || '/account/');
+    $('google').href = signInURL(backTarget() || '/');
+    $('reauth').href = signInURL('/account/#delete');
+
+    const ERRORS = {
+      cancelled: tr('Sign-in was cancelled.'),
+      failed: tr('Signing in with Google did not work. Try again.'),
+      unavailable: tr('Signing in is not set up on this server.'),
+      busy: tr('Too many sign-ins from here. Wait a minute and try again.'),
+    };
+    if (params.get('error')) say($('page-message'), ERRORS[params.get('error')] || ERRORS.failed);
+
+    function render(user) {
+      if (!user) return show('guest-view');
+      if (!user.displayName) return show('choose-view');
+      show('user-view');
+      $('me-name').textContent = user.displayName;
+      $('my-stats').href = '../leaderboards/?player=' + encodeURIComponent(user.displayName);
+      $('name-form').displayName.value = user.displayName;
+    }
+
+    bind($('choose-form'), async (v, form) => {
+      const r = await Nexus.call('PATCH', 'me', { displayName: v.displayName });
+      if (!r.ok) return say(formMessage(form), r.data.error || tr('That did not work. Try again.'));
+      Nexus.setUser(r.data.user);
+      const back = backTarget();
+      if (back && back !== '/account/') location.href = back;
+      else render(r.data.user);
+    });
+    bind($('name-form'), async (v, form) => {
+      const r = await Nexus.call('PATCH', 'me', { displayName: v.displayName });
+      if (!r.ok) return say(formMessage(form), r.data.error || tr('That did not work. Try again.'));
+      Nexus.setUser(r.data.user);
+      render(r.data.user);
+      say(formMessage(form), tr('Saved.'), true);
+    });
+    $('signout').addEventListener('click', async () => {
+      await Nexus.call('POST', 'auth/logout', {});
+      Nexus.setUser(null);
+    });
+    $('signout-all').addEventListener('click', async () => {
+      await Nexus.call('POST', 'auth/logout-all', {});
+      Nexus.setUser(null);
+    });
+    $('delete-button').addEventListener('click', async () => {
+      if (!confirm(tr('Delete your Game Nexus account for good? This cannot be undone.'))) return;
+      const r = await Nexus.call('DELETE', 'me');
+      if (r.ok) {
+        if (Nexus.sync) Nexus.sync.forget();
+        Nexus.setUser(null);
+        say($('page-message'), tr('Your account is deleted.'), true);
+        return;
+      }
+      say($('delete-message'), r.data.error || tr('That did not work. Try again.'));
+      $('reauth').hidden = !r.data.reauth;
+    });
+
+    document.addEventListener('nexususer', e => render(e.detail));
+
+    if (!Nexus.online) {
+      show('guest-view');
+      $('google').hidden = true;
+      say($('page-message'), tr('Accounts work when Game Nexus is opened from its server, not from a file.'));
+    } else {
+      Nexus.userReady.then(user => {
+        render(user);
+        if (location.hash === '#delete' && user && user.displayName) $('delete').scrollIntoView();
+      });
+    }
+  </script>
+</body>
+</html>

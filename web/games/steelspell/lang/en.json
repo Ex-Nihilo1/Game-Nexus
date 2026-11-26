@@ -1,0 +1,853 @@
+{
+  "game": {
+    "title": "Steel & Spell"
+  },
+  "ui": {
+    "back": "Back",
+    "close": "Close",
+    "codex": "Codex",
+    "camp": "Camp",
+    "pause": "Pause",
+    "settings": "Settings",
+    "uses": "Uses: {stats}.",
+    "keptName": "{name} ({kept})",
+    "perSecond": "{value}/s"
+  },
+  "status": {
+    "best": "Best run in {version}: {time}, level {level}",
+    "version": "Version {version}"
+  },
+  "hud": {
+    "level": "Level {level}",
+    "health": "Health {hp} / {max}",
+    "rerolls": "Rerolls {rerolls}",
+    "lives": "Spare lives {lives}",
+    "timer": "{name} {seconds}s",
+    "kills": "Kills {kills}",
+    "dev": "DEV",
+    "stageAltar": "Stage {stage} · the altar rises in {time}",
+    "stageBoss": "Stage {stage} · boss +{boost}% · it comes in {time}",
+    "endless": "Endless · next boss in {time}",
+    "rest": "Rest · {time}",
+    "altarBoost": "+{boost}%",
+    "bossBar": "{name} · stage {stage} · armor {armor} · ward {ward}",
+    "enrageIn": "Enrages in {time}",
+    "enraged": "Enraged: double damage",
+    "tileLevel": "Lv {level}",
+    "tileMax": "MAX",
+    "tileEvo": "EVO",
+    "earlyCost": "x{cost}",
+    "ready": "Ready",
+    "seconds": "{seconds}s"
+  },
+  "start": {
+    "title": "Choose your loadout",
+    "note": "Three stages, each ending in a boss. At minute {altar} of a stage an altar rises: touch it to call the boss. The longer you put it off, the stronger the boss gets, and at minute {length} it comes by itself. After the third boss, survive as long as you can. You start with the weapon of your active skill. New weapons come at levels {levels}, and after every stage boss you pick any weapon you like. A weapon grows to level {max} through level-up cards, then evolves one of two ways, and two evolved weapons of a pair can merge into a stronger one.",
+    "active": "Active skill",
+    "weapon": "First weapon",
+    "weaponLine": "{weapon}, the weapon of {active}.",
+    "cooldown": "{seconds} s",
+    "activeNote": "{seconds} s · {weapon}",
+    "passive": "Passive: {text}",
+    "continue": "Continue · {time}, level {level}",
+    "go": "Start run",
+    "camp": "Camp · {glory} Glory",
+    "records": "Records",
+    "saved": "A saved run is waiting. Starting a new one drops it.",
+    "hints": [
+      "[WASD] or arrows, or drag on the field, to walk · [Space] active skill · [1]–[4] pick a card · [R] reroll the cards · [X] skip a level-up · [P] pause",
+      "An orange outline is armor that blunts physical damage, a violet outline is a ward that blunts magic: 100 of either halves a hit, and damage never vanishes. A double outline is a tank: hit it with the other kind, set it on fire, or pierce its armor. Pure damage ignores both.",
+      "Enemies with a dot in the middle fight from a distance. Everything the horde throws at you is bright cyan: shots, and dashed outlines on the ground for strikes about to land. Step out of them.",
+      "Red orbs heal. Walking turns them up, and elites drop them along with a chest: pick 1 item of {chestSlots}. A blue chest is better than a grey one, a yellow one better still.",
+      "A blue horseshoe is a magnet: it pulls in every XP orb on the map."
+    ]
+  },
+  "cards": {
+    "chestNote": "Pick one. Every item is one of a kind.",
+    "evolveTitle": "{name} evolves",
+    "evolveNote": "It is at its last level. Pick the way it changes for good.",
+    "weaponTitle": "Level {level}: new weapon",
+    "weaponNote": "Pick one to add to your kit.",
+    "levelTitle": "Level {level}",
+    "levelNote": "Pick one upgrade.",
+    "forWeapons": "Weapons",
+    "statChange": "{from} to {to}",
+    "countRemark": "Shot {shot} of {cap} from cards. Items and weapon levels add more",
+    "strongPick": "Strong pick {pick} of {strong}",
+    "weakPick": "Weak pick: the {strong} strong ones are taken",
+    "armorRemark": "Hits will hurt {pct}% less",
+    "critRemark": "Past 100% a crit can land twice",
+    "levelUp": "Lv {from} → {to}",
+    "lastLevel": "The last level",
+    "evolution": "Evolution",
+    "merge": "Merge",
+    "fromEvo": "From {evo}: {text}.",
+    "mergeNote": "Both weapons go, and the merged one takes their place.",
+    "mergeWith": "with {partner} into {merge}",
+    "mergeWithEvos": "with {partner} into {merge} ({evos})",
+    "evoOpens": "Leads to {merge}, with {partner} evolved into {evo}.",
+    "evoMerges": "Leads to {merge}, with {partner} evolved either way.",
+    "merges": "Merges {list} once both are at Lv {max} and evolved.",
+    "reroll": "Reroll ({rerolls})",
+    "arsenalTitle": "The boss is down: any weapon",
+    "arsenalNote": "Pick any weapon you do not have yet. It comes at level 1.",
+    "skip": "Skip: heal {pct}%"
+  },
+  "steps": {
+    "stat": "{stat} {share}",
+    "count": "+{count} count"
+  },
+  "report": {
+    "dealt": "Damage dealt",
+    "weaponRow": "{weapon} ({kind}){shots}",
+    "evolved": "{name}, was {base}",
+    "level": "{name} Lv {level}",
+    "fromCards": "cards +{n}",
+    "fromItems": "items +{n}",
+    "fromWeapon": "weapon +{n}",
+    "fromActive": "{name} +{n}",
+    "single": " · 1 shot, Count +{pct}% damage ({parts})",
+    "shots": " · {shots, plural, one {# shot} other {# shots}} ({parts})",
+    "taken": "Damage taken",
+    "touches": "Touches",
+    "shotsTaken": "Shots",
+    "strikes": "Strikes on the ground",
+    "items": "Items",
+    "stats": "Stats",
+    "health": "Health",
+    "fromLevels": "From levels",
+    "levelHp": "+{hp} HP",
+    "regen": "Health regen",
+    "regenValue": "{pct}% per s",
+    "baseAttack": "Base attack",
+    "passive": "{name} passive",
+    "armorPierced": "Armor pierced",
+    "wardPierced": "Ward pierced",
+    "picked": "{n} picked",
+    "strong": "{strong}/{max} strong",
+    "strongWeak": "{strong}/{max} strong + {weak} weak",
+    "fromGear": "{bonus} from items and Camp",
+    "hitsHurt": "Hits hurt",
+    "hitsHurtValue": "{pct}% less",
+    "pickup": "Pickup radius",
+    "levelDamage": "+{pct}% damage",
+    "physDamage": "All physical damage",
+    "magicDamage": "All magic damage",
+    "pure": "Damage made pure",
+    "abilityHaste": "Ability Haste",
+    "abilityHasteValue": "{haste} (cooldown -{cut}%)",
+    "lives": "Spare lives"
+  },
+  "pause": {
+    "title": "Paused",
+    "resume": "Resume",
+    "save": "Save & quit",
+    "end": "End run",
+    "dev": "Developer"
+  },
+  "settings": {
+    "title": "Settings",
+    "attackAlpha": "Your attacks",
+    "attackAlphaNote": "Make your own attacks see-through to keep the horde and its shots in sight. At 100% they look as usual.",
+    "language": "Language",
+    "dev": "Developer",
+    "devPassword": "Password",
+    "devUnlock": "Unlock",
+    "devWrong": "Wrong password",
+    "devMode": "Developer mode",
+    "devNote": "Opens the developer panel: F1, or the button in the pause menu. A run where a cheat was used goes to no records and earns no Glory."
+  },
+  "boss": {
+    "armor": "The Armored Boss",
+    "ward": "The Warded Boss",
+    "health": "The Hulking Boss"
+  },
+  "victory": {
+    "title": "Victory!",
+    "note": "All three bosses are down in {time}.",
+    "best": "Your fastest clear!",
+    "continue": "Keep going: endless survival",
+    "end": "End the run"
+  },
+  "dev": {
+    "title": "Developer panel",
+    "note": "Seed {seed}. Every button but those under Show marks the run: no records, no Glory.",
+    "keys": "Dev keys: [F1] panel · [L] level up · [G] weapon pick · [I] open a chest · [K] die and revive · [R] reset active · [T] skip a minute · [E] elite · [F] shooters · [O] fill the horde · [H] immortal · [M] max a weapon",
+    "time": "Time",
+    "step": "Step a frame",
+    "minute": "+1 minute",
+    "stage": "Stage {stage}",
+    "endless": "endless",
+    "altar": "Raise the altar",
+    "callBoss": "Call the boss",
+    "killBoss": "Kill the boss",
+    "hero": "Hero",
+    "immortal": "Immortal",
+    "heal": "Full health",
+    "resetActive": "Reset the active skill",
+    "levels": "+{n, plural, one {# level} other {# levels}}",
+    "weapons": "Weapons",
+    "add": "Add",
+    "maxLevel": "To its last level",
+    "items": "Items",
+    "give": "Give",
+    "enemies": "Enemies",
+    "call": "Call",
+    "fill": "Fill the horde",
+    "killAll": "Kill everything on screen",
+    "hold": "Hold the horde back",
+    "show": "Show",
+    "hitboxes": "Hitboxes",
+    "armor": "Armor / ward now",
+    "glory": "+{glory} Glory"
+  },
+  "end": {
+    "title": "Run ended",
+    "died": "The horde got you",
+    "best": "A new best time.",
+    "place": "#{place} of your runs.",
+    "bestWith": "Your best with {weapon}.",
+    "glory": "+{glory} Glory for the Camp.",
+    "cheated": "Developer cheats were used: this run goes to no records and earns no Glory.",
+    "clear": "All three bosses down in {time}.",
+    "bestClear": "Your fastest clear!",
+    "time": "Time",
+    "level": "Level",
+    "kills": "Kills",
+    "again": "New run"
+  },
+  "records": {
+    "title": "Records",
+    "thisVersion": "This version ({version})",
+    "earlier": "Earlier versions",
+    "runs": "Runs, all versions",
+    "played": "Time played",
+    "kills": "Kills",
+    "elites": "Elites",
+    "merges": "Merges",
+    "fastest": "Fastest clear",
+    "noEarlier": "No runs from earlier versions.",
+    "none": "No runs in {version} yet. Runs are compared only within one balance version; the {count} longest are listed here.",
+    "longest": "Longest runs",
+    "head": {
+      "place": "#",
+      "version": "Version",
+      "time": "Time",
+      "clear": "Clear",
+      "level": "Level",
+      "kills": "Kills",
+      "start": "Start",
+      "active": "Active",
+      "weapons": "Weapons at the end",
+      "items": "Items",
+      "date": "Date"
+    },
+    "byWeapon": "Best run by first weapon"
+  },
+  "camp": {
+    "title": "Camp",
+    "note": "Every run earns Glory: for the minutes you last, elites killed, levels and merges. Upgrades bought here stay for every run. You have {glory} Glory.",
+    "perRank": "{text} per rank",
+    "full": "Full",
+    "buy": "Buy: {cost}",
+    "refund": "Refund all",
+    "upgrades": {
+      "vitality": { "name": "Vitality", "text": "+{amount}% max Health" },
+      "might": { "name": "Might", "text": "+{amount}% Damage" },
+      "haste": { "name": "Haste", "text": "+{amount}% Haste" },
+      "swiftness": { "name": "Swiftness", "text": "+{amount}% Speed" },
+      "reach": { "name": "Reach", "text": "+{amount}% Magnet" },
+      "rerolls": { "name": "Rerolls", "text": "+{amount, plural, one {# reroll} other {# rerolls}} for the run" },
+      "plating": { "name": "Plating", "text": "+{amount} Armor" },
+      "greed": { "name": "Greed", "text": "+{amount}% Glory" },
+      "revival": { "name": "Revival", "text": "+{amount, plural, one {# spare life} other {# spare lives}}" }
+    }
+  },
+  "codex": {
+    "title": "Codex",
+    "tabs": {
+      "weapons": "Weapons",
+      "merges": "Merges",
+      "items": "Items",
+      "stats": "Stats"
+    },
+    "yours": "yours",
+    "tile": "{name}, {kind}",
+    "tileMine": "{name}, {kind}, in your kit",
+    "defensive": "{kind}, defensive",
+    "levels": "Levels",
+    "levelLine": "Lv {level}: {text}",
+    "evolutions": "Evolutions at Lv {max}",
+    "evoLine": "{name}: {text}",
+    "merges": "Merges",
+    "noMerges": "Merges with nothing.",
+    "mergeRule": "Once both weapons are at Lv {max} and took the evolutions named under them, a card offers the merge. Every evolution opens exactly one merge, and a weapon goes into one merge only.",
+    "keeps": "It keeps what the evolutions did",
+    "needsEvos": "Only these evolutions open it: {list}.",
+    "evoOf": "{evo} ({weapon})",
+    "itemAdds": "Adds to {stats} at full value, on top of the cards.",
+    "itemUnique": "Every item is one of a kind: a chest never offers one you have.",
+    "weaponsNote": "Press a weapon to see its levels, evolutions and merges.",
+    "mergesNote": "Two weapons at their last level, each with the evolution named under it, merge into one. A merge of two weapons of one kind keeps that kind.",
+    "groupPhys": "Physical + physical",
+    "groupMagic": "Magic + magic",
+    "groupMixed": "Physical + magic",
+    "itemsNote": "Items come from chests: elites drop one, pick 1 item of {chestSlots}. Press an item for more.",
+    "statsNote": "The first {strong} picks of a stat are strong, every pick after them is weaker. Items and Camp upgrades always add their full value on top. A weapon gets a stat only if it uses it.",
+    "statForWeapons": "For the weapons that use it.",
+    "countLine": "+1 shot per pick. The card stops coming at +{cap}; items, the Camp and weapon levels add more shots with no limit. A weapon that fires a single shot gets +{overflow}% damage per Count instead.",
+    "statLine": "Strong pick: {strong}. Weak pick: {weak}. Starts at {base}.",
+    "statExtra": {
+      "critChance": "Every weapon can crit. Past 100% a crit can land twice.",
+      "armor": "A hit does 100 / (100 + Armor) of its damage. Bastion hits harder with it.",
+      "vitality": "Summoned copies get your max health, and hit harder the more you have.",
+      "haste": "A weapon attacks 1 + Haste times as often."
+    },
+    "armorTitle": "Enemy armor",
+    "armorLines": [
+      "Armor blunts physical hits and ward blunts magic ones: a hit does 100 / (100 + armor) of its damage, so 100 halves it and damage never vanishes. A hybrid hit meets the average of the two.",
+      "Penetration lowers armor (physical) or ward (magic) before a hit; past zero the hit does more, up to twice. Railgun and Frost Halo take armor or ward off enemies, never more than half.",
+      "Burning also takes {burn}% of an enemy's max health per second for every stack, half on elites and an eighth on bosses.",
+      "Tanks come in the third stage: Iron Tanks need magic, Ward Tanks need physical damage, and the Colossus has a lot of health."
+    ],
+    "actives": "Active skills",
+    "activesNote": "Every active skill has a weapon of its own, and a run starts with it: there is no other first weapon. More weapons come with levels and after every stage boss.",
+    "abilityHaste": "Ability Haste shortens the active skill's cooldown: 100 / (100 + Ability Haste) of it is left, so 50 leaves two thirds of it and it never reaches zero. Only items give it. Weapons do not read it, and Haste does not touch the active skill.",
+    "ownWeapon": "A run with {active} starts with it."
+  },
+  "toasts": {
+    "merged": "Merged: {name}!",
+    "magnet": "Every orb comes to you",
+    "pocketMagnet": "{name}: every orb comes to you",
+    "allItems": "Every item found: +1 level",
+    "continued": "Run continued",
+    "stash": "A chest appeared nearby",
+    "inspired": "Inspired!",
+    "secondWind": "{name}!",
+    "revived": "Back from the dead!",
+    "elites": "Elites have arrived",
+    "elite": "{name} has arrived",
+    "ring": "They are closing in",
+    "altar": "An altar has risen: touch it to call the boss",
+    "boss": "{name} is here",
+    "hordeBack": "The horde is back",
+    "bossCalls": "The boss calls for help",
+    "bossDown": "The boss is down!"
+  },
+  "kinds": {
+    "phys": "Physical",
+    "magic": "Magic",
+    "hybrid": "Hybrid",
+    "pure": "Pure",
+    "hero": "Hero"
+  },
+  "stats": {
+    "damage": { "name": "Damage" },
+    "haste": { "name": "Haste" },
+    "size": { "name": "Size" },
+    "count": { "name": "Count" },
+    "critChance": { "name": "Crit chance" },
+    "critDamage": { "name": "Crit damage" },
+    "duration": { "name": "Duration" },
+    "speed": { "name": "Speed", "note": "Move speed" },
+    "xp": { "name": "XP", "note": "Value of every orb" },
+    "magnet": { "name": "Magnet", "note": "Pickup radius" },
+    "armor": { "name": "Armor", "note": "Softens every hit you take" },
+    "vitality": { "name": "Vitality", "note": "Max health" },
+    "recovery": { "name": "Recovery", "note": "Health per second" }
+  },
+  "activeGroups": {
+    "mobility": "Mobility",
+    "damage": "Damage",
+    "economy": "Economy"
+  },
+  "actives": {
+    "ownWeapon": "A run starts with its weapon, {weapon}.",
+    "flash": {
+      "name": "Flash",
+      "passive": "After a blink: +{critBoost}% crit chance for {critTime} s.",
+      "blurb": "Blink a short way in the direction you are walking."
+    },
+    "ghost": {
+      "name": "Ghost",
+      "passive": "+{gives.speed}% Speed and +{gives.magnet}% Magnet for the whole run.",
+      "blurb": "For {duration} s nothing can hurt you, you walk straight through enemies and move {speedBoost, plural, =2 {twice as fast} other {# times as fast}}."
+    },
+    "berserk": {
+      "name": "Berserk",
+      "passive": "+{gives.baseHp} max health and {gives.regen}% health back per second; {rageRegen}% for the first {rageTime} s of Berserk.",
+      "blurb": "For {duration} s: damage +{buff.damage}%, size +{buff.size}%, haste +{buff.haste}%, count +{buff.count}, on every weapon that uses them."
+    },
+    "ignite": {
+      "name": "Ignite",
+      "passive": "Fire damage +{gives.fireDamage}%. While Ignite lasts, burning enemies and fire weapons deal {burnBoost, plural, =2 {double} other {# times the}} damage over time.",
+      "blurb": "Sets the ground around you on fire for {duration} s. Whatever burns the whole time loses {share}% of its max health, as pure damage."
+    },
+    "stash": {
+      "name": "Stash",
+      "passive": "+{gives.haste}% Haste for the whole run.",
+      "blurb": "Drops a chest nearby: pick 1 of {chestSlots} items, common, rare or epic (never legendary)."
+    },
+    "inspiration": {
+      "name": "Inspiration",
+      "passive": "+{startLevels, plural, one {# level} other {# levels}} at the start of the run.",
+      "blurb": "Instantly gain {share}% of the XP this level needs."
+    }
+  },
+  "rarities": {
+    "grey": "Common",
+    "blue": "Rare",
+    "purple": "Epic",
+    "legendary": "Legendary"
+  },
+  "chests": {
+    "common": "Common chest",
+    "rare": "Rare chest",
+    "legendary": "Legendary chest",
+    "stash": "Stash"
+  },
+  "items": {
+    "vest": { "name": "Leather Vest", "text": "+{vitality}% Vitality" },
+    "boots": { "name": "Light Boots", "text": "+{speed}% Speed" },
+    "quiver": { "name": "Spare Quiver", "text": "+{count} Count" },
+    "coin": { "name": "Lucky Coin", "text": "+{critChance}% Crit chance" },
+    "whetstone": { "name": "Whetstone", "text": "+{critDamage}% Crit damage" },
+    "knuckles": { "name": "Iron Knuckles", "text": "+{damage}% Damage" },
+    "filings": { "name": "Iron Filings", "text": "+{magnet}% Magnet" },
+    "mail": { "name": "Plated Mail", "text": "+{armor} Armor" },
+    "dice": { "name": "Loaded Dice", "text": "+{rerolls, plural, one {# reroll} other {# rerolls}}" },
+    "watch": { "name": "Pocket Watch", "text": "+{abilityHaste} Ability Haste: the active skill's cooldown is {abilityHaste.cut}% shorter" },
+    "hide": { "name": "Troll Hide", "text": "+{vitality}% Vitality, +{regen}% Health regen per second" },
+    "lens": { "name": "Wide Lens", "text": "+{size}% Size, +{haste}% Haste" },
+    "mark": { "name": "Hunter's Mark", "text": "+{critChance}% Crit chance, +{critDamage}% Crit damage" },
+    "banner": { "name": "War Banner", "text": "+{damage}% Damage, +{count} Count" },
+    "sand": { "name": "Slow Sand", "text": "+{duration}% Duration" },
+    "oil": { "name": "Lamp Oil", "text": "+{duration}% Duration, +{size}% Size" },
+    "piercer": { "name": "Armor Piercer", "text": "Physical hits ignore {armorPen} armor; past zero they hit harder" },
+    "needle": { "name": "Spell Needle", "text": "Magic hits ignore {magicPen} ward; past zero they hit harder" },
+    "thorned": { "name": "Thorned Mail", "text": "An enemy that touches you takes its own contact damage, as pure damage" },
+    "clover": { "name": "Four-leaf Clover", "text": "{chestLuck}% chance that an elite drops a chest one step better" },
+    "sundial": { "name": "Sundial", "text": "+{abilityHaste} Ability Haste: the active skill's cooldown is {abilityHaste.cut}% shorter. +{duration}% Duration" },
+    "bracers": { "name": "Giant's Bracers", "text": "+{baseAttack} Base attack" },
+    "tome": { "name": "Scholar's Tome", "text": "+{xp}% XP" },
+    "heart": { "name": "Stone Heart", "text": "+{baseHp} Base health" },
+    "lodestone": { "name": "Lodestone", "text": "+{magnet}% Magnet" },
+    "lesson": { "name": "Mentor's Lesson", "text": "+{levels, plural, one {# level} other {# levels}} right away" },
+    "steel": { "name": "Tempered Steel", "text": "+{physDamage}% to all physical damage" },
+    "focus": { "name": "Arcane Focus", "text": "+{magicDamage}% to all magic damage" },
+    "kindling": { "name": "Kindling", "text": "+{fireDamage}% damage from weapons of fire: fireballs, meteors, flames, trails, tornadoes" },
+    "wind": { "name": "Second Wind", "text": "{secondWind, plural, =60 {Once a minute} other {Once every # s}}, a hit that would leave you under {secondWind.below}% Health is cancelled and you cannot be hurt for {secondWind.safe} s" },
+    "fang": { "name": "Vampire Fang", "text": "Every {killsPerHeal} kills give 1 Health back" },
+    "siege": { "name": "Siege Edge", "text": "Physical hits ignore {armorPenPct}% of armor" },
+    "hexlens": { "name": "Hex Lens", "text": "Magic hits ignore {magicPenPct}% of ward" },
+    "weakspot": { "name": "Weak Spot", "text": "Every {weakSpot.every, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} hit on one enemy makes it take {weakSpot}% more damage from everything for {weakSpot.time} s" },
+    "rubber": { "name": "Rubber Bullets", "text": "Bullets of guns (Pistol, Shotgun, Railgun, ElectroGun, Gunblade, a copy's pistol) bounce on to one more enemy for {ricochet}% damage" },
+    "plate": { "name": "Bulwark Plate", "text": "+{charges, plural, one {# charge} other {# charges}} for a Shield. Without a Shield: +{plateArmor} Armor" },
+    "spring": { "name": "Wound Spring", "text": "+{abilityHaste} Ability Haste: the active skill's cooldown is {abilityHaste.cut}% shorter" },
+    "edge": { "name": "Void Edge", "text": "{pureShare}% of all damage becomes pure" },
+    "pact": { "name": "Blood Pact", "text": "{hpToAttack}% of your Health turns into Base attack" },
+    "feather": { "name": "Phoenix Feather", "text": "+{lives, plural, one {# life} other {# lives}}. Dying brings you back at full health with a blast of pure damage" },
+    "hourglass": { "name": "Hourglass", "text": "+{abilityHaste} Ability Haste: the active skill's cooldown is {abilityHaste.cut}% shorter" },
+    "armory": { "name": "Armory Key", "text": "{weapons, plural, one {An extra weapon} other {# extra weapons}} right away" },
+    "compass": { "name": "Compass", "text": "{cardsWith} cards on every level-up instead of {levelCards}" },
+    "crown": { "name": "Cursed Crown", "text": "+{xp}% XP, but every enemy that arrives from now on has {enemyHp}% more Health" },
+    "echo": { "name": "Echo Stone", "text": "Beams, cones, whirlwinds and burning patches have a {echo}% chance to repeat half a second later" },
+    "pocket": { "name": "Pocket Magnet", "text": "Every {pocketMagnet} s every XP orb on the map comes to you" },
+    "medal": { "name": "Veteran's Medal", "text": "+{attackPerLevel}% damage for each level you have" }
+  },
+  "enemies": {
+    "mite": "Mite",
+    "runner": "Runner",
+    "stalker": "Stalker",
+    "ironclad": "Ironclad",
+    "warded": "Warded",
+    "slinger": "Slinger",
+    "hexer": "Hexer",
+    "mortar": "Mortar",
+    "irontank": "Iron Tank",
+    "wardtank": "Ward Tank",
+    "colossus": "Colossus",
+    "hulk": "Iron Hulk",
+    "warden": "Spell Warden",
+    "siege": "Siege Engine"
+  },
+  "weapons": {
+    "fireball": {
+      "name": "Fireball", "tag": "Fb",
+      "blurb": "Flies at the nearest enemy and explodes. Count adds fireballs.",
+      "ups": ["+{count, plural, one {# fireball} other {# fireballs}}", "Blast radius +{radius}%"]
+    },
+    "aura": {
+      "name": "Aura", "tag": "Au",
+      "blurb": "Hurts everything close to you, all the time.",
+      "ups": ["Pulses every {tick} s instead of {was.tick}", "Radius +{radius}%"]
+    },
+    "meteor": {
+      "name": "Meteor", "tag": "Me",
+      "blurb": "Long cooldown, huge hit. Leaves a crater that keeps burning, longer with Duration.",
+      "ups": ["The crater burns {crater.life} s longer", "+{meteors, plural, one {# meteor} other {# meteors}} per cast"]
+    },
+    "chain": {
+      "name": "Chain Lightning", "tag": "Ch",
+      "blurb": "Strikes an enemy, then jumps to the ones next to it.",
+      "ups": ["+{jumps, plural, one {# jump} other {# jumps}}", "+{jumps, plural, one {# jump} other {# jumps}}, and jumps lose less damage"],
+      "lv4": "Reach +{range}%"
+    },
+    "icearrow": {
+      "name": "Ice Arrow", "tag": "Ic",
+      "blurb": "Pierces the whole line and slows everything it touches. Size makes it much wider.",
+      "ups": ["Slows {slow}% more", "+{arrows, plural, one {# arrow} other {# arrows}}, in a fan"]
+    },
+    "phase": {
+      "name": "Phase Dash", "tag": "Ph",
+      "blurb": "On cooldown you turn into a damaging ghost. A hit triggers it early and blocks that hit, but then the cooldown is {earlyCost, plural, =2 {doubled} other {# times as long}}.",
+      "ups": ["Lasts {duration} s longer", "An early start no longer {was.earlyCost, plural, =2 {doubles the cooldown} other {makes the cooldown # times as long}}"]
+    },
+    "laser": {
+      "name": "Laser", "tag": "La",
+      "blurb": "A beam in a random direction that burns through the whole line for a while. Count adds beams.",
+      "ups": ["Width +{width}%", "+{count, plural, one {# beam} other {# beams}}"]
+    },
+    "flamethrower": {
+      "name": "Flamethrower", "tag": "Fl",
+      "blurb": "A cone of fire toward the nearest enemy that burns for a while. Size makes it longer and wider.",
+      "ups": ["Cone {cone}° wider", "Enemies keep burning for {afterburn} s after they leave the cone"]
+    },
+    "firetrail": {
+      "name": "Fire Trail", "tag": "Tr",
+      "blurb": "Walking leaves a trail of burning ground behind you. Stand still and there is no trail.",
+      "ups": ["Patches {radius}% wider", "Patches burn {life} s longer"]
+    },
+    "spear": {
+      "name": "Spear", "tag": "Sp",
+      "blurb": "An aura in the shape of a spear, always pointing where you walk. Its first touch knocks a target back. Speed makes it strike more often.",
+      "ups": ["Knocks back {push}% further", "Width +{width}%"],
+      "lv7": "Strikes {tick}% more often"
+    },
+    "boomerang": {
+      "name": "Boomerang", "tag": "Bo",
+      "blurb": "Cuts through enemies on the way out and again on the way back.",
+      "ups": ["+{count, plural, one {# boomerang} other {# boomerangs}}", "Flies {range}% further"]
+    },
+    "pistol": {
+      "name": "Pistol", "tag": "Pi",
+      "blurb": "One shot, one target, the nearest. No crowd control at all.",
+      "ups": ["A shot goes through to {pierce, plural, one {# more enemy} other {# more enemies}}", "+{targets, plural, one {# target} other {# targets}} per shot"]
+    },
+    "sword": {
+      "name": "Sword", "tag": "Sw",
+      "blurb": "Swings right next to you. Count adds swings, every second one behind you.",
+      "ups": ["+{count, plural, one {# swing} other {# swings}}", "Arc +{arc}%"]
+    },
+    "shield": {
+      "name": "Shield", "tag": "Sh",
+      "blurb": "Stores up to {charges, plural, one {# charge} other {# charges}}. A charge blocks one hit and blasts everything nearby.",
+      "ups": ["+{charges, plural, one {# charge} other {# charges}}", "Blast radius +{radius}%"]
+    },
+    "rocket": {
+      "name": "Rocket", "tag": "Ro",
+      "blurb": "Long cooldown, big blast. Flies over the horde at the toughest enemy around. Count adds rockets.",
+      "ups": ["+{count, plural, one {# rocket} other {# rockets}}", "Blast radius +{radius}%"]
+    },
+    "drone": {
+      "name": "Drone", "tag": "Dr",
+      "blurb": "Crosses the map on a diagonal, right through you, and hits everything on its way. Size makes its path wider.",
+      "ups": ["Its path is {span}% longer", "+{drones, plural, one {# drone} other {# drones}}, on another diagonal"]
+    },
+    "hurricane": {
+      "name": "Hurricane", "tag": "Hu",
+      "blurb": "A whirlwind lands on the thickest crowd and wanders for a while. An enemy that stays inside for {blow.after} s is pushed out, once, and the whirlwind swallows enemy shots. Count adds whirlwinds.",
+      "ups": ["Radius +{radius}%", "+{count, plural, one {# whirlwind} other {# whirlwinds}}"]
+    },
+    "shotgun": {
+      "name": "Shotgun", "tag": "Sg",
+      "blurb": "A blast of pellets in a narrow cone at the nearest enemy. Every pellet hits one enemy, no splash. Count adds {perCount, plural, one {# pellet} other {# pellets}}.",
+      "ups": ["+{pellets, plural, one {# pellet} other {# pellets}}", "Every pellet goes through {pierce, plural, one {# more enemy} other {# more enemies}}"]
+    },
+    "iceflash": {
+      "name": "Ice Flash", "tag": "IF",
+      "blurb": "Every few seconds a flash of cold around you hurts and slows everything in it.",
+      "ups": ["Slows {slow}% more", "Radius +{radius}%"]
+    },
+    "summon": {
+      "name": "Summon", "tag": "Su",
+      "blurb": "Calls up a copy of you with your max health. It fights with a very short spear, all magic damage, and hits harder the more health you have.",
+      "ups": ["Copies last {life} s longer", "Bigger copies with a {copy.reach}% longer spear"]
+    }
+  },
+  "evolutions": {
+    "inferno": {
+      "name": "Inferno Orb",
+      "blurb": "Every blast leaves the ground burning for {burn.life} s."
+    },
+    "scatter": {
+      "name": "Scatter Flame",
+      "blurb": "Every blast throws out {scatter, plural, one {# small fireball} other {# small fireballs}}.",
+      "inherit": { "clusterrocket": "+{minis, plural, one {# small rocket} other {# small rockets}}" }
+    },
+    "emp": {
+      "name": "EMP Aura",
+      "blurb": "An enemy that stays in the aura for {emp.after} s in a row is stunned for {emp.stun} s; elites are slowed instead. Damage +{damage}%.",
+      "inherit": { "frosthalo": "An enemy that stays in the aura for {emp.after} s in a row freezes for {emp.stun} s; elites are slowed instead" }
+    },
+    "sanctum": {
+      "name": "Sanctum",
+      "blurb": "Enemy shots fade inside the aura. Damage -{damage}%.",
+      "inherit": { "radiantlance": "Enemy shots fade inside the lance" }
+    },
+    "shower": {
+      "name": "Meteor Shower",
+      "blurb": "{meteors, plural, one {# more meteor} other {# more meteors}} per cast, each of them smaller."
+    },
+    "cataclysm": {
+      "name": "Cataclysm",
+      "blurb": "{meteors, plural, one {One meteor} other {# meteors}}, {radius}% wider and {damage}% stronger, and its crater slows.",
+      "inherit": { "meteordrone": "Meteors {radius}% wider, and their craters slow" }
+    },
+    "web": {
+      "name": "Storm Web",
+      "blurb": "+{jumps, plural, one {# jump} other {# jumps}}, and jumps lose no damage.",
+      "inherit": { "electrogun": "+{jumps, plural, one {# jump} other {# jumps}}, and jumps lose no damage" }
+    },
+    "overcharge": {
+      "name": "Overcharge",
+      "blurb": "Every jump has a {fork}% chance to fork to one more enemy."
+    },
+    "glacier": {
+      "name": "Glacier Lance",
+      "blurb": "Freezes what it hits for {freeze} s; elites are only slowed. Damage +{damage}%.",
+      "inherit": { "iceboomerang": "Freezes what it hits for {freeze} s" }
+    },
+    "shatter": {
+      "name": "Shatter",
+      "blurb": "What it kills bursts into {shards, plural, one {# piercing ice shard} other {# piercing ice shards}}."
+    },
+    "blink": {
+      "name": "Blink Strike",
+      "blurb": "The phase ends with a blast.",
+      "inherit": { "emberstep": "The phase ends with a blast" }
+    },
+    "shroud": {
+      "name": "Shroud",
+      "blurb": "Lasts {duration}% longer and fades enemy shots near you."
+    },
+    "pike": {
+      "name": "Pike Wall",
+      "blurb": "A second spear points behind you.",
+      "inherit": { "radiantlance": "A second oval reaches behind you" }
+    },
+    "javelin": {
+      "name": "Javelin",
+      "blurb": "Every {javelin, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} strike throws a piercing javelin across the screen.",
+      "inherit": { "phantomlancer": "Every {javelin, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} strike throws a piercing javelin" }
+    },
+    "glaive": {
+      "name": "Glaive",
+      "blurb": "Instead of coming back it bounces between {bounces} enemies. Damage +{damage}%.",
+      "inherit": { "iceboomerang": "Bounces between {bounces} enemies instead of coming back. Damage +{damage}%" }
+    },
+    "orbit": {
+      "name": "Orbit Blades",
+      "blurb": "Circles around you for {orbit} s before it comes back."
+    },
+    "revolver": {
+      "name": "Revolver",
+      "blurb": "Every 6th shot deals {sixth}x damage and goes through everything.",
+      "inherit": { "railgun": "Every 6th volley deals {sixth}x damage" }
+    },
+    "dual": {
+      "name": "Dual Wield",
+      "blurb": "+{targets, plural, one {# target} other {# targets}}, and bullets knock enemy shots out of the air.",
+      "inherit": { "electrogun": "{targets, plural, =2 {Two chains} other {# chains}} per shot, and they knock enemy shots out of the air" }
+    },
+    "great": {
+      "name": "Greatsword",
+      "blurb": "Size +{size}%, and a swing knocks enemies back: the same enemy once in {knockEvery} s.",
+      "inherit": { "bastion": "Size +{size}%, and a swing knocks enemies back" }
+    },
+    "parry": {
+      "name": "Parry Blade",
+      "blurb": "A swing sends enemy shots back where they came from. Damage +{damage}%."
+    },
+    "bulwark": {
+      "name": "Bulwark",
+      "blurb": "+{charges, plural, one {# charge} other {# charges}}.",
+      "inherit": { "bastion": "+{charges, plural, one {# charge} other {# charges}}" }
+    },
+    "spiked": {
+      "name": "Spiked Shield",
+      "blurb": "The blast is {damage}% stronger, and enemies that touch you get hurt."
+    },
+    "barrage": {
+      "name": "Barrage",
+      "blurb": "+{count, plural, one {# rocket} other {# rockets}}, each {damage}% weaker.",
+      "inherit": { "clusterrocket": "+{count, plural, one {# rocket} other {# rockets}}, each {damage}% weaker" }
+    },
+    "nuke": {
+      "name": "Nuke",
+      "blurb": "One rocket with a blast {radius}% wider that leaves fallout. Count makes it hit harder instead.",
+      "inherit": { "bomber": "Blasts {radius}% wider that leave fallout" }
+    },
+    "prism": {
+      "name": "Prism",
+      "blurb": "At its first target the beam splits into {prism}.",
+      "inherit": { "stormlance": "{beams, plural, =3 {Three beams turn} other {# beams turn}} around every whirlwind" }
+    },
+    "sweeper": {
+      "name": "Sweeper",
+      "blurb": "The beam sweeps a {sweep}° arc instead of following a target. Width +{width}%, damage +{damage}%."
+    },
+    "dragon": {
+      "name": "Dragon's Breath",
+      "blurb": "The cone is {length}% longer and leaves burning ground behind."
+    },
+    "napalm": {
+      "name": "Napalm",
+      "blurb": "Enemies burn for {afterburn} s, and the burn stacks up to {burnStacks, plural, one {once} other {# times}}.",
+      "inherit": { "firetornado": "Enemies inside catch fire for {afterburn} s, stacking up to {burnStacks, plural, one {once} other {# times}}" }
+    },
+    "twin": {
+      "name": "Twin Gales",
+      "blurb": "+{count, plural, one {# whirlwind} other {# whirlwinds}}. Damage +{damage}%.",
+      "inherit": { "firetornado": "+{count, plural, one {# tornado} other {# tornadoes}}. Damage +{damage}%" }
+    },
+    "eye": {
+      "name": "Eye of the Storm",
+      "blurb": "The whirlwinds rise in a ring around you and slowly drift straight away from you instead of wandering.",
+      "inherit": { "stormlance": "The whirlwinds rise in a ring around you and slowly drift straight away from you" }
+    },
+    "wildfire": {
+      "name": "Wildfire",
+      "blurb": "Enemies that touch the trail keep burning and set fire to those next to them.",
+      "inherit": { "pyretwins": "Enemies that touch the trail keep burning and light their neighbors" }
+    },
+    "comet": {
+      "name": "Comet Tail",
+      "blurb": "The trail is {radius}% wider and burns hotter the faster you move.",
+      "inherit": { "emberstep": "The trail is {trail.radius}% wider and burns hotter the faster you move" }
+    },
+    "double": {
+      "name": "Double Barrel",
+      "blurb": "Fires twice in a row, {second} s apart, and every pellet knocks its enemy back.",
+      "inherit": { "railgun": "Fires twice in a row, and the beams knock enemies back" }
+    },
+    "sawnoff": {
+      "name": "Sawn-off",
+      "blurb": "The cone is {cone, plural, =100 {twice as wide} other {#% wider}}."
+    },
+    "darkice": {
+      "name": "Dark Ice",
+      "blurb": "The flash sets enemies on fire, and every flash on the same enemy slows it {chillGrow}% more, up to +{chillMax}%."
+    },
+    "permafrost": {
+      "name": "Permafrost",
+      "blurb": "The ground stays icy for {frost.life} s after a flash, and everything on it is slowed.",
+      "inherit": { "frosthalo": "The ground stays icy for {frost.life} s after a flash" }
+    },
+    "gunner": {
+      "name": "Gunslinger",
+      "blurb": "Every copy also shoots like a Pistol, for magic damage.",
+      "inherit": { "phantomlancer": "Every copy also shoots like a Pistol" }
+    },
+    "twins": {
+      "name": "Twin Copies",
+      "blurb": "{clones, plural, =2 {Two copies} other {# copies}} at once, each with {hpShare}% of your health.",
+      "inherit": { "pyretwins": "{clones, plural, =2 {Two copies} other {# copies}}, each with {hpShare}% of your health" }
+    },
+    "squadron": {
+      "name": "Squadron",
+      "blurb": "+{drones, plural, one {# drone} other {# drones}}: one on every diagonal.",
+      "inherit": { "bomber": "+{drones, plural, one {# drone} other {# drones}}" }
+    },
+    "guardian": {
+      "name": "Guardian",
+      "blurb": "Circles around you for {guard} s at a time and catches enemy shots.",
+      "inherit": { "meteordrone": "The drones catch enemy shots on their way" }
+    }
+  },
+  "merges": {
+    "electrogun": {
+      "name": "ElectroGun", "tag": "EG",
+      "blurb": "Every shot chains between targets and deals physical and magic damage at once."
+    },
+    "iceboomerang": {
+      "name": "Ice Boomerang", "tag": "IB",
+      "blurb": "Flies further and slows what survives. Physical going out, magic coming back."
+    },
+    "clusterrocket": {
+      "name": "Cluster Rocket", "tag": "CR",
+      "blurb": "Right after its blast the rocket bursts into {minis, plural, one {# small rocket} other {# small rockets}}, each after an enemy of its own. Count adds rockets."
+    },
+    "meteordrone": {
+      "name": "Meteor Drone", "tag": "MD",
+      "blurb": "The drone calls down 3 meteors on its way: where it starts, on you in the middle, and where it ends."
+    },
+    "radiantlance": {
+      "name": "Radiant Lance", "tag": "RL",
+      "blurb": "The Aura shifts toward the Spear: a long oval reaching far ahead of you. Its first touch knocks a target back. Speed makes it strike more often."
+    },
+    "firetornado": {
+      "name": "Fire Tornado", "tag": "To",
+      "blurb": "A whirlwind of fire that grows for as long as it lives: wider and hotter every second. An enemy that stays inside for {blow.after} s is pushed out, once. Two that touch become one. Count adds tornadoes."
+    },
+    "bastion": {
+      "name": "Bastion", "tag": "Ba",
+      "blurb": "Sword swings that hit {armorScale}% harder for every point of Armor. Every swing that lands brings the next shield charge {recharge} s closer. Stores up to {charges, plural, one {# charge} other {# charges}}: a charge blocks one hit and blasts everything nearby."
+    },
+    "stormlance": {
+      "name": "Storm Lance", "tag": "SL",
+      "blurb": "Whirlwinds, each with a beam fixed to it that slowly turns around and burns through the line. An enemy that stays inside one for {blow.after} s is pushed out, once."
+    },
+    "emberstep": {
+      "name": "Ember Step", "tag": "ES",
+      "blurb": "Walking leaves burning ground. On cooldown you turn into a damaging ghost, and while it lasts fire springs up on the four diagonals around you. A hit triggers it early and blocks that hit."
+    },
+    "railgun": {
+      "name": "Railgun", "tag": "Rg",
+      "blurb": "A volley of instant beams in a cone: every beam goes through everything on its line and takes {shred} armor off what it hits for {shredTime} s. Count adds {perCount, plural, one {# beam} other {# beams}}."
+    },
+    "bomber": {
+      "name": "Bomber Drone", "tag": "BD",
+      "blurb": "Drones cross the map on the diagonals and drop rockets on the toughest enemies below them on the way. Count adds drones."
+    },
+    "frosthalo": {
+      "name": "Frost Halo", "tag": "FH",
+      "blurb": "Hurts everything close to you all the time and takes {wardShred} ward off it, and every few seconds the whole aura flashes with cold that slows by {slow}%."
+    },
+    "pyretwins": {
+      "name": "Pyre Twins", "tag": "PT",
+      "blurb": "Calls up copies of you, and both you and the copies leave a trail of burning ground. The more health you have, the harder the copies hit."
+    },
+    "phantomlancer": {
+      "name": "Phantom Lancer", "tag": "PL",
+      "blurb": "Your Spear, and copies of you that carry the same spear. The more health you have, the harder the copies hit."
+    },
+    "gunblade": {
+      "name": "Gunblade", "tag": "GB",
+      "blurb": "A sword swing right next to you that fires a volley of {pellets, plural, one {# pellet} other {# pellets}} across its whole arc; every pellet hits up to {pierce, plural, one {# enemy} other {# enemies}}. A swing sends enemy shots back where they came from. Count adds swings, every second one behind you, each with its own volley."
+    },
+    "bladewraith": {
+      "name": "Blade Wraith", "tag": "BW",
+      "blurb": "On cooldown you turn into a ghost that moves faster and hurts everything around you with magic, while {blades, plural, one {# blade circles} other {# blades circle}} you. When the phase ends the blades fly out all around and come back, cutting everything on their way. Whatever the ghost or the blades touch loses {shredWard}% of its ward for {shredTime} s, more with every phase, up to half of it, so all your magic hits harder. A hit triggers the phase early and is blocked, and the cooldown stays as it is. Enemy shots fade near you. Count adds blades."
+    },
+    "starfall": {
+      "name": "Starfall", "tag": "SF",
+      "blurb": "{meteors, plural, one {# meteor falls} other {# meteors fall}} on the thickest crowds, and from every blast a bolt of lightning jumps from enemy to enemy; every jump has a {fork}% chance to fork. The craters keep burning, longer with Duration. Count adds meteors."
+    },
+    "dragonfire": {
+      "name": "Dragonfire", "tag": "DF",
+      "blurb": "A long cone of fire toward the nearest enemy, physical, that throws fireballs while it burns: they fly beyond the cone and burst at the first enemy, magic. The cone and the blasts both leave the ground burning. Count adds fireballs to every throw."
+    },
+    "blackfrost": {
+      "name": "Black Frost", "tag": "BF",
+      "blurb": "A flash of black ice around you also takes {healthHit}% of every enemy's max health (half on elites and tanks), sets everything in it on fire and slows it by {slow}%, and {arrows, plural, one {# ice arrow flies} other {# ice arrows fly}} out of it in every direction, piercing the whole line. What an arrow kills bursts into {shards, plural, one {# piercing shard} other {# piercing shards}}. Count adds {perCount, plural, one {# arrow} other {# arrows}}."
+    },
+    "mirrorshield": {
+      "name": "Mirror Shield", "tag": "MS",
+      "blurb": "Stores up to {charges, plural, one {# charge} other {# charges}}: a charge blocks one hit, blasts everything nearby and sends the hit back, turning the beam all the way round you. Every few seconds a wide beam sweeps a {sweep}° arc across the nearest enemy, burns the enemy shots it crosses and takes {shredArmor}% of the armor off every enemy it passes for {shredTime} s, more with every pass, up to half of it, so all your physical damage hits harder. Enemies that touch you get hurt. Count adds beams."
+    }
+  },
+  "retired": {
+    "fireshield": "Fire Shield"
+  }
+}

@@ -1,0 +1,126 @@
+# For development only. Production runs on NixOS (flake.nix, nix/module.nix).
+#
+#   docker compose up -d           the site on http://localhost:8080, its database,
+#                                  and a stand-in for Google's sign-in on :8090
+#   docker compose watch           the same, restarting the server when Go files change
+#   docker compose run --rm seed   fill the database with made-up players
+#   docker compose run --rm test   run every test, the database ones included
+#   docker compose down -v         stop and delete the data
+#
+# To sign in with real Google instead of the stand-in, put NEXUS_GOOGLE_CLIENT_ID,
+# NEXUS_GOOGLE_CLIENT_SECRET and empty NEXUS_GOOGLE_AUTH_URL, NEXUS_GOOGLE_TOKEN_URL
+# and NEXUS_GOOGLE_ISSUER in a .env file next to this one.
+
+name: game-nexus
+
+x-go: &go
+  image: golang:1.26-alpine
+  working_dir: /src
+  volumes:
+    - .:/src
+    - gomod:/go/pkg/mod
+    - gocache:/root/.cache/go-build
+  environment: &go-env
+    CGO_ENABLED: "0"
+    NEXUS_DATABASE_URL: postgres://game-nexus:dev@db:5432/game-nexus?sslmode=disable
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: game-nexus
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: game-nexus
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    configs:
+      # Runs once, when the data volume is new.
+      - source: test-database
+        target: /docker-entrypoint-initdb.d/10-test-database.sql
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U game-nexus -d game-nexus]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Stands in for Google: any account id signs in. Development only.
+  fake-google:
+    image: golang:1.26-alpine
+    working_dir: /src
+    volumes:
+      - .:/src
+      - gomod:/go/pkg/mod
+      - gocache:/root/.cache/go-build
+    command: go run ./cmd/fake-google
+    environment:
+      CGO_ENABLED: "0"
+      FAKE_GOOGLE_LISTEN: 0.0.0.0:8090
+      FAKE_GOOGLE_ISSUER: http://localhost:8090
+      FAKE_GOOGLE_CLIENT_ID: dev
+      FAKE_GOOGLE_CLIENT_SECRET: dev
+    ports:
+      - 127.0.0.1:8090:8090
+
+  app:
+    <<: *go
+    command: go run ./cmd/nexus
+    environment:
+      <<: *go-env
+      NEXUS_LISTEN: 0.0.0.0:8080
+      NEXUS_WEB_ROOT: /src/web
+      # No NEXUS_BASE_URL: plain HTTP, and sign-in returns to the host the browser used.
+      NEXUS_GOOGLE_CLIENT_ID: ${NEXUS_GOOGLE_CLIENT_ID:-dev}
+      NEXUS_GOOGLE_CLIENT_SECRET: ${NEXUS_GOOGLE_CLIENT_SECRET:-dev}
+      # The browser opens the sign-in page on this machine; the server reaches the
+      # token endpoint inside the compose network.
+      NEXUS_GOOGLE_AUTH_URL: ${NEXUS_GOOGLE_AUTH_URL-http://localhost:8090/authorize}
+      NEXUS_GOOGLE_TOKEN_URL: ${NEXUS_GOOGLE_TOKEN_URL-http://fake-google:8090/token}
+      NEXUS_GOOGLE_ISSUER: ${NEXUS_GOOGLE_ISSUER-http://localhost:8090}
+    ports:
+      - 127.0.0.1:8080:8080
+    depends_on:
+      db:
+        condition: service_healthy
+      fake-google:
+        condition: service_started
+    develop:
+      # web/ needs nothing: the server reads it from the bind mount on every request.
+      watch:
+        - path: ./cmd
+          action: restart
+        - path: ./internal
+          action: restart
+        - path: ./go.mod
+          action: restart
+        - path: ./go.sum
+          action: restart
+
+  seed:
+    <<: *go
+    profiles: [tools]
+    # The seed tool only trusts a database on localhost; here it is the dev
+    # container `db`, hence -force.
+    command: go run ./cmd/nexus-seed -reset -force
+
+  test:
+    <<: *go
+    profiles: [tools]
+    command: go test ./...
+    environment:
+      <<: *go-env
+      NEXUS_TEST_DATABASE_URL: postgres://game-nexus:dev@db:5432/nexus-test?sslmode=disable
+
+configs:
+  test-database:
+    content: |
+      CREATE DATABASE "nexus-test" OWNER "game-nexus";
+
+volumes:
+  pgdata:
+  gomod:
+  gocache:

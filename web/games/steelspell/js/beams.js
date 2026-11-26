@@ -1,0 +1,430 @@
+// Weapons that last: beams, cones of fire, whirlwinds and burning trails. Each of them is a
+// zone (see combat.js) with a shape and a way of moving of its own, and all of them live
+// longer with the Duration stat.
+
+// Of a few enemies in range, the one standing in the thickest crowd. `taken` are spots
+// already used, so that several whirlwinds do not land on one place.
+function densestSpot(x, y, range, taken = []) {
+  const inRange = nearestEnemies(x, y, range, MAX_ENEMIES)
+    .filter(e => taken.every(t => Math.hypot(t.x - e.x, t.y - e.y) > 90));
+  const stride = Math.max(1, Math.floor(inRange.length / 10));
+  let best = null;
+  let most = -1;
+  for (let i = 0; i < inRange.length; i += stride) {
+    const e = inRange[i];
+    let crowd = 0;
+    eachEnemyNear(e.x, e.y, 80, () => { crowd++; });
+    if (crowd > most) {
+      most = crowd;
+      best = e;
+    }
+  }
+  return best && { x: best.x, y: best.y };
+}
+
+function moveToward(z, goal, step) {
+  const dx = goal.x - z.x;
+  const dy = goal.y - z.y;
+  const d = Math.hypot(dx, dy);
+  if (d < 1) return;
+  z.x += dx / d * Math.min(d, step);
+  z.y += dy / d * Math.min(d, step);
+}
+
+// ---- Laser ----
+
+function moveLaser(z, dt) {
+  const d = z.w.cfg;
+  z.x = hero.x;
+  z.y = hero.y;
+  if (d.sweep) z.a += d.sweep / z.span * dt; // Sweeper: across its arc once in a lifetime
+}
+
+function eachOnLaser(z, fn) {
+  const d = z.w.cfg;
+  if (!d.prism) {
+    eachEnemyOnLance(z.x, z.y, z.a, z.length, z.half, fn);
+    return;
+  }
+  // Prism: the beam stops at its first target and goes on from there as three.
+  let first = null;
+  let at = Infinity;
+  eachEnemyOnLance(z.x, z.y, z.a, z.length, z.half, e => {
+    const along = (e.x - z.x) * Math.cos(z.a) + (e.y - z.y) * Math.sin(z.a);
+    if (along < at) {
+      at = along;
+      first = e;
+    }
+  });
+  z.split = first && { x: first.x, y: first.y };
+  if (!first) return;
+  const lit = new Set([first]);
+  fn(first);
+  for (let i = 0; i < d.prism; i++) {
+    const a = z.a + (i - (d.prism - 1) / 2) * d.prismFan;
+    eachEnemyOnLance(z.split.x, z.split.y, a, d.prismLength, z.half, e => {
+      if (lit.has(e)) return;
+      lit.add(e);
+      fn(e);
+    });
+  }
+}
+
+FIRE.laser = function (w) {
+  const d = w.cfg;
+  const n = shotCount(w);
+  if (!nearestEnemies(hero.x, hero.y, d.length, 1).length) return false;
+  const life = d.life * weaponDuration(w);
+  for (let i = 0; i < n; i++) {
+    const aim = rand() * TAU; // a random direction: the Laser does not aim
+    addZone({
+      look: 'laser', pen: d.pen, x: hero.x, y: hero.y, r: d.length, a: d.sweep ? aim - d.sweep / 2 : aim,
+      length: d.length, half: d.width * weaponSize(w) / 2, life, span: life, tick: d.tick, timer: 0, w,
+      move: moveLaser, each: eachOnLaser, apply: e => hit(e, w, d.damage, undefined, true),
+    });
+  }
+  return true;
+};
+
+// ---- Mirror Shield ----
+
+// A beam out of the shield that turns `span` over its `life`: a Sweeper's arc, or all the way
+// round when a charge sends a hit back. Magic damage. It burns the enemy shots it crosses and
+// takes a share of the armor off every enemy it passes, once a beam.
+function mirrorBeam(w, a, span, life) {
+  const d = w.cfg;
+  const size = weaponSize(w);
+  const shredded = new Set();
+  addZone({
+    look: 'laser', pen: d.pen, x: hero.x, y: hero.y, r: d.beamLength * size, a, length: d.beamLength * size,
+    half: d.beamWidth * size / 2, life, turn: span / life, tick: d.beamTick, timer: 0, w,
+    move: (z, dt) => {
+      z.x = hero.x;
+      z.y = hero.y;
+      z.a += z.turn * dt;
+      eraseShotsOnLine(z.x, z.y, z.x + Math.cos(z.a) * z.length, z.y + Math.sin(z.a) * z.length, z.half);
+    },
+    each: (z, fn) => eachEnemyOnLance(z.x, z.y, z.a, z.length, z.half, fn),
+    apply: e => {
+      hit(e, w, d.beamDamage, 'magic', true);
+      if (e.dead || shredded.has(e)) return;
+      shredded.add(e);
+      shredShare(e, 'armor', d.shredArmor, d.shredTime * weaponDuration(w));
+    },
+  });
+}
+
+// On its timer the beam sweeps its arc across the nearest enemy; Count adds beams, spread
+// evenly around the hero.
+function sweepMirrorBeams(w) {
+  const d = w.cfg;
+  const target = nearestEnemies(hero.x, hero.y, d.beamLength * weaponSize(w), 1)[0];
+  if (!target) return false;
+  const n = shotCount(w);
+  const aim = aimAt(target) - d.sweep / 2;
+  const life = d.beamLife * weaponDuration(w);
+  for (let i = 0; i < n; i++) mirrorBeam(w, aim + i * TAU / n, d.sweep, life);
+  return true;
+}
+
+function mirrorSpin(w) {
+  mirrorBeam(w, rand() * TAU, TAU, w.cfg.spin);
+}
+
+// ---- Flamethrower ----
+
+function moveFlame(z, dt) {
+  z.x = hero.x;
+  z.y = hero.y;
+  const target = nearestEnemies(hero.x, hero.y, z.length * 1.3, 1)[0];
+  if (target) z.a = turnToward(z.a, aimAt(target), z.w.cfg.turn * dt);
+}
+
+FIRE.flamethrower = function (w) {
+  const d = w.cfg;
+  const size = weaponSize(w);
+  const length = d.length * size;
+  const target = nearestEnemies(hero.x, hero.y, length * 1.2, 1)[0];
+  if (!target) return false;
+  addZone({
+    look: 'flame', pen: d.pen, x: hero.x, y: hero.y, r: length, a: aimAt(target), length,
+    half: Math.min(1.4, d.cone * (1 + (size - 1) * 0.5) / 2), // Size widens the cone at half the rate
+    life: d.life * weaponDuration(w), tick: d.tick, timer: 0, w, move: moveFlame,
+    each: (z, fn) => eachEnemyInCone(z.x, z.y, z.a, z.length, z.half, fn),
+    apply: e => {
+      hit(e, w, d.damage, undefined, true);
+      if (d.afterburn) ignite(e, w, d.damage * 2, d.afterburn, d.burnStacks);
+    },
+    // Dragon's Breath: where the cone was, the ground keeps burning.
+    end: d.scorch && (z => {
+      for (const share of [0.35, 0.65, 0.95]) {
+        burnGround(w, z.x + Math.cos(z.a) * z.length * share, z.y + Math.sin(z.a) * z.length * share, z.length * 0.22, d.scorch);
+      }
+    }),
+  });
+  return true;
+};
+
+// ---- Dragonfire ----
+
+// A fireball out of the cone: it bursts at the first enemy it meets, or at the end of its
+// flight, for magic damage (the cone burns physical) and leaves the ground burning.
+function throwDragonBall(w, a) {
+  const d = w.cfg;
+  const radius = d.ballRadius * weaponSize(w);
+  const blast = s => {
+    eachEnemyNear(s.x, s.y, radius, e => hit(e, w, d.ballDamage, 'magic'));
+    addFx({ type: 'ring', x: s.x, y: s.y, r: radius, life: 0.3, pen: KINDS.magic.pen });
+    burnGround(w, s.x, s.y, radius * 0.8, d.burn);
+  };
+  launch({
+    look: 'ball', pen: d.pen, a, speed: d.ballSpeed, r: 7, life: d.ballRange / d.ballSpeed,
+    onHit: blast, onEnd: blast,
+  });
+}
+
+// The Flamethrower's cone, longer, that throws fireballs while it burns (Count adds balls to
+// every throw, in a fan) and leaves burning ground where it was.
+FIRE.dragonfire = function (w) {
+  const d = w.cfg;
+  const size = weaponSize(w);
+  const length = d.length * size;
+  const target = nearestEnemies(hero.x, hero.y, length * 1.2, 1)[0];
+  if (!target) return false;
+  addZone({
+    look: 'flame', pen: d.pen, x: hero.x, y: hero.y, r: length, a: aimAt(target), length,
+    half: Math.min(1.4, d.cone * (1 + (size - 1) * 0.5) / 2),
+    life: d.life * weaponDuration(w), tick: d.tick, timer: 0, w, ballIn: 0,
+    move: (z, dt) => {
+      moveFlame(z, dt);
+      z.ballIn -= dt;
+      if (z.ballIn > 0) return;
+      z.ballIn += d.ballEvery;
+      const n = shotCount(w);
+      for (let i = 0; i < n; i++) throwDragonBall(w, z.a + (i - (n - 1) / 2) * d.ballFan);
+    },
+    each: (z, fn) => eachEnemyInCone(z.x, z.y, z.a, z.length, z.half, fn),
+    apply: e => hit(e, w, d.damage, 'phys', true),
+    end: z => {
+      for (const share of [0.35, 0.65, 0.95]) {
+        burnGround(w, z.x + Math.cos(z.a) * z.length * share, z.y + Math.sin(z.a) * z.length * share, z.length * 0.22, d.scorch);
+      }
+    },
+  });
+  return true;
+};
+
+// ---- Hurricane ----
+
+// Pushes out, once, an enemy that has stayed inside for `blow.after` seconds in a row (see BLOW
+// in data/weapons.js), and swallows enemy shots. `inside` counts the unbroken stays.
+function blowOut(z, dt) {
+  const b = z.w.cfg.blow;
+  const inside = z.inside || (z.inside = new Map());
+  const blown = z.blown || (z.blown = new Set());
+  const here = new Set();
+  eachEnemyNear(z.x, z.y, z.r, e => {
+    if (blown.has(e)) return;
+    here.add(e);
+    const stay = (inside.get(e) || 0) + dt;
+    if (stay < b.after) {
+      inside.set(e, stay);
+      return;
+    }
+    inside.delete(e);
+    blown.add(e);
+    const dist = Math.hypot(e.x - z.x, e.y - z.y);
+    const a = dist > 0.5 ? Math.atan2(e.y - z.y, e.x - z.x) : rand() * TAU;
+    knockBack(e, a, Math.max(b.distance, z.r + e.r - dist), b.time);
+  });
+  for (const e of inside.keys()) if (!here.has(e)) inside.delete(e); // the stay must be unbroken
+  eraseEnemyShots(z.x, z.y, z.r);
+}
+
+// Once a second it looks for the thickest crowd nearby and heads there.
+function wander(z, dt) {
+  z.think -= dt;
+  if (z.think <= 0) {
+    z.think = 1;
+    z.goal = densestSpot(z.x, z.y, 260) || z.goal;
+  }
+  if (z.goal) moveToward(z, z.goal, z.w.cfg.drift * dt);
+}
+
+function moveWhirlwind(z, dt) {
+  wander(z, dt);
+  blowOut(z, dt);
+}
+
+// Eye of the Storm: the whirlwinds rise on a ring around the hero, then each drifts straight
+// away from where the hero stood, `eyeDrift` units a second. They do not follow the hero.
+function moveEye(z, dt) {
+  const d = z.w.cfg;
+  z.x += Math.cos(z.turn) * d.eyeDrift * dt;
+  z.y += Math.sin(z.turn) * d.eyeDrift * dt;
+  blowOut(z, dt);
+}
+
+// Where a whirlwind rises: on the crowd it was cast at, or on Eye of the Storm's ring.
+function whirlSpot(w, spot, turn) {
+  if (!w.cfg.eye) return spot;
+  return { x: hero.x + Math.cos(turn) * w.cfg.eyeRadius, y: hero.y + Math.sin(turn) * w.cfg.eyeRadius };
+}
+
+// One whirlwind per shot, each on a crowd of its own while there are crowds enough. With Eye
+// of the Storm they share a ring instead, evenly spaced from a random start.
+function castWhirlwinds(w, make) {
+  const n = shotCount(w);
+  const spots = [];
+  for (let i = 0; i < n; i++) {
+    const spot = densestSpot(hero.x, hero.y, w.cfg.range, spots);
+    if (!spot) break;
+    spots.push(spot);
+  }
+  if (!spots.length) return false;
+  const offset = w.cfg.eye ? rand() * TAU : 0;
+  for (let i = 0; i < n; i++) make(w, whirlSpot(w, spots[i % spots.length], offset + i / n * TAU), offset + i / n * TAU);
+  return true;
+}
+
+FIRE.hurricane = function (w) {
+  const d = w.cfg;
+  return castWhirlwinds(w, (weapon, spot, turn) => addZone({
+    look: 'gale', pen: d.pen, x: spot.x, y: spot.y, r: d.radius * weaponSize(w), life: d.life * weaponDuration(w),
+    tick: d.tick, timer: 0, w, think: 0, turn, move: d.eye ? moveEye : moveWhirlwind,
+    apply: e => hit(e, w, d.damage, undefined, true),
+  }));
+};
+
+// ---- Fire Tornado ----
+
+// It grows with age: fast up to `slowAt`, half as fast after, never past `max`.
+function tornadoRadius(d, age, size) {
+  const g = d.grow;
+  const fast = (g.slowAt - g.from) / g.perSecond;
+  const r = age <= fast ? g.from + g.perSecond * age : g.slowAt + g.perSecond / 2 * (age - fast);
+  return Math.min(g.max, r) * size;
+}
+
+function moveTornado(z, dt) {
+  const d = z.w.cfg;
+  z.r = tornadoRadius(d, z.age, z.size);
+  wander(z, dt);
+  blowOut(z, dt);
+  z.scorchIn -= dt;
+  if (z.scorchIn <= 0) {
+    z.scorchIn += d.scorch.every;
+    burnGround(z.w, z.x, z.y, z.r * (d.scorchWide || 0.5), d.scorch); // wider from Dragon's Breath
+  }
+  // Two tornadoes that touch become one: their ages add up, so it is bigger than either.
+  for (const o of zones) {
+    if (o === z || o.dead || o.look !== 'tornado' || Math.hypot(o.x - z.x, o.y - z.y) > z.r + o.r) continue;
+    o.dead = true;
+    z.age += o.age;
+    z.life = Math.max(z.life, o.life);
+    z.ticksLeft = Math.max(z.ticksLeft, o.ticksLeft);
+  }
+}
+
+FIRE.firetornado = function (w) {
+  const d = w.cfg;
+  return castWhirlwinds(w, (weapon, spot, turn) => {
+    const size = weaponSize(w);
+    const z = addZone({
+      look: 'tornado', pen: d.pen, x: spot.x, y: spot.y, r: tornadoRadius(d, 0, size), size, turn,
+      life: d.life * weaponDuration(w), tick: d.tick, timer: 0, w, think: 0, scorchIn: d.scorch.every, move: moveTornado,
+    });
+    z.apply = e => {
+      hit(e, w, d.damage * (1 + d.ramp * Math.min(d.rampMax, z.age)), undefined, true); // hotter every second
+      if (d.afterburn) ignite(e, w, d.damage * 0.5, d.afterburn, d.burnStacks); // from Napalm
+    };
+  });
+};
+
+// ---- Fire Trail ----
+
+// A patch of burning ground for every `every` units walked. Standing still leaves nothing.
+// One patch of burning ground, `t` as in a Fire Trail. The oldest of a weapon's patches gives
+// way past MAX_TRAIL.
+function layPatch(w, x, y, t, heat = 1) {
+  const mine = zones.filter(z => z.look === 'trail' && z.w === w && !z.dead);
+  if (mine.length >= MAX_TRAIL) mine[0].dead = true;
+  const patch = {
+    look: 'trail', pen: w.cfg.pen, x, y, r: t.radius * weaponSize(w), life: t.life * weaponDuration(w),
+    tick: t.tick, timer: t.tick, w,
+    apply: e => {
+      hit(e, w, t.damage * heat, undefined, true);
+      if (t.afterburn) ignite(e, w, t.damage, t.afterburn, 1, t.spread);
+    },
+  };
+  addZone(Object.assign({}, patch));
+  // Echo Stone: the same patch once more, on the same spot.
+  if (gearValue('echo') && rand() < gearValue('echo')) later(0.5, () => addZone(Object.assign({}, patch)));
+}
+
+// A patch for every `t.every` units that `pos` (the hero, or a copy) walks; `state` keeps the
+// count. Comet Tail: the faster the walk, the hotter the patch.
+function walkTrail(w, dt, t, pos, state) {
+  if (state.lastX === undefined) {
+    state.lastX = pos.x;
+    state.lastY = pos.y;
+    state.walked = 0;
+  }
+  const step = Math.hypot(pos.x - state.lastX, pos.y - state.lastY);
+  state.lastX = pos.x;
+  state.lastY = pos.y;
+  if (step > 60) return; // a Flash is not a walk
+  state.walked += step;
+  if (state.walked < t.every) return;
+  state.walked %= t.every;
+  const heat = t.cometGain ? 1 + Math.max(0, step / dt / HERO.speed - 1) * t.cometGain : 1;
+  layPatch(w, pos.x, pos.y, t, heat);
+}
+
+TICK.firetrail = function (w, dt) {
+  walkTrail(w, dt, w.cfg, hero, w);
+};
+
+// ---- Ember Step ----
+
+// The Phase Dash and a Fire Trail; while the phase lasts, fire on the four diagonals.
+TICK.emberstep = function (w, dt) {
+  const d = w.cfg;
+  TICK.phase(w, dt);
+  walkTrail(w, dt, d.trail, hero, w);
+  if (hero.phaseLeft <= 0) return;
+  w.ember = (w.ember || 0) - dt;
+  if (w.ember > 0) return;
+  w.ember += d.ember.every;
+  for (let k = 0; k < 4; k++) {
+    const a = TAU / 8 + k * TAU / 4;
+    layPatch(w, hero.x + Math.cos(a) * d.ember.distance, hero.y + Math.sin(a) * d.ember.distance, d.ember);
+  }
+};
+
+// ---- Storm Lance ----
+
+// Whirlwinds like the Hurricane's, each with beams fixed to it that slowly turn around.
+FIRE.stormlance = function (w) {
+  const d = w.cfg;
+  return castWhirlwinds(w, (weapon, spot, turn) => addZone({
+    look: 'stormlance', pen: d.pen, x: spot.x, y: spot.y, r: d.radius * weaponSize(w), life: d.life * weaponDuration(w),
+    tick: d.tick, timer: 0, w, think: 0, turn, beamA: rand() * TAU,
+    length: d.beamLength * weaponSize(w), half: d.beamWidth * weaponSize(w) / 2,
+    move: (z, dt) => {
+      (d.eye ? moveEye : moveWhirlwind)(z, dt);
+      z.beamA += d.beamTurn * dt;
+    },
+    each: (z, fn) => {
+      const struck = new Set();
+      const once = e => {
+        if (struck.has(e)) return;
+        struck.add(e);
+        fn(e);
+      };
+      eachEnemyNear(z.x, z.y, z.r, once);
+      for (let i = 0; i < d.beams; i++) eachEnemyOnLance(z.x, z.y, z.beamA + i * TAU / d.beams, z.length, z.half, once);
+    },
+    apply: e => hit(e, w, d.damage, undefined, true),
+  }));
+};

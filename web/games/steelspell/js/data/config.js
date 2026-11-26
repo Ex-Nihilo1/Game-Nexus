@@ -1,0 +1,133 @@
+// Tuning: constants, the hero, damage kinds, stats and active skills.
+
+const TAU = Math.PI * 2;
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+const DEV = new URLSearchParams(location.search).has('dev');
+
+const VIEW_SHORT = 560; // world units along the screen's short side...
+const MIN_SCALE = 0.8; // ...unless that would make everything too small on a phone
+const WEAPON_LEVELS = [10, 20, 40, 60]; // new weapons at these levels; the first comes before the run
+const MAX_WEAPON_LEVEL = 8; // a weapon grows through level-up cards up to here
+// A level-up: how many cards, how much likelier a weapon level comes up than a passive, and
+// whether one of each is always there while there is one to offer.
+const LEVEL_CARDS = { slots: 3, weaponWeight: 2, sureWeapon: true, sureStat: true };
+const REROLLS = { start: 2, everyLevels: 12 }; // rerolls a run begins with, and how often a level adds one
+const SKIP_HEAL = 0.1; // share of max health for skipping a level-up
+const XP = { base: 5, perLevel: 2.7, curve: 0.03 }; // a level costs base + perLevel x level + curve x level squared
+const HP_PER_LEVEL = 1; // max health for every level gained
+// How the horde grows with every minute of the world clock (it stands still in boss fights, see
+// js/stages.js): health by `hp` and by `hpAccel` per minute squared, to keep up with a growing
+// kit; the damage of touches and shots; walking speed.
+const GROWTH = { hp: 0.12, hpAccel: 0.03, damage: 0.12, speed: 0.03 };
+// The walls stand only in endless survival, after the third boss: from this minute of it on,
+// health doubles every so many minutes, so every run ends.
+const HP_WALL = { from: 0, doubling: 3 };
+// Contact damage doubles too, from later on: a build that only outlasts the horde without killing it still ends.
+const TOUCH_WALL = { from: 8, doubling: 3 };
+const AIM_RANGE = 460;
+const ORB_PULL_SPEED = 340;
+const WILD_ORB = { every: 2, share: 0.03 }; // orbs also appear on the map, each worth this share of the level, so a hero who cannot kill still grows
+// A magnet on the map pulls in every XP orb at once. Each elite drops one, an ordinary enemy
+// once in a long while, and one turns up by itself every `every` seconds. Only one lies on
+// the map at a time. `pull` is how much faster than usual the orbs fly in.
+const MAGNET = { every: 120, dropChance: 1 / 700, pull: 2.4 };
+const RED_ORB = { heal: 0.15, every: 1200, eliteDrop: 3, max: 10 }; // `heal` is a share of max health, `every` a distance walked
+// The Count card comes up until the picks reach `cap`; items, the Camp, weapon levels and
+// Berserk add shots on top of that, with no limit. A weapon that fires a single shot (Nuke)
+// turns every Count into `overflow` more damage instead.
+const COUNT = { cap: 3, overflow: 0.15 };
+const STRONG_PICKS = 5; // the first picks of a stat add `step`, every pick after them `weak`
+const BODY_SHOVE = 0.25; // share of an overlap the hero gives way on: small enemies
+const ELITE_SHOVE = 0.8; // and elites, who mostly push the hero around
+const SEPARATION = 0.5;
+const MAX_PUSHES = 5;
+const RECYCLE_MARGIN = 260; // enemies and orbs this far off screen come back ahead of the hero
+const MAX_ENEMIES = 320;
+const MAX_ORBS = 160;
+const MAX_FX = 120;
+const MAX_ENEMY_SHOTS = 150;
+const MAX_WARNINGS = 40; // strikes announced on the ground at once
+const MAX_ZONES = 140; // burning ground, beams and whirlwinds together
+const MAX_TRAIL = 60; // patches of one Fire Trail; past that the oldest gives way
+const BURN_TICK = 0.5; // an enemy on fire is hurt this often
+const BURN_SHARE = 0.02; // share of its max health a burning enemy loses per second, per stack (elites half)
+const SHRED_MAX = 0.5; // armor or ward taken off an enemy never goes past this share of it
+const WEAK_SPOT = { every: 10, time: 4 }; // Weak Spot: every 10th hit on one enemy, for 4 s
+const MAX_NUMBERS = 40;
+const DOT_NUMBER_EVERY = 0.3; // damage over time shows one summed number per enemy this often
+const MAX_ENEMY_R = 30;
+const STICK_RADIUS = 46;
+const HURT_FLASH = 0.3; // seconds the screen's edge stays red after a hit
+// The hero's own effects are filled this much lighter, so that the horde's attacks stand out.
+const HERO_FILL = 0.6;
+
+const BEST_KEY = 'games.steelspell.best'; // the one best run of the first version: read once, never changed
+const LAST_KEY = 'games.steelspell.last';
+const SETTINGS_KEY = 'games.steelspell.settings'; // what the Settings screen keeps
+const RECORD_RUNS = 20; // the longest runs kept, for each balance version
+// Runs are compared only within one balance version: raise it whenever the numbers change.
+const BALANCE_VERSION = '0.3';
+
+// Glory is what a run earns for the Camp, win or lose.
+const GLORY = { perMinute: 10, perElite: 15, perLevel: 2, perMerge: 25 };
+
+// `attack` is the base attack: at 100 every weapon deals the damage listed in its table.
+// `lives` are the spare lives a run starts with; items can add more.
+const HERO = { hp: 300, attack: 100, speed: 150, r: 11, magnet: 72, iframes: 0.5, lives: 0 };
+
+// Spending a spare life: full health and a blast of pure damage, `share` of max health.
+const REVIVE = { share: 1, radius: 320, iframes: 2 };
+
+// Second Wind (an item): a hit that would leave less than `below` of max health is cancelled,
+// and `safe` seconds of safety follow.
+const SECOND_WIND = { below: 0.2, safe: 2 };
+
+// Kinds of damage, and of what a card or a stat is for. Every name the player reads is in
+// lang/en.json, by the id of its row.
+const KINDS = {
+  phys: { pen: 'orange-pen' },
+  magic: { pen: 'violet' },
+  hybrid: { pen: 'green-ink' },
+  pure: { pen: 'ink' }, // ignores armor and ward
+  hero: { pen: 'green-ink' },
+};
+
+// Passive stats. The first STRONG_PICKS picks of a stat on level-ups add `step` each, every
+// pick after them adds `weak`. Items and Camp upgrades add on top at their full value. A
+// weapon gets a stat only if it lists it in `scales` (`off` is what it gets otherwise, the
+// base value unless given). Stats marked `hero` belong to the hero and are always on offer.
+// `weight` is how often the card comes up, 1 unless given.
+const STATS = {
+  damage: { base: 1, step: 0.08, weak: 0.03 },
+  haste: { base: 0, step: 0.06, weak: 0.025 }, // attacks this much more often
+  size: { base: 1, step: 0.05, weak: 0.02 },
+  count: { base: 0, step: 1, weight: 0.4 }, // see COUNT
+  critChance: { base: 0.05, step: 0.05, weak: 0.02, off: 0 }, // past 100% a crit can land twice
+  critDamage: { base: 1.5, step: 0.12, weak: 0.05 },
+  duration: { base: 1, step: 0.08, weak: 0.03 },
+  speed: { base: 1, step: 0.04, weak: 0.015, hero: true },
+  xp: { base: 1, step: 0.05, weak: 0.02, hero: true },
+  magnet: { base: 1, step: 0.15, weak: 0.06, hero: true },
+  armor: { base: 0, step: 6, weak: 2.5, hero: true }, // a hit does 100 / (100 + armor) of its damage
+  vitality: { base: 1, step: 0.08, weak: 0.03, hero: true },
+  recovery: { base: 0, step: 0.4, weak: 0.15, hero: true },
+};
+
+// Active skills: one is picked before the run and sits on the Space key. Each also has a
+// passive for the whole run: `gives` adds to the hero like an item. `group` is where the start
+// screen lists it.
+// Every active skill has a weapon of its own, `ownWeapon`, and a run starts with it: there is no
+// other first weapon. Ignite's passive (`burnBoost`): while its fire lasts, burning enemies and
+// the ticks of fire weapons hit that many times as hard.
+const ACTIVES = [
+  { id: 'flash', group: 'mobility', cooldown: 40, distance: 190, critBoost: 0.25, critTime: 20, ownWeapon: 'shotgun' },
+  { id: 'ghost', group: 'mobility', cooldown: 120, duration: 5, speedBoost: 2, gives: { speed: 0.1, magnet: 0.25 }, ownWeapon: 'spear' },
+  { id: 'berserk', group: 'damage', cooldown: 60, duration: 30, gives: { baseHp: 50, regen: 0.005 }, rageRegen: 0.05, rageTime: 10,
+    buff: { damage: 1.3, size: 1.25, haste: 0.25, count: 1 }, ownWeapon: 'sword' },
+  { id: 'ignite', group: 'damage', cooldown: 120, duration: 8, radius: 270, tick: 0.5, share: 0.7,
+    gives: { fireDamage: 0.1 }, burnBoost: 2, ownWeapon: 'flamethrower' },
+  { id: 'stash', group: 'economy', cooldown: 300, distance: 110, gives: { haste: 0.1 }, ownWeapon: 'drone' },
+  { id: 'inspiration', group: 'economy', cooldown: 100, share: 0.6, startLevels: 3, ownWeapon: 'aura' },
+];
+const ACTIVE_GROUPS = ['mobility', 'damage', 'economy'];
+const BERSERK = ACTIVES.find(a => a.id === 'berserk');
