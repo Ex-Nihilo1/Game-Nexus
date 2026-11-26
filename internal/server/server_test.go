@@ -366,7 +366,7 @@ func TestRunsAndBoards(t *testing.T) {
 	if board := speed[0].(map[string]any)["stats"].(map[string]any); board["cols"] != 30.0 || board["mode"] != "noguess" {
 		t.Fatalf("row stats: %v", board)
 	}
-	classic := newClient(t, e.base).call("GET", "/api/boards/minesweeper/speed?filter=classic", nil, 200)["rows"].([]any)
+	classic := newClient(t, e.base).call("GET", "/api/boards/minesweeper/speed?filter[mode]=classic", nil, 200)["rows"].([]any)
 	if len(classic) != 1 || classic[0].(map[string]any)["displayName"] != "Cyd" {
 		t.Fatalf("classic only: %v", classic)
 	}
@@ -375,9 +375,14 @@ func TestRunsAndBoards(t *testing.T) {
 		t.Fatalf("wins: %v", wins)
 	}
 
-	// Steel & Spell boards filter by starting weapon, named as the game named it.
+	// Steel & Spell boards filter by starting weapon, named as the game named it, and
+	// by balance version.
 	ss := func(start, name string, time float64) map[string]any {
-		return map[string]any{"version": "0.2.3", "time": time, "level": 3, "kills": 40, "elites": 0, "merges": 0,
+		version := "0.2.3"
+		if start == "icearrow" {
+			version = "0.3"
+		}
+		return map[string]any{"version": version, "time": time, "level": 3, "kills": 40, "elites": 0, "merges": 0,
 			"active": "flash", "activeName": "Flash", "start": start, "startName": name, "health": 120,
 			"weapons": []map[string]any{{"id": start, "name": name, "evo": "", "evoName": "", "level": 2, "kind": "Physical", "dealt": 500}},
 			"items":   []map[string]any{{"id": "vest", "name": "Padded Vest", "rarity": "grey"}},
@@ -386,9 +391,15 @@ func TestRunsAndBoards(t *testing.T) {
 	}
 	play(cy, "steelspell", ss("sword", "Sword", 4), 200)
 	play(di, "steelspell", ss("icearrow", "Ice Arrow", 3), 200)
-	byIce := newClient(t, e.base).call("GET", "/api/boards/steelspell/time?filter=icearrow", nil, 200)["rows"].([]any)
+	byIce := newClient(t, e.base).call("GET", "/api/boards/steelspell/time?filter[start]=icearrow", nil, 200)["rows"].([]any)
 	if len(byIce) != 1 || byIce[0].(map[string]any)["displayName"] != "Dina" {
 		t.Fatalf("filtered: %v", byIce)
+	}
+	if old := newClient(t, e.base).call("GET", "/api/boards/steelspell/time?filter[version]=0.2.3", nil, 200)["rows"].([]any); len(old) != 1 || old[0].(map[string]any)["displayName"] != "Cyd" {
+		t.Fatalf("one version: %v", old)
+	}
+	if none := newClient(t, e.base).call("GET", "/api/boards/steelspell/time?filter[version]=0.3&filter[start]=sword", nil, 200)["rows"].([]any); len(none) != 0 {
+		t.Fatalf("two filters: %v", none)
 	}
 	if run := byIce[0].(map[string]any)["stats"].(map[string]any); run["items"].([]any)[0].(map[string]any)["name"] != "Padded Vest" {
 		t.Fatalf("row stats: %v", run)

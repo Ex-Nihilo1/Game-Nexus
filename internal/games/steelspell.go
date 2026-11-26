@@ -7,8 +7,8 @@ import (
 )
 
 // Steel & Spell: a run lasts until the horde wins; its time is the score. Runs of
-// every balance version share one list; each keeps its version (BALANCE_VERSION in
-// web/games/steelspell/js/data/config.js), shown with the run.
+// every balance version share one list, which can be narrowed to one version
+// (BALANCE_VERSION in web/games/steelspell/js/data/config.js).
 //
 // A run carries most of its end screen, with the names the game used at that
 // version, so the leaderboard can show the build without the game's data files.
@@ -20,12 +20,15 @@ var steelSpell = &Game{
 		"games.steelspell.last", "games.steelspell.best", "games.steelspell.settings",
 	},
 	Boards: []Board{
-		{ID: "time", Title: "Longest run", Metric: "time", Unit: "seconds", Desc: true,
-			Filter: "start", FilterLabel: "startName", FilterTitle: "Starting weapon"},
-		{ID: "kills", Title: "Most kills", Metric: "kills", Unit: "kills", Desc: true,
-			Filter: "start", FilterLabel: "startName", FilterTitle: "Starting weapon"},
+		{ID: "time", Title: "Longest run", Metric: "time", Unit: "seconds", Desc: true, Filters: steelSpellFilters},
+		{ID: "kills", Title: "Most kills", Metric: "kills", Unit: "kills", Desc: true, Filters: steelSpellFilters},
 	},
 	Check: checkSteelSpell,
+}
+
+var steelSpellFilters = []Filter{
+	{Key: "version", Title: "Version"},
+	{Key: "start", Label: "startName", Title: "Starting weapon"},
 }
 
 var (

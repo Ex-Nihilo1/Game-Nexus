@@ -581,8 +581,8 @@ paths:
       summary: What a game's boards can be narrowed by
       description: |
         The variants its results have (for Tower Defense, the maps) and the values each
-        board filter can take (Minesweeper modes, Steel & Spell starting weapons), most
-        played first, at most 40 of each.
+        board filter can take (Minesweeper modes, Steel & Spell balance versions and
+        starting weapons), most played first, at most 40 of each.
       security: []
       responses:
         '200':
@@ -597,7 +597,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/Option' }
                   filters:
-                    description: Keyed by the boards' `filter` field.
+                    description: Keyed by the `key` of the boards' filters.
                     type: object
                     additionalProperties:
                       type: array
@@ -605,6 +605,9 @@ paths:
               example:
                 variants: [{ value: '', results: 450 }]
                 filters:
+                  version:
+                    - { value: '0.3', results: 52 }
+                    - { value: 0.2.3, results: 398 }
                   start:
                     - { value: sword, label: Sword, results: 41 }
                     - { value: icearrow, label: Ice Arrow, results: 30 }
@@ -636,8 +639,14 @@ paths:
           schema: { type: string, default: '' }
         - name: filter
           in: query
-          description: A value of the board's `filter` stats key; empty for all.
-          schema: { type: string, default: '' }
+          description: |
+            A value for some of the board's filters, by key: `filter[version]=0.3&filter[start]=sword`.
+            A filter left out, or empty, takes every value.
+          style: deepObject
+          explode: true
+          schema:
+            type: object
+            additionalProperties: { type: string }
         - name: period
           in: query
           description: Only results from the past week or month.
@@ -1043,9 +1052,17 @@ components:
         desc: { type: boolean, description: "Higher is better." }
         onlyWon: { type: boolean, description: "Only won games count." }
         count: { type: boolean, description: "Ranks by number of results instead of the best one." }
-        filter: { type: string, description: "A stats key the board can be narrowed by." }
-        filterLabel: { type: string, description: "A stats key holding a display name for each filter value." }
-        filterTitle: { type: string, description: "What the filter is called on the page." }
+        filters:
+          description: What the board can be narrowed by.
+          type: array
+          items: { $ref: '#/components/schemas/Filter' }
+    Filter:
+      type: object
+      required: [key, title]
+      properties:
+        key: { type: string, description: "The stats key whose value narrows the board." }
+        label: { type: string, description: "A stats key holding a display name for each value." }
+        title: { type: string, description: "What the filter is called on the page." }
     GameInfo:
       type: object
       required: [id, name, boards]

@@ -21,7 +21,11 @@ func TestEveryBoardMetricIsAStatsKey(t *testing.T) {
 		var keys map[string]any
 		json.Unmarshal(raw, &keys)
 		for _, b := range g.Boards {
-			for _, key := range []string{b.Metric, b.Filter} {
+			keysRead := []string{b.Metric}
+			for _, f := range b.Filters {
+				keysRead = append(keysRead, f.Key, f.Label)
+			}
+			for _, key := range keysRead {
 				if key == "" {
 					continue
 				}

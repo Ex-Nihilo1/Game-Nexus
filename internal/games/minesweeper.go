@@ -18,9 +18,9 @@ var minesweeper = &Game{
 	},
 	Boards: []Board{
 		{ID: "speed", Title: "Fastest solver", Metric: "speed", Unit: "speed", Desc: true, OnlyWon: true,
-			Filter: "mode", FilterTitle: "Mode"},
+			Filters: []Filter{{Key: "mode", Title: "Mode"}}},
 		{ID: "wins", Title: "Most wins", Unit: "wins", Desc: true, OnlyWon: true, Count: true,
-			Filter: "mode", FilterTitle: "Mode"},
+			Filters: []Filter{{Key: "mode", Title: "Mode"}}},
 	},
 	Check: checkMinesweeper,
 }

@@ -44,16 +44,21 @@ type Outcome struct {
 
 // Board is one leaderboard: each player's best result by Metric.
 type Board struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Metric      string `json:"metric"`                // a numeric stats key
-	Unit        string `json:"unit"`                  // how the page shows it: seconds, points, lines, lives, waves, kills, wins
-	Desc        bool   `json:"desc"`                  // higher is better
-	OnlyWon     bool   `json:"onlyWon"`               // only results with "won": true
-	Count       bool   `json:"count"`                 // the number of results instead of the best one
-	Filter      string `json:"filter,omitempty"`      // a stats key the board can be narrowed by
-	FilterLabel string `json:"filterLabel,omitempty"` // a stats key with a name for each Filter value
-	FilterTitle string `json:"filterTitle,omitempty"`
+	ID      string   `json:"id"`
+	Title   string   `json:"title"`
+	Metric  string   `json:"metric"`            // a numeric stats key
+	Unit    string   `json:"unit"`              // how the page shows it: seconds, points, lines, lives, waves, kills, wins
+	Desc    bool     `json:"desc"`              // higher is better
+	OnlyWon bool     `json:"onlyWon"`           // only results with "won": true
+	Count   bool     `json:"count"`             // the number of results instead of the best one
+	Filters []Filter `json:"filters,omitempty"` // what the board can be narrowed by
+}
+
+// Filter narrows a board to the results with one value of a stats key.
+type Filter struct {
+	Key   string `json:"key"`             // the stats key
+	Label string `json:"label,omitempty"` // a stats key with a name for each value
+	Title string `json:"title"`
 }
 
 // All lists the games in menu order.

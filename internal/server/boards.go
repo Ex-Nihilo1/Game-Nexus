@@ -51,16 +51,18 @@ func (s *Server) boardOptions(w http.ResponseWriter, r *http.Request) {
 	}
 	filters := map[string][]option{}
 	for _, b := range g.Boards {
-		if b.Filter == "" || filters[b.Filter] != nil {
-			continue
-		}
-		label := ``
-		if b.FilterLabel != "" {
-			label = `stats->>'` + safeKey(b.FilterLabel) + `'`
-		}
-		if filters[b.Filter], err = s.options(ctx, `stats->>'`+safeKey(b.Filter)+`'`, label, g.ID); err != nil {
-			failInternal(w, "board options", err)
-			return
+		for _, f := range b.Filters {
+			if filters[f.Key] != nil {
+				continue
+			}
+			label := ``
+			if f.Label != "" {
+				label = `stats->>'` + safeKey(f.Label) + `'`
+			}
+			if filters[f.Key], err = s.options(ctx, `stats->>'`+safeKey(f.Key)+`'`, label, g.ID); err != nil {
+				failInternal(w, "board options", err)
+				return
+			}
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"variants": variants, "filters": filters})
@@ -100,7 +102,7 @@ type boardQuery struct {
 	game    *games.Game
 	board   *games.Board
 	variant string
-	filter  string // a value for board.Filter, or "" for all
+	filters map[string]string // a value for some of board.Filters; the others take every value
 	since   time.Time
 	me      int64 // the asking player, 0 for a guest
 }
@@ -142,9 +144,11 @@ func (s *Server) boardRows(ctx context.Context, q boardQuery) ([]boardRow, *boar
 	if b.OnlyWon {
 		where += ` AND (r.stats->>'won')::boolean`
 	}
-	if b.Filter != "" && q.filter != "" {
-		args = append(args, q.filter)
-		where += ` AND r.stats->>'` + safeKey(b.Filter) + `' = $5`
+	for _, f := range b.Filters {
+		if v := q.filters[f.Key]; v != "" {
+			args = append(args, v)
+			where += fmt.Sprintf(` AND r.stats->>'%s' = $%d`, safeKey(f.Key), len(args))
+		}
 	}
 	var best string
 	if b.Count {
@@ -232,7 +236,10 @@ func (s *Server) board(w http.ResponseWriter, r *http.Request) {
 		failInternal(w, "board", err)
 		return
 	}
-	q := boardQuery{game: g, board: b, variant: r.URL.Query().Get("variant"), filter: r.URL.Query().Get("filter"), since: since}
+	q := boardQuery{game: g, board: b, variant: r.URL.Query().Get("variant"), filters: map[string]string{}, since: since}
+	for _, f := range b.Filters {
+		q.filters[f.Key] = r.URL.Query().Get("filter[" + f.Key + "]")
+	}
 	if u != nil {
 		q.me = u.ID
 	}

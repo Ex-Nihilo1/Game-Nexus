@@ -175,6 +175,7 @@ I18n.add('ru', {
   'Map': 'Карта',
   'Mode': 'Режим',
   'Starting weapon': 'Начальное оружие',
+  'Version': 'Версия',
   'No player has that name.': 'Игрока с таким именем нет.',
   'No such API call.': 'Такого запроса нет.',
   'No such game.': 'Такой игры нет.',

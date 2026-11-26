@@ -25,6 +25,7 @@
       margin-bottom: 16px;
     }
     .controls .field { margin: 0; }
+    .filters { display: contents; }
     .periods { display: flex; gap: 6px; margin-left: auto; }
     .periods button { height: 28px; padding: 0 10px; font-size: 12px; }
     table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
@@ -112,8 +113,7 @@
         <div class="controls">
           <label class="field" id="variant-field" hidden><span class="label" id="variant-label"></span>
             <select id="variant"></select></label>
-          <label class="field" id="filter-field" hidden><span class="label" id="filter-label"></span>
-            <select id="filter"></select></label>
+          <span class="filters" id="filters"></span>
           <div class="periods" id="periods" data-i18n-all>
             <button type="button" data-period="all" aria-pressed="true">All time</button>
             <button type="button" data-period="month" aria-pressed="false">Past month</button>
@@ -139,8 +139,14 @@
     const params = new URLSearchParams(location.search);
     const state = {
       game: params.get('game'), board: params.get('board'), variant: params.get('variant'),
-      filter: params.get('filter') || '', period: params.get('period') || 'all',
+      period: params.get('period') || 'all',
     };
+    // The board's filters, by key: filter[version]=0.3 in the address, as in the API.
+    let filters = {};
+    for (const [k, v] of params) {
+      const m = /^filter\[(\w+)\]$/.exec(k);
+      if (m && v) filters[m[1]] = v;
+    }
     let games = [];
 
     const UNIT_HEAD = {
@@ -202,6 +208,7 @@
     function keepURL() {
       const p = new URLSearchParams();
       for (const [k, v] of Object.entries(state)) if (v && !(k === 'period' && v === 'all')) p.set(k, v);
+      for (const [k, v] of Object.entries(filters)) if (v) p.set(`filter[${k}]`, v);
       history.replaceState(null, '', '?' + p);
     }
 
@@ -215,7 +222,7 @@
       $('game-tabs').textContent = '';
       for (const g of games) $('game-tabs').appendChild(tab(tr(g.name), g.id === id, () => {
         state.variant = null;
-        state.filter = '';
+        filters = {};
         pickGame(g.id);
       }));
       const [r] = await Promise.all([Nexus.call('GET', 'boards/' + id), id === 'steelspell' ? loadSteelSpellTexts() : null]);
@@ -244,22 +251,44 @@
       for (const b of game.boards) $('board-tabs').appendChild(tab(tr(b.title), b.id === id, () => pickBoard(b.id)));
       $('board-tabs').hidden = game.boards.length < 2;
 
-      $('filter-field').hidden = !board.filter;
-      if (board.filter) {
-        $('filter-label').textContent = tr(board.filterTitle);
-        $('filter').textContent = '';
-        $('filter').add(new Option(tr('All'), ''));
-        for (const o of game.filterOptions[board.filter] || []) {
-          const label = state.game === 'steelspell'
-            ? ssText(o.label || words(o.value), ssWeaponPath(o.value))
-            : tr(o.label || (state.game === 'minesweeper' ? MODES[o.value] : '') || words(o.value));
-          $('filter').add(new Option(label, o.value, false, o.value === state.filter));
+      // One list per filter, each starting at All. Values this board has no filter for go.
+      const own = board.filters || [];
+      filters = Object.fromEntries(own.filter(f => filters[f.key]).map(f => [f.key, filters[f.key]]));
+      $('filters').textContent = '';
+      for (const f of own) {
+        const field = document.createElement('label');
+        field.className = 'field';
+        const label = document.createElement('span');
+        label.className = 'label';
+        label.textContent = tr(f.title);
+        const select = document.createElement('select');
+        select.add(new Option(tr('All'), ''));
+        const options = [...(game.filterOptions[f.key] || [])];
+        if (f.key === 'version') options.sort((a, b) => compareVersions(b.value, a.value)); // newest first
+        for (const o of options) {
+          select.add(new Option(filterName(f, o), o.value, false, o.value === filters[f.key]));
         }
-      } else {
-        state.filter = '';
+        select.addEventListener('change', () => { filters[f.key] = select.value; load(); });
+        field.append(label, select);
+        $('filters').appendChild(field);
       }
       load();
     }
+
+    // How a filter value reads: a version as it is, the rest by name.
+    function filterName(f, o) {
+      if (f.key === 'version') return o.value;
+      if (state.game === 'steelspell') return ssText(o.label || words(o.value), ssWeaponPath(o.value));
+      return tr(o.label || (state.game === 'minesweeper' ? MODES[o.value] : '') || words(o.value));
+    }
+    const compareVersions = (a, b) => {
+      const pa = a.split('.').map(Number);
+      const pb = b.split('.').map(Number);
+      for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+        if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0);
+      }
+      return 0;
+    };
 
     let loading = 0;
     async function load() {
@@ -267,7 +296,7 @@
       const ticket = ++loading;
       const board = currentBoard();
       const q = new URLSearchParams({ variant: state.variant || '', period: state.period });
-      if (state.filter) q.set('filter', state.filter);
+      for (const [k, v] of Object.entries(filters)) if (v) q.set(`filter[${k}]`, v);
       const r = await Nexus.call('GET', `boards/${state.game}/${state.board}?${q}`);
       if (ticket !== loading) return;
       const body = $('rows');
@@ -499,7 +528,6 @@
     }
 
     $('variant').addEventListener('change', e => { state.variant = e.target.value; load(); });
-    $('filter').addEventListener('change', e => { state.filter = e.target.value; load(); });
     $('periods').addEventListener('click', e => {
       const b = e.target.closest('[data-period]');
       if (!b) return;
