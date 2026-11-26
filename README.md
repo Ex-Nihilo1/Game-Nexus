@@ -145,11 +145,34 @@ That builds the server and the site, and runs the VM test, which needs KVM. When
 `go.mod` changes, set `vendorHash` in `nix/package.nix` to `lib.fakeHash`, build once,
 and paste the hash Nix prints.
 
-After a deploy:
+### Updating the VPS
+
+The VPS builds whatever commit its own `flake.lock` pins for the `game-nexus` input, which
+follows this repository's default branch (`main`). Once a change is merged there, in the
+directory of the VPS's system flake:
+
+```bash
+nix flake update game-nexus
+```
+
+```bash
+sudo nixos-rebuild switch --flake .#vps
+```
+
+`vps` is the name of the machine's `nixosConfigurations` entry. The service restarts,
+applies any new database migrations, and serves the new game files. Check it:
 
 ```bash
 curl https://games.example.com/api/health
 ```
+
+To deploy a branch before it is merged, point the input at it,
+`inputs.game-nexus.url = "github:Ex-Nihilo1/Game-Nexus/<branch>";`, and run the same two
+commands. `nixos-rebuild switch --rollback` goes back to the previous system.
+
+This repository's `flake.lock` pins the nixpkgs that the server and the site are built
+with, on the VPS too unless its flake sets `inputs.game-nexus.inputs.nixpkgs.follows`.
+`nix flake update` here moves it to the channel's latest.
 
 ## Versions
 
