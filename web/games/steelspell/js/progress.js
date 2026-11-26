@@ -93,6 +93,7 @@ function pullOrb(o, dt) {
 // An orb left far behind comes back ahead of the hero: walking always turns up XP, and none
 // is lost for good.
 function updateOrbs(dt) {
+  if (fight) return; // the orbs wait for the end of a boss fight
   const far = recycleDistance();
   for (const o of orbs) {
     const dx = hero.x - o.x;
@@ -143,7 +144,7 @@ function updateMagnets(dt) {
     if (Math.hypot(hero.x - m.x, hero.y - m.y) >= HERO.r + 14) continue;
     m.dead = true;
     pullEveryOrb();
-    say('Every orb comes to you');
+    say(t('toasts.magnet'));
   }
   sweep(magnets);
   // Pocket Magnet: the same, on a timer of its own.
@@ -152,7 +153,7 @@ function updateMagnets(dt) {
     if (pocketLeft <= 0) {
       pocketLeft += gearValue('pocketMagnet');
       pullEveryOrb();
-      say('Pocket Magnet: every orb comes to you');
+      say(t('toasts.pocketMagnet', { name: t('items.pocket.name') }));
     }
   }
 }
@@ -204,28 +205,34 @@ function openChoice(kind) {
     cards = rollItems(chest).map(itemCard);
     if (!cards.length) {
       addLevel(); // nothing left to find
-      say('Every item found: +1 level');
+      say(t('toasts.allItems'));
       return false;
     }
-    title = chest.name;
-    note = 'Pick one. Every item is one of a kind.';
+    title = t(`chests.${kind}`);
+    note = t('cards.chestNote');
   } else if (kind.startsWith('evolve:')) {
     const w = owned(kind.slice(7));
     if (!w || w.evo) return false;
     cards = EVOLUTIONS[w.def.id].map((evo, branch) => evolveCard(w, evo, branch));
-    title = `${w.def.name} evolves`;
-    note = 'It is at its last level. Pick the way it changes for good.';
+    title = t('cards.evolveTitle', { name: nameOf(w.def) });
+    note = t('cards.evolveNote');
+    reroll = false;
+  } else if (kind === 'arsenal') {
+    cards = weaponCards(true); // after a story boss: any weapon at all
+    if (!cards.length) return false;
+    title = t('cards.arsenalTitle');
+    note = t('cards.arsenalNote');
     reroll = false;
   } else {
     cards = kind === 'weapon' ? weaponCards() : [];
     if (cards.length) {
-      title = `Level ${level}: new weapon`;
-      note = 'Pick one to add to your kit.';
+      title = t('cards.weaponTitle', { level });
+      note = t('cards.weaponNote');
     } else {
       kind = 'stat';
       cards = levelCards();
-      title = `Level ${level}`;
-      note = 'Pick one upgrade.';
+      title = t('cards.levelTitle', { level });
+      note = t('cards.levelNote');
       skip = true;
     }
     if (!cards.length) return false;
@@ -263,9 +270,9 @@ function statPool() {
   const pool = [];
   for (const key of Object.keys(STATS)) {
     const def = STATS[key];
-    const users = defs.filter(d => d.scales.includes(key)).map(d => d.name);
+    const users = defs.filter(d => d.scales.includes(key)).map(nameOf);
     if (!canPick(key)) continue;
-    if (def.note || users.length) pool.push({ key, users: def.note ? [def.note, ...users] : users, weight: def.weight || 1 });
+    if (def.hero || users.length) pool.push({ key, users: def.hero ? [t(`stats.${key}.note`), ...users] : users, weight: def.weight || 1 });
   }
   return pool;
 }
@@ -290,10 +297,11 @@ function statCard(o) {
     type: 'stat',
     key: o.key,
     kind: 'hero',
-    tag: STATS[o.key].note ? KINDS.hero.name : 'Weapons',
-    name: STATS[o.key].name,
+    tag: STATS[o.key].hero ? kindName('hero') : t('cards.forWeapons'),
+    name: statName(o.key),
     value: gainText(o.key),
-    note: `${formatStat(o.key, now)} to ${formatStat(o.key, now + statGain(o.key))} · ${o.users.join(', ')}` + (remark ? ` · ${remark}` : ''),
+    note: `${t('cards.statChange', { from: formatStat(o.key, now), to: formatStat(o.key, now + statGain(o.key)) })} · ${o.users.join(', ')}`
+      + (remark ? ` · ${remark}` : ''),
     pick: () => {
       upgrades[o.key]++;
       refreshHero();
@@ -303,15 +311,14 @@ function statCard(o) {
 
 function upgradeCard(o) {
   const w = o.weapon;
-  const step = levelStep(w.def, w.level + 1);
   return {
     type: 'upgrade',
     id: w.def.id,
     kind: w.def.kind,
-    tag: KINDS[w.def.kind].name,
-    name: w.def.name,
-    value: `Lv ${w.level} → ${w.level + 1}`,
-    note: stepText(step) + (w.level + 1 === MAX_WEAPON_LEVEL ? ' · The last level' : ''),
+    tag: kindName(w.def.kind),
+    name: nameOf(w.def),
+    value: t('cards.levelUp', { from: w.level, to: w.level + 1 }),
+    note: levelText(w.def, w.level + 1) + (w.level + 1 === MAX_WEAPON_LEVEL ? ` · ${t('cards.lastLevel')}` : ''),
     pick: () => levelUpWeapon(w),
   };
 }
@@ -321,25 +328,38 @@ function evolveCard(w, evo, branch) {
     type: 'evolve',
     id: evo.id,
     kind: w.def.kind,
-    tag: 'Evolution',
-    name: evo.name,
+    tag: t('cards.evolution'),
+    name: evoName(evo),
     value: '',
-    note: evo.blurb,
+    note: [evoBlurb(w.def, evo), ...evoMergeLines(w.def.id, evo.id)].join(' '),
     pick: () => evolveWeapon(w, branch),
   };
 }
 
+// What an evolution card says about the merges the evolution leads to, and what each asks of
+// the other weapon.
+function evoMergeLines(weaponId, evoId) {
+  return evoMerges(weaponId, evoId).map(m => {
+    const partnerId = m.needs.find(id => id !== weaponId);
+    const params = { merge: nameOf(m), partner: nameOf(WEAPON_DEFS.find(d => d.id === partnerId)) };
+    const asked = evoAsked(m, partnerId);
+    if (!asked) return t('cards.evoMerges', params);
+    return t('cards.evoOpens', Object.assign(params, { evo: evoNameOf(partnerId, asked) }));
+  });
+}
+
 function mergeCard(merge) {
   const [a, b] = merge.needs.map(owned);
+  const kept = inheritedSteps(merge.id, [a, b].map(p => ({ id: p.def.id, evo: p.evo })))
+    .map(x => t('cards.fromEvo', { evo: evoName(x.evo), text: inheritText(x.evo, merge) }));
   return {
     type: 'merge',
     id: merge.id,
     kind: 'hybrid',
-    tag: 'Merge',
-    name: merge.name,
+    tag: t('cards.merge'),
+    name: nameOf(merge),
     value: `${weaponName(a)} + ${weaponName(b)}`,
-    note: `${merge.blurb}` + inheritedSteps(merge.id, [a, b].map(p => ({ id: p.def.id, evo: p.evo })))
-      .map(x => ` From ${x.evo.name}: ${x.step.text}.`).join('') + ' Both weapons go, and you pick a new one right away.',
+    note: [blurbOf(merge), ...kept, t('cards.mergeNote')].join(' '),
     pick: () => mergeWeapons(merge),
   };
 }
@@ -367,12 +387,13 @@ function levelCards() {
 }
 
 // A weapon that went into a merge is gone from the pool too.
-function weaponCards() {
+// `all`: every weapon the hero can still take, not 4 of them (the pick after a story boss).
+function weaponCards(all = false) {
   const merged = SYNERGIES.filter(s => owned(s.id)).flatMap(s => s.needs);
   const free = WEAPONS.filter(d => !owned(d.id) && !merged.includes(d.id));
-  const chosen = [];
+  const chosen = all ? [...free] : [];
   const partners = free.filter(d => synergyPartners(d.id).length);
-  if (partners.length) chosen.push(pickOne(partners));
+  if (partners.length && !all) chosen.push(pickOne(partners));
   while (chosen.length < 4 && chosen.length < free.length) {
     const d = pickOne(free);
     if (!chosen.includes(d)) chosen.push(d);
@@ -380,17 +401,20 @@ function weaponCards() {
   return chosen.map(d => {
     const merges = synergyPartners(d.id).map(s => {
       const partner = WEAPONS.find(o => s.needs.includes(o.id) && o !== d);
-      return `with ${partner.name} into ${s.name}`;
+      const params = { partner: nameOf(partner), merge: nameOf(s) };
+      const asked = s.needs.filter(id => evoAsked(s, id)).map(id => evoNameOf(id, evoAsked(s, id)));
+      if (!asked.length) return t('cards.mergeWith', params);
+      return t('cards.mergeWithEvos', Object.assign(params, { evos: asked.join(' + ') }));
     });
     return {
       type: 'weapon',
       id: d.id,
       kind: d.kind,
-      tag: KINDS[d.kind].name,
-      name: d.name,
+      tag: kindName(d.kind),
+      name: nameOf(d),
       value: '',
-      note: `${d.blurb} Uses: ${d.scales.map(k => STATS[k].name).join(', ')}.`,
-      synergy: merges.length ? `Merges ${merges.join(', or ')} once both are at Lv ${MAX_WEAPON_LEVEL} and evolved.` : '',
+      note: `${blurbOf(d)} ${usesText(d)}`,
+      synergy: merges.length ? t('cards.merges', { list: orList(merges), max: MAX_WEAPON_LEVEL }) : '',
       pick: () => addWeapon(d.id),
     };
   });
@@ -416,10 +440,10 @@ function itemCard(item) {
     type: 'item',
     id: item.id,
     kind: item.rarity,
-    tag: RARITIES[item.rarity].name,
-    name: item.name,
+    tag: t(`rarities.${item.rarity}`),
+    name: itemName(item),
     value: '',
-    note: item.text,
+    note: itemText(item),
     pick: () => takeItem(item),
   };
 }

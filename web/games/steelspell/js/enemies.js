@@ -1,13 +1,24 @@
 // The horde: spawning, movement, and the attacks of those that fight from a distance.
 
+// The horde grows on the world clock (js/stages.js); the walls stand in endless survival only.
+function wallMinutes(from) { return inEndless() ? Math.max(0, endlessTime / 60 - from) : 0; }
+
 function healthGrowth() {
-  const minutes = elapsed / 60;
-  const wall = Math.max(0, minutes - HP_WALL.from) / HP_WALL.doubling;
+  const minutes = worldTime / 60;
+  const wall = wallMinutes(HP_WALL.from) / HP_WALL.doubling;
   return (1 + GROWTH.hp * minutes + GROWTH.hpAccel * minutes * minutes) * 2 ** wall;
 }
 
 // What contact and shot damage are multiplied by: the horde hits harder every minute.
-function fury() { return 1 + GROWTH.damage * elapsed / 60; }
+function fury() { return 1 + GROWTH.damage * worldTime / 60; }
+
+// A boss's attacks were set for its stage when it came: only its enrage changes them.
+function furyOf(e) { return e.def.boss ? bossRage() : fury(); }
+
+// Contact damage only: past TOUCH_WALL.from it also doubles every so many minutes.
+function touchFury() {
+  return fury() * 2 ** (wallMinutes(TOUCH_WALL.from) / TOUCH_WALL.doubling);
+}
 
 function recycleDistance() { return Math.hypot(view.w, view.h) / 2 + RECYCLE_MARGIN; }
 
@@ -28,36 +39,48 @@ function addEnemy(type, a = rand() * TAU) {
   const def = ENEMIES[type];
   const ring = Math.hypot(view.w, view.h) / 2 + def.r + 20;
   const hp = def.hp * healthGrowth() * (1 + gearValue('enemyHp'));
-  const grown = def.grow ? Math.max(0, elapsed / 60 - def.grow.from) : 0;
-  enemies.push({
-    def, x: hero.x + Math.cos(a) * ring, y: hero.y + Math.sin(a) * ring, r: def.r,
+  enemies.push(makeEnemy(def, hero.x + Math.cos(a) * ring, hero.y + Math.sin(a) * ring, hp));
+}
+
+function makeEnemy(def, x, y, hp) {
+  const grown = def.grow ? Math.max(0, worldTime / 60 - def.grow.from) : 0;
+  return {
+    def, x, y, r: def.r,
     hp, maxHp: hp,
     armor: def.armor + (def.grow ? def.grow.armor * grown : 0), ward: def.ward + (def.grow ? def.grow.ward * grown : 0), slowLeft: 0, slowBy: 0, flash: 0, pushLeft: 0, pushX: 0, pushY: 0, speared: false, dead: false,
     freezeLeft: 0, rootLeft: 0, dash: null, side: enemies.length % 2 ? 1 : -1,
     // Each attack waits its own time; a random head start keeps a pack from firing as one.
     cool: def.attacks ? def.attacks.map(at => at.every * (0.4 + 0.6 * rand())) : null,
-  });
+  };
 }
 
+// What arrives is read on the wave clock (a stage's own stretch of WAVES and RINGS), how strong
+// it is on the world clock. Nothing new comes in the rest after a boss, nor in the first part
+// of a fight; in a fight neither elites nor rings come, and no orbs turn up.
 function spawnEnemies(dt) {
+  if (devHold || hordeHeldBack()) return; // the developer panel can hold the horde back too
+  const clock = waveClock();
   let wave = WAVES[0];
-  for (const w of WAVES) if (elapsed >= w.at) wave = w;
+  for (const w of WAVES) if (clock >= w.at) wave = w;
   spawnBudget += wave.rate * dt;
   while (spawnBudget >= 1) {
     spawnBudget -= 1;
     addEnemy(pickWeighted(wave.mix));
   }
-  while (elapsed >= (nextElite + 1) * ELITES.every) {
+  if (fight) return;
+  const stageClock = inEndless() ? endlessTime : stageTime;
+  while (stageClock >= (stageElites + 1) * ELITES.every) {
     const types = ELITES.waves[Math.min(nextElite, ELITES.waves.length - 1)];
     nextElite++;
+    stageElites++;
     for (const type of types) addEnemy(type);
-    say(types.length > 1 ? 'Elites have arrived' : `${ENEMIES[types[0]].name} has arrived`);
+    say(types.length > 1 ? t('toasts.elites') : t('toasts.elite', { name: t(`enemies.${types[0]}`) }));
   }
-  while (elapsed >= ringEntry(nextRing).at) {
+  while (clock >= ringEntry(nextRing).at) {
     const ring = ringEntry(nextRing++);
-    if (ring.from && elapsed < ring.from) continue; // this ring comes only later in a run
+    if (ring.from && clock < ring.from) continue; // this ring comes only later in a run
     for (let i = 0; i < ring.count; i++) addEnemy(ring.type, i / ring.count * TAU);
-    say('They are closing in');
+    say(t('toasts.ring'));
   }
   wildOrbTimer -= dt;
   if (wildOrbTimer <= 0) {
@@ -109,7 +132,7 @@ function walk(e, dx, dy, d, pace, dt) {
 
 function moveEnemies(dt) {
   const far = recycleDistance();
-  const hurry = 1 + GROWTH.speed * elapsed / 60;
+  const hurry = 1 + GROWTH.speed * worldTime / 60;
   for (let i = 0; i < enemies.length; i++) {
     const e = enemies[i];
     const dx = hero.x - e.x;
@@ -136,7 +159,7 @@ function moveEnemies(dt) {
     } else if (e.rootLeft > 0) {
       e.rootLeft -= dt;
     } else {
-      walk(e, dx, dy, d, e.def.speed * hurry * (e.slowLeft > 0 ? 1 - e.slowBy : 1), dt);
+      walk(e, dx, dy, d, e.def.speed * (e.def.boss ? 1 : hurry) * (e.slowLeft > 0 ? 1 - e.slowBy : 1), dt);
     }
     if (e.cool && e.freezeLeft <= 0) enemyAttacks(e, d, dt);
     if ((i + frame) % 2 === 0 && !e.def.elite) separate(e);
@@ -152,7 +175,7 @@ function enemyShot(e, shot, a) {
   if (enemyShots.length >= MAX_ENEMY_SHOTS) return;
   enemyShots.push({
     x: e.x, y: e.y, vx: Math.cos(a) * shot.speed, vy: Math.sin(a) * shot.speed, r: shot.r,
-    damage: shot.damage * fury(), kind: shot.kind, life: shot.life || 4, turn: shot.turn || 0, dead: false,
+    damage: shot.damage * furyOf(e), kind: shot.kind, life: shot.life || 4, turn: shot.turn || 0, dead: false,
   });
 }
 
@@ -175,12 +198,12 @@ const ATTACK = {
   lob(e, at) {
     warn({
       shape: 'circle', x: hero.x + hero.vx * at.lead, y: hero.y + hero.vy * at.lead, r: at.radius,
-      life: at.delay, damage: at.damage * fury(), kind: at.kind,
+      life: at.delay, damage: at.damage * furyOf(e), kind: at.kind,
     });
   },
   slam(e, at) {
     e.rootLeft = at.delay;
-    warn({ shape: 'circle', x: e.x, y: e.y, r: at.radius, life: at.delay, damage: at.damage * fury(), kind: at.kind });
+    warn({ shape: 'circle', x: e.x, y: e.y, r: at.radius, life: at.delay, damage: at.damage * furyOf(e), kind: at.kind });
   },
   charge(e, at) {
     const a = aimAtHero(e);

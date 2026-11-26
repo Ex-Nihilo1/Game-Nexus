@@ -4,7 +4,8 @@
 
 const stageEl = document.getElementById('stage');
 const canvas = document.getElementById('view');
-const ctx = canvas.getContext('2d');
+const viewCtx = canvas.getContext('2d');
+let ctx = viewCtx; // render.js draws the hero's own attacks on a layer of their own now and then
 const overlayEl = document.getElementById('overlay');
 const panelEl = document.getElementById('panel');
 const statusEl = document.getElementById('status');
@@ -18,11 +19,11 @@ const view = { w: 0, h: 0, cssW: 0, cssH: 0, scale: 1 };
 const cam = { x: 0, y: 0 };
 const keys = new Set();
 const stick = { active: false, id: 0, ax: 0, ay: 0, x: 0, y: 0 };
-const loadout = { active: ACTIVES[0], weapon: WEAPONS[0] };
+const loadout = { active: ACTIVES[0] }; // the run starts with its weapon
 
 let pal = {};
 let dirty = true;
-let phase = 'start'; // start | menu (records, camp) | playing | choosing | paused | over
+let phase = 'start'; // start | menu (records, camp) | playing | choosing | paused | over | notexts
 let seed = 1;
 let frame = 0;
 let lastTime = 0;
@@ -34,6 +35,7 @@ let simulating = false; // true while js/sim.js plays a run: nothing is drawn or
 
 let hero, enemies, allies, shots, enemyShots, warnings, zones, orbs, redOrbs, magnets, chests, fx, numbers, timers, queue;
 let upgrades, gear, items, activeDef, activeCd, berserkLeft, rerolls, choice, merges, elitesKilled;
+let cheated = false; // a developer cheat was used in this run (see js/dev.js)
 let startWeapon = '';
 let level, xp, xpNext, elapsed, kills, spawnBudget, nextElite, nextRing, wildOrbTimer, magnetTimer, pocketLeft, walked, toast, toastLeft;
 
@@ -44,9 +46,12 @@ function zeroPicks() {
 }
 
 function resetWorld() {
+  cheated = false;
+  resetDev();
+  resetStages();
   hero = {
     x: 0, y: 0, r: HERO.r, hp: HERO.hp, maxHp: HERO.hp, baseAttack: HERO.attack, lives: HERO.lives + (metaBonus.lives || 0),
-    faceX: 1, faceY: 0, vx: 0, vy: 0, iframes: 0, ghostLeft: 0, phaseLeft: 0, critBoostLeft: 0, hurtFlash: 0, windAt: 0, hurtBy: { touch: 0, shot: 0, strike: 0 }, weapons: [],
+    faceX: 1, faceY: 0, vx: 0, vy: 0, iframes: 0, ghostLeft: 0, igniteLeft: 0, phaseLeft: 0, critBoostLeft: 0, hurtFlash: 0, windAt: 0, hurtBy: { touch: 0, shot: 0, strike: 0 }, weapons: [],
   };
   enemies = [];
   allies = [];
@@ -97,17 +102,16 @@ function startRun(activeId, weaponId, runSeed = Date.now()) {
   runVersionNow = BALANCE_VERSION;
   resetWorld();
   activeDef = ACTIVES.find(a => a.id === activeId);
-  // The active skill's passive: what it gives, a free weapon, levels at the start.
+  // The active skill's passive: what it gives, levels at the start.
   for (const [key, value] of Object.entries(activeDef.gives || {})) gear[key] = gearValue(key) + value;
   refreshHero();
   hero.hp = hero.maxHp;
   addWeapon(weaponId);
-  if (activeDef.freeWeapon && weaponId !== activeDef.freeWeapon) addWeapon(activeDef.freeWeapon);
   for (let i = 0; i < (activeDef.startLevels || 0); i++) addLevel();
   saveJson(LAST_KEY, { active: activeId, weapon: weaponId });
   if (!simulating) Nexus.startRun('steelspell');
-  setText(activeNameEl, activeDef.name);
-  activeBtn.title = activeDef.blurb;
+  setText(activeNameEl, activeName(activeDef));
+  activeBtn.title = activeBlurb(activeDef);
   lastCdShare = -1;
   activeBtn.hidden = false;
   pauseBtn.hidden = false;
@@ -213,6 +217,11 @@ function saveJson(key, value) {
   if (simulating) return;
   try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode etc. */ }
 }
+
+// What the player set on the Settings screen. `attackAlpha` is how opaque the hero's own
+// attacks are drawn: 1, the default, is no see-through at all.
+const settings = Object.assign({ attackAlpha: 1 }, loadJson(SETTINGS_KEY) || {});
+function saveSettings() { saveJson(SETTINGS_KEY, settings); }
 function say(text) {
   toast = text;
   toastLeft = 3;

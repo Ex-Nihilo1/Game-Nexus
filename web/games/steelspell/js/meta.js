@@ -78,9 +78,11 @@ function refundCamp() {
 
 // Saves the run that has just ended, and returns what the end screen says about it.
 function recordRun() {
+  if (cheated) return { place: 0, bestWith: false, glory: 0, cheated: true };
   const records = loadRecords();
+  const bestClear = clearTime > 0 && !(fastestClear(records) <= clearTime);
   const run = {
-    version: runVersionNow, time: elapsed, level, kills, active: activeDef.id, start: startWeapon,
+    version: runVersionNow, time: elapsed, clear: clearTime || 0, level, kills, active: activeDef.id, start: startWeapon,
     weapons: hero.weapons.map(w => (w.evo ? `${w.def.id}:${w.evo}` : w.def.id)),
     items: items.map(item => item.id), date: new Date().toISOString().slice(0, 10),
   };
@@ -105,7 +107,13 @@ function recordRun() {
   const glory = gloryEarned();
   meta.glory += glory;
   saveJson(META_KEY, meta);
-  return { place: place <= RECORD_RUNS ? place : 0, bestWith, glory };
+  return { place: place <= RECORD_RUNS ? place : 0, bestWith, glory, bestClear };
+}
+
+// The fastest clear (the third boss down) of this balance version, in seconds, or 0.
+function fastestClear(records) {
+  const times = records.runs.filter(r => runVersion(r) === BALANCE_VERSION && r.clear > 0).map(r => r.clear);
+  return times.length ? Math.min(...times) : 0;
 }
 
 // The best run with each first weapon in this balance version. `bestByWeapon` from 0.2
@@ -120,14 +128,14 @@ function bestByWeapon(records) {
 function weaponLabel(entry) {
   const [id, evoId] = entry.split(':');
   const def = WEAPON_DEFS.find(d => d.id === id);
-  if (!def) return entry;
+  if (!def) return hasText(`retired.${id}`) ? t(`retired.${id}`) : entry; // a weapon since taken out of the game
   const evo = (EVOLUTIONS[id] || []).find(e => e.id === evoId);
-  return evo ? evo.name : def.name;
+  return evo ? evoName(evo) : nameOf(def);
 }
 
 function backButton(p) {
   const actions = el('div', 'panel-actions');
-  const back = el('button', 'primary', 'Back');
+  const back = el('button', 'primary', t('ui.back'));
   back.addEventListener('click', showStart);
   actions.appendChild(back);
   p.appendChild(actions);
@@ -153,12 +161,19 @@ function addTable(parent, head, rows) {
 function showRecords(earlier = false) {
   phase = 'menu';
   const records = loadRecords();
-  const name = (list, id) => (list.find(o => o.id === id) || { name: '' }).name;
+  const weaponOf = id => {
+    const def = WEAPONS.find(d => d.id === id);
+    return def ? nameOf(def) : '';
+  };
+  const activeOf = id => {
+    const a = ACTIVES.find(o => o.id === id);
+    return a ? activeName(a) : '';
+  };
   const runs = records.runs.filter(run => (runVersion(run) === BALANCE_VERSION) !== earlier);
   showPanel(p => {
-    p.appendChild(el('h2', 'panel-title', 'Records'));
+    p.appendChild(el('h2', 'panel-title', t('records.title')));
     const tabs = el('div', 'codex-tabs');
-    [[false, `This version (${BALANCE_VERSION})`], [true, 'Earlier versions']].forEach(([value, label]) => {
+    [[false, t('records.thisVersion', { version: BALANCE_VERSION })], [true, t('records.earlier')]].forEach(([value, label]) => {
       const b = el('button', value === earlier ? 'primary' : '', label);
       b.setAttribute('aria-pressed', String(value === earlier));
       b.addEventListener('click', () => showRecords(value));
@@ -166,38 +181,41 @@ function showRecords(earlier = false) {
     });
     p.appendChild(tabs);
 
-    const t = records.totals;
-    if (t.runs && !earlier) {
+    const totals = records.totals;
+    if (totals.runs && !earlier) {
       const figures = el('div', 'figures');
-      addFigure(figures, 'Runs, all versions', String(t.runs));
-      addFigure(figures, 'Time played', formatTime(t.seconds));
-      addFigure(figures, 'Kills', t.kills.toLocaleString('en-US'));
-      addFigure(figures, 'Elites', String(t.elites));
-      addFigure(figures, 'Merges', String(t.merges));
+      addFigure(figures, t('records.runs'), formatNumber(totals.runs));
+      addFigure(figures, t('records.played'), formatTime(totals.seconds));
+      addFigure(figures, t('records.kills'), formatNumber(totals.kills));
+      addFigure(figures, t('records.elites'), formatNumber(totals.elites));
+      addFigure(figures, t('records.merges'), formatNumber(totals.merges));
+      const fastest = fastestClear(records);
+      if (fastest) addFigure(figures, t('records.fastest'), formatTime(fastest));
       p.appendChild(figures);
     }
 
     if (!runs.length) {
       p.appendChild(el('p', 'panel-note', earlier
-        ? 'No runs from earlier versions.'
-        : `No runs in ${BALANCE_VERSION} yet. Runs are compared only within one balance version; the 20 longest are listed here.`));
+        ? t('records.noEarlier')
+        : t('records.none', { version: BALANCE_VERSION, count: RECORD_RUNS })));
       backButton(p);
       return;
     }
-    p.appendChild(el('h3', 'section-title', 'Longest runs'));
-    addTable(p, ['#', ...(earlier ? ['Version'] : []), 'Time', 'Level', 'Kills', 'Start', 'Active', 'Weapons at the end', 'Items', 'Date'],
+    p.appendChild(el('h3', 'section-title', t('records.longest')));
+    const head = ['place', ...(earlier ? ['version'] : []), 'time', 'clear', 'level', 'kills', 'start', 'active', 'weapons', 'items', 'date'];
+    addTable(p, head.map(key => t(`records.head.${key}`)),
       runs.map((run, i) => [
-        i + 1, ...(earlier ? [runVersion(run)] : []), formatTime(run.time), run.level, run.kills.toLocaleString('en-US'),
-        name(WEAPONS, run.start), name(ACTIVES, run.active), run.weapons.map(weaponLabel).join(', '), run.items.length, run.date,
+        i + 1, ...(earlier ? [runVersion(run)] : []), formatTime(run.time), run.clear > 0 ? formatTime(run.clear) : '–', run.level, formatNumber(run.kills),
+        weaponOf(run.start), activeOf(run.active), run.weapons.map(weaponLabel).join(', '), run.items.length, run.date,
       ]));
 
     if (!earlier) {
       const best = bestByWeapon(records);
       const starts = Object.keys(best).sort((a, b) => best[b] - best[a]);
       if (starts.length) {
-        p.appendChild(el('h3', 'section-title', 'Best run by first weapon'));
+        p.appendChild(el('h3', 'section-title', t('records.byWeapon')));
         const box = el('div', 'report');
-        starts.forEach(id => addRow(box, name(WEAPONS, id), formatTime(best[id])));
+        starts.forEach(id => addRow(box, weaponOf(id), formatTime(best[id])));
         p.appendChild(box);
       }
     }
@@ -209,18 +227,17 @@ function showCamp() {
   phase = 'menu';
   const meta = loadMeta();
   showPanel(p => {
-    p.appendChild(el('h2', 'panel-title', 'Camp'));
-    p.appendChild(el('p', 'panel-note',
-      `Every run earns Glory: for the minutes you last, elites killed, levels and merges. Upgrades bought here stay for every run. You have ${meta.glory} Glory.`));
+    p.appendChild(el('h2', 'panel-title', t('camp.title')));
+    p.appendChild(el('p', 'panel-note', t('camp.note', { glory: meta.glory })));
     let spent = false;
     for (const up of META_UPGRADES) {
       const rank = meta.ranks[up.id] || 0;
       spent = spent || rank > 0;
       const row = el('div', 'camp-row');
-      row.appendChild(el('span', 'camp-name', up.name));
-      row.appendChild(el('span', 'camp-text', `${up.text} per rank`));
+      row.appendChild(el('span', 'camp-name', t(`camp.upgrades.${up.id}.name`)));
+      row.appendChild(el('span', 'camp-text', t('camp.perRank', { text: campText(up) })));
       row.appendChild(el('span', 'camp-rank', `${rank} / ${up.ranks}`));
-      const buy = el('button', '', rank >= up.ranks ? 'Full' : `Buy: ${upgradeCost(up, rank)}`);
+      const buy = el('button', '', rank >= up.ranks ? t('camp.full') : t('camp.buy', { cost: upgradeCost(up, rank) }));
       buy.disabled = rank >= up.ranks || meta.glory < upgradeCost(up, rank);
       buy.addEventListener('click', () => {
         buyUpgrade(up);
@@ -230,7 +247,7 @@ function showCamp() {
       p.appendChild(row);
     }
     const actions = backButton(p);
-    const refund = el('button', '', 'Refund all');
+    const refund = el('button', '', t('camp.refund'));
     refund.disabled = !spent;
     refund.addEventListener('click', () => {
       refundCamp();
@@ -242,5 +259,7 @@ function showCamp() {
 
 function showBest() {
   const best = loadRecords().runs.find(run => runVersion(run) === BALANCE_VERSION);
-  setText(statusEl, best ? `Best run in ${BALANCE_VERSION}: ${formatTime(best.time)}, level ${best.level}` : `Version ${BALANCE_VERSION}`);
+  setText(statusEl, best
+    ? t('status.best', { version: BALANCE_VERSION, time: formatTime(best.time), level: best.level })
+    : t('status.version', { version: BALANCE_VERSION }));
 }

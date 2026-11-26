@@ -8,10 +8,10 @@
 // A run never ends by itself: the horde keeps growing until it wins. The time you lasted
 // is your score, and every run earns Glory for upgrades that stay (the Camp).
 //
-// The scripts are classic ones, loaded in the order index.html lists them, so the game
-// opens straight from a file. All tuning lives in the tables under js/data: numbers can
-// change, or move to another engine, without touching the logic. Times are in seconds,
-// distances in world units.
+// The scripts are classic ones, loaded in the order index.html lists them. All tuning lives
+// in the tables under js/data: numbers can change, or move to another engine, without
+// touching the logic. Every text is in lang/en.json (see js/lang.js), fetched before the game
+// starts, so the page needs a web server. Times are in seconds, distances in world units.
 //
 // Open with ?dev in the URL for test keys: L level up, G weapon pick, I open a chest,
 // K die (with a spare life, to see the revive), R reset the active skill, T skip a minute,
@@ -22,6 +22,7 @@ function update(dt) {
   elapsed += dt;
   frame++;
   moveHero(dt);
+  updateStage(dt);
   spawnEnemies(dt);
   moveEnemies(dt);
   rebuildGrid();
@@ -53,7 +54,11 @@ function update(dt) {
 function loop(time = 0) {
   const dt = Math.min(0.05, (time - lastTime) / 1000);
   lastTime = time;
-  if (phase === 'playing') update(dt);
+  if (phase === 'playing') {
+    // The developer panel can slow time down or speed it up; faster runs more steps, not longer ones.
+    if (devSpeed >= 1) for (let i = 0; i < devSpeed; i++) update(dt);
+    else update(dt * devSpeed);
+  }
   if (dirty) draw();
   requestAnimationFrame(loop);
 }
@@ -98,7 +103,10 @@ document.addEventListener('keydown', e => {
     default:
       if (phase === 'choosing' && e.code === 'KeyR') rerollChoice();
       else if (phase === 'choosing' && e.code === 'KeyX') skipChoice();
-      else if (DEV && phase === 'playing') devKey(e.code);
+      else if (devMode() && e.code === 'F1') {
+        e.preventDefault();
+        openDevPanel();
+      } else if (devMode() && phase === 'playing') devKey(e.code);
   }
 });
 document.addEventListener('keyup', e => keys.delete(e.code));
@@ -158,9 +166,31 @@ window.addEventListener('pagehide', saveRun);
 window.addEventListener('resize', resize);
 document.addEventListener('themechange', readTheme);
 
-readTheme();
-resize();
-resetWorld();
-showBest();
-showStart();
-requestAnimationFrame(loop);
+// Without its texts the game cannot say a word: opened straight from a file, the browser
+// does not let it read them. This one message is all it has.
+function showNoTexts() {
+  phase = 'notexts';
+  showPanel(p => {
+    p.appendChild(el('h2', 'panel-title', 'Steel & Spell'));
+    p.appendChild(el('p', 'panel-note',
+      'The texts of the game could not load. Open it through a web server, such as GitHub Pages or a local one: a page opened straight from a file cannot read them.'));
+  });
+}
+
+function boot(loaded) {
+  readTheme();
+  resize();
+  resetWorld();
+  if (loaded || TEXTS_IN_WORKER) {
+    applyPageTexts();
+    showBest();
+    showStart();
+  } else {
+    showNoTexts();
+  }
+  requestAnimationFrame(loop);
+}
+
+// The simulator's workers have no texts and start at once, as they always did.
+if (TEXTS_IN_WORKER) boot(false);
+else textsReady.then(boot);

@@ -117,6 +117,8 @@
     .card-synergy { color: var(--red-pencil); font: 600 12px var(--font-condensed); line-height: 1.3; }
 
     .cards.single { max-width: 300px; margin-inline: auto; }
+    .cards.arsenal { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .cards.arsenal .card-note { display: none; }
 
     .card.phys { border-top-color: var(--orange-pen); }
     .card.magic { border-top-color: var(--violet); }
@@ -169,6 +171,7 @@
     .codex-tag { font: 600 17px var(--font-condensed); }
     .codex-tile-name { font: 12px/1.2 var(--font-condensed); text-align: center; }
     .codex-mine { position: absolute; top: 3px; right: 4px; color: var(--green-ink); font: 600 10px var(--font-condensed); }
+    .codex-evo { color: var(--red-pencil); font: 11px/1.15 var(--font-condensed); text-align: center; }
     .codex-recipes { display: grid; gap: 8px; margin-top: 6px; }
     .codex-recipe { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6px; }
     .codex-op { color: var(--ink-muted); font: 18px var(--font-figure); }
@@ -197,6 +200,16 @@
     .camp-rank { font: 13px var(--font-figure); font-variant-numeric: tabular-nums; }
     .camp-row button { min-width: 92px; height: 28px; }
 
+    .setting { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .setting-name { flex: 0 0 auto; font: 14px var(--font-condensed); }
+    .setting-range { flex: 1 1 160px; max-width: 260px; accent-color: var(--ink); }
+    .setting-value { min-width: 42px; font: 14px var(--font-condensed); font-variant-numeric: tabular-nums; }
+    .dev-row { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; }
+    .dev-items { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .dev-btn { height: 30px; padding: 0 10px; font: 13px var(--font-condensed); }
+    .dev-password { height: 32px; padding: 0 8px; font: 14px var(--font-condensed); color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 2px; }
+    .lang-pick { height: 32px; padding: 0 6px; font: 13px var(--font-condensed); color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 2px; }
+
     @media (max-width: 560px) {
       .page { padding: 6px 8px 8px; }
       .app-header { margin-bottom: 6px; padding-bottom: 6px; }
@@ -213,7 +226,7 @@
     <header class="app-header">
       <div>
         <a class="back-link" href="../../index.html">&larr; Game Nexus</a>
-        <h1 class="app-title">Steel &amp; Spell</h1>
+        <h1 class="app-title" id="title">Steel &amp; Spell</h1>
         <div class="app-status" id="status"></div>
       </div>
       <div class="theme-controls"></div>
@@ -221,7 +234,7 @@
 
     <main class="stage" id="stage">
       <canvas id="view"></canvas>
-      <button class="corner-btn" id="pause-btn" hidden>Pause</button>
+      <button class="corner-btn" id="pause-btn" hidden></button>
       <button class="active-btn" id="active-btn" hidden>
         <span id="active-name"></span>
         <span class="time" id="active-time"></span>
@@ -236,6 +249,7 @@
   <script src="js/data/weapons.js"></script>
   <script src="js/data/enemies.js"></script>
   <script src="js/data/items.js"></script>
+  <script src="js/lang.js"></script>
   <script src="js/core.js"></script>
   <script src="js/stats.js"></script>
   <script src="js/grid.js"></script>
@@ -247,6 +261,7 @@
   <script src="js/allies.js"></script>
   <script src="js/hero.js"></script>
   <script src="js/enemies.js"></script>
+  <script src="js/stages.js"></script>
   <script src="js/progress.js"></script>
   <script src="js/render.js"></script>
   <script src="js/render-fx.js"></script>
@@ -255,6 +270,7 @@
   <script src="js/codex.js"></script>
   <script src="js/save.js"></script>
   <script src="js/sim.js"></script>
+  <script src="js/dev.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

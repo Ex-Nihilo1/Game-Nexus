@@ -99,7 +99,7 @@ function updateAllies(dt) {
     if (a.iframes <= 0) {
       eachEnemyNear(a.x, a.y, a.r, e => {
         if (a.iframes > 0) return;
-        a.hp -= e.def.damage * fury();
+        a.hp -= e.def.damage * touchFury();
         a.iframes = HERO.iframes;
       });
     }

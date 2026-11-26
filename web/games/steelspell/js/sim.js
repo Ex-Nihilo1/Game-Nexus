@@ -6,7 +6,8 @@
 //            collects orbs) | brawl (kite, but walks at the enemy: for melee weapons) | dummy
 //   cards    random | balanced (weapons and damage first) | xp (XP first)
 //   runs     how many runs, each with the next seed      seed     the first seed
-//   minutes  where to stop a run (default 45)            weapon, active   fix the loadout
+//   minutes  where to stop a run (default 45)            active   fix the active skill (the run
+//            starts with its weapon); weapon   start with another weapon instead, to compare
 //   after    with sim=afk: play as kite for this many minutes, then stand still
 //   god=1    a death does not end the run: deaths are counted, three in a minute end it
 //   meta     0 (default) | max: Camp upgrades for the run
@@ -35,6 +36,7 @@ const SIM_RARITY_SCORE = { grey: 10, blue: 20, purple: 30, legendary: 40 };
 
 let simResults = [];
 let simSeed = 1;
+let simAltarAt = 0; // seconds into a stage when the bot calls the boss; 0: it comes by itself
 let simThink = 0;
 let simDir = 0;
 let simAngle = 0;
@@ -59,7 +61,8 @@ function simScore(card, job) {
   const item = card.type === 'item' && ITEMS.find(i => i.id === card.id);
   if (job.cards === 'xp' && (card.key === 'xp' || (item && item.gives.xp))) return 500;
   if (card.type === 'merge') return 400;
-  if (card.type === 'evolve') return 100 + simRand();
+  // Every evolution leads to one merge: the bot takes the one whose partner it already has.
+  if (card.type === 'evolve') return 100 + (simEvoHasPartner(card.id) ? 10 : 0) + simRand();
   if (card.type === 'weapon') {
     const def = WEAPON_DEFS.find(d => d.id === card.id);
     if (job.only && def.kind !== job.only) return -100;
@@ -68,6 +71,11 @@ function simScore(card, job) {
   if (card.type === 'upgrade') return 55 + simRand() * 5;
   if (item) return SIM_RARITY_SCORE[item.rarity] + simRand() * 5;
   return (SIM_STAT_SCORE[card.key] || 1) + simRand();
+}
+
+function simEvoHasPartner(evoId) {
+  const weaponId = Object.keys(EVOLUTIONS).find(id => EVOLUTIONS[id].some(evo => evo.id === evoId));
+  return evoMerges(weaponId, evoId).some(m => m.needs.some(id => id !== weaponId && owned(id) && evoFits(m, owned(id))));
 }
 
 function simPickCard(job) {
@@ -252,6 +260,7 @@ function simPrepare(job) {
   view.w = SIM_VIEW.w;
   view.h = SIM_VIEW.h;
   simSeed = (job.seed ^ 0x5bd1e995) | 0;
+  simAltarAt = (job.altar || 0) * 60;
   simThink = 0;
   simDir = 0;
   simAngle = 0;
@@ -313,14 +322,14 @@ function simRun(job) {
   simulating = false;
   setMetaForRun(null);
   const dealt = {};
-  for (const w of hero.weapons) dealt[w.def.name] = Math.round(w.dealt);
+  for (const w of hero.weapons) dealt[w.def.id] = Math.round(w.dealt);
   return {
     bot: job.bot, cards: job.cards, seed: job.seed, weapon: job.weapon, active: job.active, god: !!job.god,
     death: Math.round(deaths.length ? deaths[0] : elapsed), wall: Math.round(wall), deaths: deaths.length, capped,
     level, kills, perMinute, dealt, events, items: items.length, maxHp: hero.maxHp,
     hurtPerMinute: Math.round(hurt / Math.max(1 / 60, elapsed / 60)),
     hurtBy: Object.fromEntries(Object.entries(hero.hurtBy).map(([k, v]) => [k, Math.round(v)])),
-    kit: hero.weapons.map(w => w.def.tag + (w.level ? w.level : '')),
+    kit: hero.weapons.map(w => w.def.id + (w.level ? w.level : '')), // ids: the workers have no texts
     updateMs: +(ms / Math.max(1, steps)).toFixed(3),
   };
 }
@@ -390,16 +399,16 @@ function simJobs(params) {
     }));
   }
   const only = params.get('only') || '';
-  const starters = WEAPONS.filter(d => !d.defense && (!only || d.kind === only)).map(d => d.id);
   const jobs = [];
   for (let i = 0; i < runs; i++) {
+    const active = params.get('active') || ACTIVES[i % ACTIVES.length].id;
     jobs.push({
       bot, cards: params.get('cards') || 'balanced', seed: seed + i,
       minutes: Number(params.get('minutes')) || 45,
-      weapon: params.get('weapon') || starters[i % starters.length],
-      active: params.get('active') || ACTIVES[i % ACTIVES.length].id,
+      weapon: params.get('weapon') || (ACTIVES.find(a => a.id === active) || ACTIVES[0]).ownWeapon,
+      active,
       god: params.get('god') === '1', meta: params.get('meta') || '0', after: Number(params.get('after')) || 0,
-      patch: params.get('patch') || '', only,
+      patch: params.get('patch') || '', only, altar: Number(params.get('altar')) || 0,
     });
   }
   return jobs;
@@ -548,11 +557,13 @@ function simBoot() {
 // ---- Dev keys (with ?dev in the URL) ----
 
 function devKey(code) {
+  if (!/^Key[LGIRTEFOMHK]$/.test(code)) return;
+  cheated = true;
   if (code === 'KeyL') gainXp(xpNext - xp);
   else if (code === 'KeyG') enqueueChoice('weapon');
   else if (code === 'KeyI') enqueueChoice(pickWeighted(CHEST_ROLL));
   else if (code === 'KeyR') activeCd = 0;
-  else if (code === 'KeyT') elapsed += 60;
+  else if (code === 'KeyT') devSkipMinute();
   else if (code === 'KeyE') addEnemy(pickOne(['hulk', 'warden', 'siege']));
   else if (code === 'KeyF') ['slinger', 'slinger', 'slinger', 'slinger', 'hexer', 'hexer', 'mortar', 'mortar'].forEach(type => addEnemy(type));
   else if (code === 'KeyO') {
@@ -562,7 +573,7 @@ function devKey(code) {
     const w = hero.weapons.find(canLevel);
     if (w) {
       while (canLevel(w)) levelUpWeapon(w);
-      say(`${w.def.name} is at its last level`);
+      say(`${nameOf(w.def)} is at its last level`);
       if (queue.length) nextChoice();
     }
   } else if (code === 'KeyH') {
@@ -574,4 +585,5 @@ function devKey(code) {
   }
 }
 
-if (!SIM_IN_WORKER && SIM_PARAMS.has('sim')) window.addEventListener('load', simBoot);
+// After the page's own start (main.js), which waits for the texts too.
+if (!SIM_IN_WORKER && SIM_PARAMS.has('sim')) window.addEventListener('load', () => textsReady.then(simBoot));

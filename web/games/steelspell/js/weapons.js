@@ -76,24 +76,38 @@ function evolveWeapon(w, branch) {
   rebuildWeapon(w);
 }
 
-function signedShare(share) { return `${share > 0 ? '+' : ''}${Math.round(share * 100)}%`; }
+function signedShare(share) { return `${share > 0 ? '+' : ''}${formatNumber(Math.round(share * 100))}%`; }
 
-// What a step does, as the card says it.
-function stepText(step) {
-  const parts = step.text ? [step.text] : [];
-  for (const key of ['damage', 'size', 'haste', 'duration']) {
-    if (step[key]) parts.push(`${STATS[key].name} ${signedShare(step[key])}`);
+// What a step does, as the card says it: its own text under `key`, if it has one, and the
+// stats it raises.
+function stepText(step, key, params) {
+  const own = key && hasText(key);
+  const parts = own ? [t(key, params)] : [];
+  for (const field of ['damage', 'size', 'haste', 'duration']) {
+    if (step[field]) parts.push(t('steps.stat', { stat: statName(field), share: signedShare(step[field]) }));
   }
-  if (step.count && !step.text) parts.push(`+${step.count} count`);
+  if (step.count && !own) parts.push(t('steps.count', { count: step.count }));
   return parts.join(', ');
+}
+
+// Where the text of the step to level `lv` is: the weapon's own upgrades and `lvN` steps.
+function levelStepKey(def, lv) {
+  const slot = LEVEL_PLAN[lv - 2];
+  if (slot === 'a' || slot === 'b') return `weapons.${def.id}.ups.${slot === 'a' ? 0 : 1}`;
+  return def[`lv${lv}`] ? `weapons.${def.id}.lv${lv}` : '';
+}
+
+function levelText(def, lv) {
+  const step = levelStep(def, lv);
+  return stepText(step, levelStepKey(def, lv), stepParams(def, step));
 }
 
 // The name a weapon goes by: its evolution's, once it has one. A merged one names what it kept.
 function weaponName(w) {
   const evo = evolutionOf(w);
-  if (evo) return evo.name;
-  const kept = inheritedSteps(w.def.id, w.parts).map(x => x.evo.name);
-  return kept.length ? `${w.def.name} (${kept.join(', ')})` : w.def.name;
+  if (evo) return evoName(evo);
+  const kept = inheritedSteps(w.def.id, w.parts).map(x => evoName(x.evo));
+  return kept.length ? t('ui.keptName', { name: nameOf(w.def), kept: kept.join(', ') }) : nameOf(w.def);
 }
 
 function newWeapon(id) {
@@ -128,18 +142,35 @@ function fullyGrown(w) {
   return !!w && w.level >= MAX_WEAPON_LEVEL && (!!w.evo || !EVOLUTIONS[w.def.id]);
 }
 
-// Two weapons can merge once both are at the last level and evolved.
+// The evolution `merge` asks of weapon `id`, or '' if it takes either.
+function evoAsked(merge, id) { return (merge.evos && merge.evos[id]) || ''; }
+
+// Whether weapon `w` can still go into `merge`: not if it took another evolution than asked.
+function evoFits(merge, w) {
+  const asked = evoAsked(merge, w.def.id);
+  return !asked || !w.evo || w.evo === asked;
+}
+
+// Two weapons can merge once both are at the last level and evolved, the way the merge asks.
 function readyMerges() {
-  return SYNERGIES.filter(s => s.needs.every(id => fullyGrown(owned(id))));
+  return SYNERGIES.filter(s => s.needs.every(id => {
+    const w = owned(id);
+    return fullyGrown(w) && (!evoAsked(s, id) || w.evo === evoAsked(s, id));
+  }));
 }
 
 // The merges a weapon would take part in with something the hero already has.
 function synergyPartners(id) {
-  return SYNERGIES.filter(s => s.needs.includes(id) && s.needs.some(n => n !== id && owned(n)));
+  return SYNERGIES.filter(s => s.needs.includes(id) && s.needs.some(n => n !== id && owned(n) && evoFits(s, owned(n))));
 }
 
-// The two weapons leave, the merged one arrives at full strength, and the freed slot is
-// filled right away: the next choice is a new weapon.
+// The merges an evolution leads to: those that ask for it, and those that take either.
+function evoMerges(weaponId, evoId) {
+  return SYNERGIES.filter(s => s.needs.includes(weaponId) && (!evoAsked(s, weaponId) || evoAsked(s, weaponId) === evoId));
+}
+
+// The two weapons leave and the merged one arrives at full strength in their place. No new
+// weapon comes with it: new ones come at WEAPON_LEVELS and after the story bosses.
 function mergeWeapons(merge) {
   const parts = merge.needs.map(owned);
   const w = newWeapon(merge.id);
@@ -152,8 +183,7 @@ function mergeWeapons(merge) {
   hero.weapons = hero.weapons.filter(o => !parts.includes(o));
   hero.weapons.push(w);
   merges++;
-  queue.unshift('weapon');
-  say(`Merged: ${merge.name}!`);
+  say(t('toasts.merged', { name: nameOf(merge) }));
 }
 
 // ---- The loop ----

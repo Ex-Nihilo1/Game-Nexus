@@ -1,10 +1,10 @@
 // Tuning: chests and the items in them.
 
 const RARITIES = {
-  grey: { name: 'Common', pen: 'ink-muted' },
-  blue: { name: 'Rare', pen: 'blue-pen' },
-  purple: { name: 'Epic', pen: 'violet' },
-  legendary: { name: 'Legendary', pen: 'highlighter' },
+  grey: { pen: 'ink-muted' },
+  blue: { pen: 'blue-pen' },
+  purple: { pen: 'violet' },
+  legendary: { pen: 'highlighter' },
 };
 
 // A chest first rolls its own rarity by CHEST_ROLL (a Stash chest skips that), then each of
@@ -12,14 +12,15 @@ const RARITIES = {
 const CHEST_SLOTS = 3;
 const CHEST_ROLL = { common: 60, rare: 30, legendary: 10 };
 const CHESTS = {
-  common: { name: 'Common chest', pen: 'ink-muted', odds: { grey: 65, blue: 25, purple: 10 } },
-  rare: { name: 'Rare chest', pen: 'blue-pen', odds: { grey: 25, blue: 50, purple: 20, legendary: 5 } },
-  legendary: { name: 'Legendary chest', pen: 'highlighter', odds: { purple: 75, legendary: 25 } },
-  stash: { name: 'Stash', pen: 'green-ink', odds: { grey: 50, blue: 30, purple: 15, legendary: 5 } },
+  common: { pen: 'ink-muted', odds: { grey: 65, blue: 25, purple: 10 } },
+  rare: { pen: 'blue-pen', odds: { grey: 25, blue: 50, purple: 20, legendary: 5 } },
+  legendary: { pen: 'highlighter', odds: { purple: 75, legendary: 25 } },
+  stash: { pen: 'green-ink', odds: { grey: 50, blue: 30, purple: 15 } }, // never a legendary
 };
 
-// To add an item, add a row. In `gives`, the keys of STATS add to that stat on top of the picks,
-// at full value. The other keys:
+// To add an item, add a row here and its name and text to lang/en.json (items.<id>); the text
+// takes its numbers from `gives`. In `gives`, the keys of STATS add to that stat on top of the
+// picks, at full value. The other keys:
 //   baseHp, baseAttack   flat, before everything else
 //   regen                share of max health per second
 //   pureShare            share of all damage that turns pure
@@ -27,12 +28,12 @@ const CHESTS = {
 //   lives, levels, weapons, rerolls   handed over right away
 //   physDamage, magicDamage   on top of everything else; a hybrid hit gets half of each
 //   fireDamage           the same for weapons marked `fire`
-//   activeCooldown       share cut from the active skill's cooldown
+//   abilityHaste         Ability Haste, as in LoL: 100 / (100 + it) of the active skill's
+//                        cooldown is left. Only items give it; weapons never read it.
 //   attackPerLevel       damage for each level the hero has
 //   thorns               share of an enemy's contact damage it takes itself, as pure damage
 //   chestLuck            chance that an elite's chest is one step better
-//   secondWind           seconds between saves: a hit that would leave under 20% health is
-//                        turned into 2 s of invulnerability
+//   secondWind           seconds between saves (see SECOND_WIND)
 //   killsPerHeal         kills for 1 health back
 //   charges, plateArmor  a charge for a shield, or armor for a hero without one
 //   cardSlots            more cards on a level-up
@@ -45,66 +46,69 @@ const CHESTS = {
 //   weakSpot             every WEAK_SPOT.every-th hit on one enemy makes it take this much more damage
 //   pocketMagnet         seconds between pulls of every XP orb on the map
 const ITEMS = [
-  { id: 'vest', name: 'Leather Vest', rarity: 'grey', gives: { vitality: 0.15 }, text: '+15% Vitality' },
-  { id: 'boots', name: 'Light Boots', rarity: 'grey', gives: { speed: 0.2 }, text: '+20% Speed' },
-  { id: 'quiver', name: 'Spare Quiver', rarity: 'grey', gives: { count: 1 }, text: '+1 Count' },
-  { id: 'coin', name: 'Lucky Coin', rarity: 'grey', gives: { critChance: 0.1 }, text: '+10% Crit chance' },
-  { id: 'whetstone', name: 'Whetstone', rarity: 'grey', gives: { critDamage: 0.3 }, text: '+30% Crit damage' },
-  { id: 'knuckles', name: 'Iron Knuckles', rarity: 'grey', gives: { damage: 0.3 }, text: '+30% Damage' },
-  { id: 'filings', name: 'Iron Filings', rarity: 'grey', gives: { magnet: 0.3 }, text: '+30% Magnet' },
-  { id: 'mail', name: 'Plated Mail', rarity: 'grey', gives: { armor: 15 }, text: '+15 Armor' },
-  { id: 'dice', name: 'Loaded Dice', rarity: 'grey', gives: { rerolls: 2 }, text: '+2 rerolls' },
+  { id: 'vest', rarity: 'grey', gives: { vitality: 0.15 } },
+  { id: 'boots', rarity: 'grey', gives: { speed: 0.2 } },
+  { id: 'quiver', rarity: 'grey', gives: { count: 1 } },
+  { id: 'coin', rarity: 'grey', gives: { critChance: 0.1 } },
+  { id: 'whetstone', rarity: 'grey', gives: { critDamage: 0.3 } },
+  { id: 'knuckles', rarity: 'grey', gives: { damage: 0.3 } },
+  { id: 'filings', rarity: 'grey', gives: { magnet: 0.3 } },
+  { id: 'mail', rarity: 'grey', gives: { armor: 15 } },
+  { id: 'dice', rarity: 'grey', gives: { rerolls: 2 } },
+  { id: 'watch', rarity: 'grey', gives: { abilityHaste: 15 } },
 
-  { id: 'hide', name: 'Troll Hide', rarity: 'blue', gives: { vitality: 0.15, regen: 0.02 }, text: '+15% Vitality, +2% Health regen per second' },
-  { id: 'lens', name: 'Wide Lens', rarity: 'blue', gives: { size: 0.2, haste: 0.1 }, text: '+20% Size, +10% Haste' },
-  { id: 'mark', name: "Hunter's Mark", rarity: 'blue', gives: { critChance: 0.1, critDamage: 0.3 }, text: '+10% Crit chance, +30% Crit damage' },
-  { id: 'banner', name: 'War Banner', rarity: 'blue', gives: { damage: 0.3, count: 1 }, text: '+30% Damage, +1 Count' },
-  { id: 'sand', name: 'Slow Sand', rarity: 'blue', gives: { duration: 0.25 }, text: '+25% Duration' },
-  { id: 'oil', name: 'Lamp Oil', rarity: 'blue', gives: { duration: 0.15, size: 0.1 }, text: '+15% Duration, +10% Size' },
-  { id: 'piercer', name: 'Armor Piercer', rarity: 'blue', gives: { armorPen: 30 }, text: 'Physical hits ignore 30 armor; past zero they hit harder' },
-  { id: 'needle', name: 'Spell Needle', rarity: 'blue', gives: { magicPen: 30 }, text: 'Magic hits ignore 30 ward; past zero they hit harder' },
-  { id: 'thorned', name: 'Thorned Mail', rarity: 'blue', gives: { thorns: 1 }, text: 'An enemy that touches you takes its own contact damage, as pure damage' },
-  { id: 'clover', name: 'Four-leaf Clover', rarity: 'blue', gives: { chestLuck: 0.25 }, text: '25% chance that an elite drops a chest one step better' },
+  { id: 'hide', rarity: 'blue', gives: { vitality: 0.15, regen: 0.02 } },
+  { id: 'lens', rarity: 'blue', gives: { size: 0.2, haste: 0.1 } },
+  { id: 'mark', rarity: 'blue', gives: { critChance: 0.1, critDamage: 0.3 } },
+  { id: 'banner', rarity: 'blue', gives: { damage: 0.3, count: 1 } },
+  { id: 'sand', rarity: 'blue', gives: { duration: 0.25 } },
+  { id: 'oil', rarity: 'blue', gives: { duration: 0.15, size: 0.1 } },
+  { id: 'piercer', rarity: 'blue', gives: { armorPen: 30 } },
+  { id: 'needle', rarity: 'blue', gives: { magicPen: 30 } },
+  { id: 'thorned', rarity: 'blue', gives: { thorns: 1 } },
+  { id: 'clover', rarity: 'blue', gives: { chestLuck: 0.25 } },
+  { id: 'sundial', rarity: 'blue', gives: { abilityHaste: 25, duration: 0.1 } },
 
-  { id: 'bracers', name: "Giant's Bracers", rarity: 'purple', gives: { baseAttack: 50 }, text: '+50 Base attack' },
-  { id: 'tome', name: "Scholar's Tome", rarity: 'purple', gives: { xp: 0.25 }, text: '+25% XP' },
-  { id: 'heart', name: 'Stone Heart', rarity: 'purple', gives: { baseHp: 300 }, text: '+300 Base health' },
-  { id: 'lodestone', name: 'Lodestone', rarity: 'purple', gives: { magnet: 0.5 }, text: '+50% Magnet' },
-  { id: 'lesson', name: "Mentor's Lesson", rarity: 'purple', gives: { levels: 3 }, text: '+3 levels right away' },
-  { id: 'steel', name: 'Tempered Steel', rarity: 'purple', gives: { physDamage: 0.5 }, text: '+50% to all physical damage' },
-  { id: 'focus', name: 'Arcane Focus', rarity: 'purple', gives: { magicDamage: 0.5 }, text: '+50% to all magic damage' },
-  { id: 'kindling', name: 'Kindling', rarity: 'purple', gives: { fireDamage: 0.4 }, text: '+40% damage from weapons of fire: fireballs, meteors, flames, trails, tornadoes' },
-  { id: 'wind', name: 'Second Wind', rarity: 'purple', gives: { secondWind: 60 }, text: 'Once a minute, a hit that would leave you under 20% Health is cancelled and you cannot be hurt for 2 s' },
-  { id: 'fang', name: 'Vampire Fang', rarity: 'purple', gives: { killsPerHeal: 8 }, text: 'Every 8 kills give 1 Health back' },
-  { id: 'siege', name: 'Siege Edge', rarity: 'purple', gives: { armorPenPct: 0.3 }, text: 'Physical hits ignore 30% of armor' },
-  { id: 'hexlens', name: 'Hex Lens', rarity: 'purple', gives: { magicPenPct: 0.3 }, text: 'Magic hits ignore 30% of ward' },
-  { id: 'weakspot', name: 'Weak Spot', rarity: 'purple', gives: { weakSpot: 0.25 }, text: 'Every 10th hit on one enemy makes it take 25% more damage from everything for 4 s' },
-  { id: 'rubber', name: 'Rubber Bullets', rarity: 'purple', gives: { ricochet: 0.6 }, text: 'Bullets of guns (Pistol, Shotgun, Railgun, ElectroGun, a copy\'s pistol) bounce on to one more enemy for 60% damage' },
-  { id: 'plate', name: 'Bulwark Plate', rarity: 'purple', gives: { charges: 1, plateArmor: 25 }, text: '+1 charge for a Shield. Without a Shield: +25 Armor' },
+  { id: 'bracers', rarity: 'purple', gives: { baseAttack: 50 } },
+  { id: 'tome', rarity: 'purple', gives: { xp: 0.25 } },
+  { id: 'heart', rarity: 'purple', gives: { baseHp: 300 } },
+  { id: 'lodestone', rarity: 'purple', gives: { magnet: 0.5 } },
+  { id: 'lesson', rarity: 'purple', gives: { levels: 3 } },
+  { id: 'steel', rarity: 'purple', gives: { physDamage: 0.5 } },
+  { id: 'focus', rarity: 'purple', gives: { magicDamage: 0.5 } },
+  { id: 'kindling', rarity: 'purple', gives: { fireDamage: 0.4 } },
+  { id: 'wind', rarity: 'purple', gives: { secondWind: 60 } },
+  { id: 'fang', rarity: 'purple', gives: { killsPerHeal: 8 } },
+  { id: 'siege', rarity: 'purple', gives: { armorPenPct: 0.3 } },
+  { id: 'hexlens', rarity: 'purple', gives: { magicPenPct: 0.3 } },
+  { id: 'weakspot', rarity: 'purple', gives: { weakSpot: 0.25 } },
+  { id: 'rubber', rarity: 'purple', gives: { ricochet: 0.6 } },
+  { id: 'plate', rarity: 'purple', gives: { charges: 1, plateArmor: 25 } },
+  { id: 'spring', rarity: 'purple', gives: { abilityHaste: 40 } },
 
-  { id: 'edge', name: 'Void Edge', rarity: 'legendary', gives: { pureShare: 0.3 }, text: '30% of all damage becomes pure' },
-  { id: 'pact', name: 'Blood Pact', rarity: 'legendary', gives: { hpToAttack: 0.5 }, text: '50% of your Health turns into Base attack' },
-  { id: 'feather', name: 'Phoenix Feather', rarity: 'legendary', gives: { lives: 1 }, text: '+1 life. Dying brings you back at full health with a blast of pure damage' },
-  { id: 'hourglass', name: 'Hourglass', rarity: 'legendary', gives: { activeCooldown: 0.5 }, text: '-50% Active skill cooldown' },
-  { id: 'armory', name: 'Armory Key', rarity: 'legendary', gives: { weapons: 1 }, text: 'An extra weapon right away' },
-  { id: 'compass', name: 'Compass', rarity: 'legendary', gives: { cardSlots: 1 }, text: '4 cards on every level-up instead of 3' },
-  { id: 'crown', name: 'Cursed Crown', rarity: 'legendary', gives: { xp: 0.4, enemyHp: 0.25 }, text: '+40% XP, but every enemy that arrives from now on has 25% more Health' },
-  { id: 'echo', name: 'Echo Stone', rarity: 'legendary', gives: { echo: 0.25 }, text: 'Beams, cones, whirlwinds and burning patches have a 25% chance to repeat half a second later' },
-  { id: 'pocket', name: 'Pocket Magnet', rarity: 'legendary', gives: { pocketMagnet: 60 }, text: 'Every 60 s every XP orb on the map comes to you' },
-  { id: 'medal', name: "Veteran's Medal", rarity: 'legendary', gives: { attackPerLevel: 0.02 }, text: '+2% damage for each level you have' },
+  { id: 'edge', rarity: 'legendary', gives: { pureShare: 0.3 } },
+  { id: 'pact', rarity: 'legendary', gives: { hpToAttack: 0.5 } },
+  { id: 'feather', rarity: 'legendary', gives: { lives: 1 } },
+  { id: 'hourglass', rarity: 'legendary', gives: { abilityHaste: 100 } },
+  { id: 'armory', rarity: 'legendary', gives: { weapons: 1 } },
+  { id: 'compass', rarity: 'legendary', gives: { cardSlots: 1 } },
+  { id: 'crown', rarity: 'legendary', gives: { xp: 0.4, enemyHp: 0.25 } },
+  { id: 'echo', rarity: 'legendary', gives: { echo: 0.25 } },
+  { id: 'pocket', rarity: 'legendary', gives: { pocketMagnet: 60 } },
+  { id: 'medal', rarity: 'legendary', gives: { attackPerLevel: 0.02 } },
 ];
 
 // The Camp: upgrades bought with Glory that stay between runs. Rank n costs `cost` times n.
 // `gives` is a STATS key (added to that stat on top of the picks, like items), or rerolls, lives,
 // or glory (a share on top of the Glory a run earns).
 const META_UPGRADES = [
-  { id: 'vitality', name: 'Vitality', gives: 'vitality', amount: 0.04, ranks: 5, cost: 40, text: '+4% max Health' },
-  { id: 'might', name: 'Might', gives: 'damage', amount: 0.03, ranks: 5, cost: 50, text: '+3% Damage' },
-  { id: 'haste', name: 'Haste', gives: 'haste', amount: 0.03, ranks: 3, cost: 60, text: '+3% Haste' },
-  { id: 'swiftness', name: 'Swiftness', gives: 'speed', amount: 0.03, ranks: 3, cost: 40, text: '+3% Speed' },
-  { id: 'reach', name: 'Reach', gives: 'magnet', amount: 0.15, ranks: 3, cost: 30, text: '+15% Magnet' },
-  { id: 'rerolls', name: 'Rerolls', gives: 'rerolls', amount: 1, ranks: 3, cost: 60, text: '+1 reroll for the run' },
-  { id: 'plating', name: 'Plating', gives: 'armor', amount: 4, ranks: 3, cost: 50, text: '+4 Armor' },
-  { id: 'greed', name: 'Greed', gives: 'glory', amount: 0.1, ranks: 3, cost: 80, text: '+10% Glory' },
-  { id: 'revival', name: 'Revival', gives: 'lives', amount: 1, ranks: 1, cost: 600, text: '+1 spare life' },
+  { id: 'vitality', gives: 'vitality', amount: 0.04, ranks: 5, cost: 40 },
+  { id: 'might', gives: 'damage', amount: 0.03, ranks: 5, cost: 50 },
+  { id: 'haste', gives: 'haste', amount: 0.03, ranks: 3, cost: 60 },
+  { id: 'swiftness', gives: 'speed', amount: 0.03, ranks: 3, cost: 40 },
+  { id: 'reach', gives: 'magnet', amount: 0.15, ranks: 3, cost: 30 },
+  { id: 'rerolls', gives: 'rerolls', amount: 1, ranks: 3, cost: 60 },
+  { id: 'plating', gives: 'armor', amount: 4, ranks: 3, cost: 50 },
+  { id: 'greed', gives: 'glory', amount: 0.1, ranks: 3, cost: 80 },
+  { id: 'revival', gives: 'lives', amount: 1, ranks: 1, cost: 600 },
 ];

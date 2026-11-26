@@ -20,19 +20,20 @@ const CAST = {
   },
   ignite(def) {
     const perTick = def.share * def.tick / def.duration;
+    hero.igniteLeft = def.duration; // the passive: burning hits harder meanwhile (burnBoost)
     addZone({
       look: 'fire', x: hero.x, y: hero.y, r: def.radius, life: def.duration, tick: def.tick, timer: 0,
-      apply: e => hurtEnemy(e, e.maxHp * perTick, 'pure', false, null),
+      apply: e => hurtEnemy(e, e.maxHp * perTick * (e.def.boss ? BOSS.ignite : 1), 'pure', false, null),
     });
   },
   stash(def) {
     const a = rand() * TAU;
     chests.push({ x: hero.x + Math.cos(a) * def.distance, y: hero.y + Math.sin(a) * def.distance, type: 'stash', dead: false });
-    say('A chest appeared nearby');
+    say(t('toasts.stash'));
   },
   inspiration(def) {
     gainXp(xpNext * def.share);
-    say('Inspired!');
+    say(t('toasts.inspired'));
   },
 };
 
@@ -55,6 +56,7 @@ function hurtHero(amount, kind = 'phys', source = 'touch') {
     hero.iframes = HERO.iframes;
     explode(hero.x, hero.y, auraRadius(shield), shield, shield.cfg.damage);
     eraseEnemyShots(hero.x, hero.y, auraRadius(shield)); // the blast clears the air too
+    if (shield.cfg.mirror) mirrorSpin(shield); // Mirror Shield sends the hit back as a beam
     return;
   }
   const dash = phaseWeapon();
@@ -64,10 +66,10 @@ function hurtHero(amount, kind = 'phys', source = 'touch') {
   }
   const taken = amount * (1 - armorCut());
   // Second Wind: the hit that would have left the hero nearly dead does not land.
-  if (gearValue('secondWind') && elapsed >= hero.windAt && hero.hp - taken < hero.maxHp * 0.2) {
+  if (gearValue('secondWind') && elapsed >= hero.windAt && hero.hp - taken < hero.maxHp * SECOND_WIND.below) {
     hero.windAt = elapsed + gearValue('secondWind');
-    hero.iframes = 2;
-    say('Second Wind!');
+    hero.iframes = SECOND_WIND.safe;
+    say(t('toasts.secondWind', { name: t('items.wind.name') }));
     return;
   }
   hero.hp -= taken;
@@ -84,14 +86,14 @@ function revive() {
   hero.iframes = REVIVE.iframes;
   eachEnemyNear(hero.x, hero.y, REVIVE.radius, e => hurtEnemy(e, e.maxHp * REVIVE.share, 'pure', false, null));
   addFx({ type: 'ring', x: hero.x, y: hero.y, r: REVIVE.radius, life: 0.7, pen: KINDS.pure.pen });
-  say('Back from the dead!');
+  say(t('toasts.revived'));
 }
 
 // Bodies are solid. The hero shoves small enemies aside but can be walled in by a crowd,
 // which is what Flash and Ghost are for.
 function collideHero() {
   if (hero.ghostLeft > 0 || hero.phaseLeft > 0) return;
-  const rage = fury();
+  const rage = touchFury();
   eachEnemyNear(hero.x, hero.y, hero.r, e => {
     const dx = e.x - hero.x;
     const dy = e.y - hero.y;
@@ -102,8 +104,9 @@ function collideHero() {
     hero.y -= dy / d * overlap * share;
     e.x += dx / d * overlap * (1 - share);
     e.y += dy / d * overlap * (1 - share);
-    hurtHero(e.def.damage * rage);
-    prick(e, e.def.damage * rage);
+    const contact = e.def.damage * (e.def.boss ? bossRage() : rage);
+    hurtHero(contact);
+    prick(e, contact);
   });
 }
 
@@ -150,6 +153,7 @@ function moveHero(dt) {
   walkFor(Math.hypot(mx, my) * pace * dt);
   hero.iframes = Math.max(0, hero.iframes - dt);
   hero.ghostLeft = Math.max(0, hero.ghostLeft - dt);
+  hero.igniteLeft = Math.max(0, hero.igniteLeft - dt);
   hero.hurtFlash = Math.max(0, hero.hurtFlash - dt);
   hero.critBoostLeft = Math.max(0, hero.critBoostLeft - dt);
   // Berserk's passive heals faster for the first `rageTime` seconds of Berserk.

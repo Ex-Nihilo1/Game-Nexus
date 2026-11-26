@@ -34,6 +34,13 @@ function shred(e, which, amount, seconds, stack = true) {
   e[`${key}Until`] = elapsed + seconds;
 }
 
+// The same as a share of the enemy's own armor or ward: the support merges take it this way.
+// It adds up with every other shred, to SHRED_MAX of it at most.
+function shredShare(e, which, share, seconds) {
+  const base = which === 'armor' ? e.armor : e.ward;
+  if (base > 0) shred(e, which, base * share, seconds, true);
+}
+
 // One hit from a weapon: base damage, then stats, crit, and the enemy's armor. `kind` only
 // says which armor it meets: the upgrades it uses are always those of the weapon itself.
 // `dot` marks damage over time: its numbers are shown summed up, a few times a second.
@@ -47,12 +54,20 @@ function hit(e, w, base, kind = w.def.kind, dot = false) {
   hurtEnemy(e, amount, kind, crits > 0, w, dot);
 }
 
+// Ignite's passive: while its fire lasts, a burning enemy's ticks (`dot` is 'burn') and the ticks
+// of fire weapons hit `burnBoost` times as hard. Ignite's own fire (no weapon) does not.
+function burnBoost(w, dot) {
+  if (!activeDef || !activeDef.burnBoost || !(hero.igniteLeft > 0)) return 1;
+  return dot === 'burn' || (dot && w && w.def.fire) ? activeDef.burnBoost : 1;
+}
+
+// `dot` marks a tick of damage over time: true, or 'burn' for a burning enemy's.
 function hurtEnemy(e, amount, kind, crit, w, dot = false) {
   const armor = armorFactor(e, kind);
   // Void Edge turns part of a hit pure; it never makes a hit weaker than it was.
   let factor = Math.max(armor, armor + (1 - armor) * gearValue('pureShare'));
   if (elapsed < (e.weakUntil || 0)) factor *= 1 + gearValue('weakSpot');
-  const dealt = amount * factor;
+  const dealt = amount * factor * burnBoost(w, dot);
   e.hp -= dealt;
   e.flash = 0.08;
   if (w) w.dealt += dealt;
@@ -72,7 +87,11 @@ function hurtEnemy(e, amount, kind, crit, w, dot = false) {
 function killEnemy(e) {
   e.dead = true;
   kills++;
-  dropOrb(e.x, e.y, e.def.xp);
+  if (e.def.boss) {
+    bossDown(e);
+    return;
+  }
+  if (!fight) dropOrb(e.x, e.y, e.def.xp); // a boss fight gives no XP
   if (gearValue('killsPerHeal') && kills % gearValue('killsPerHeal') === 0) hero.hp = Math.min(hero.maxHp, hero.hp + 1);
   if (!e.def.elite) {
     if (rand() < MAGNET.dropChance) dropMagnet(e.x, e.y);
@@ -94,7 +113,7 @@ function luckyChest(type) {
 }
 
 function slow(e, by, seconds) {
-  e.slowBy = e.def.elite ? by / 2 : by;
+  e.slowBy = e.def.boss ? Math.min(BOSS.slowMax, by / 2) : e.def.elite ? by / 2 : by;
   e.slowLeft = Math.max(e.slowLeft, seconds);
 }
 
@@ -116,14 +135,15 @@ function explode(x, y, r, w, base) {
   addFx({ type: 'ring', x, y, r, life: 0.3, pen: KINDS[w.def.kind].pen });
 }
 
-// `boost` multiplies the whole chain; a boosted chain loses nothing from jump to jump.
-function strikeChain(first, w, boost = 1) {
+// `boost` multiplies the whole chain; a boosted chain loses nothing from jump to jump. The bolt
+// comes from `origin` (the hero unless given) and starts at `base` damage (the weapon's own).
+function strikeChain(first, w, boost = 1, origin = hero, base = w.cfg.damage) {
   const d = w.cfg;
   const struck = new Set([first]);
-  const points = [{ x: hero.x, y: hero.y }, { x: first.x, y: first.y }];
+  const points = [{ x: origin.x, y: origin.y }, { x: first.x, y: first.y }];
   const falloff = boost > 1 ? 1 : d.falloff;
   let from = first;
-  let amount = d.damage * boost;
+  let amount = base * boost;
   hit(first, w, amount);
   for (let i = 0; i < d.jumps; i++) {
     const next = nearestEnemies(from.x, from.y, d.jumpRange, 1, struck)[0];
@@ -264,11 +284,11 @@ function updateBurns(dt) {
     b.timer -= dt;
     if (b.timer <= 0) {
       b.timer += BURN_TICK;
-      hit(e, b.w, b.damage * b.stacks, undefined, true);
+      hit(e, b.w, b.damage * b.stacks, undefined, 'burn');
       // And a share of its max health: not raised by Damage, raised by fire bonuses, half on elites.
       if (!e.dead && !e.def.dummy) {
-        const share = BURN_SHARE * BURN_TICK * b.stacks * (e.def.elite ? 0.5 : 1);
-        hurtEnemy(e, e.maxHp * share * fireBonus(b.w), b.w.def.kind, false, b.w, true);
+        const share = BURN_SHARE * BURN_TICK * b.stacks * (e.def.boss ? BOSS.burn : e.def.elite ? 0.5 : 1);
+        hurtEnemy(e, e.maxHp * share * fireBonus(b.w), b.w.def.kind, false, b.w, 'burn');
       }
       let lit = 0;
       if (b.spread) {

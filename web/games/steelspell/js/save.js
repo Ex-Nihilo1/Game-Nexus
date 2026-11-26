@@ -9,13 +9,15 @@ const SAVE_SAFETY = 3; // seconds the hero cannot be hurt after loading
 let runVersionNow = BALANCE_VERSION; // the balance version the current run began in
 
 // Only a run in progress can be saved.
-function canSave() { return !simulating && (phase === 'playing' || phase === 'paused' || phase === 'choosing'); }
+// Not in a boss fight: the run waits only in a farm stretch (or in endless survival).
+function canSave() { return !simulating && !fight && (phase === 'playing' || phase === 'paused' || phase === 'choosing'); }
 
 function snapshot() {
   const pending = phase === 'choosing' && choice ? [choice.kind, ...queue] : [...queue];
   return {
     version: runVersionNow, saved: new Date().toISOString().slice(0, 10),
-    seed, startWeapon, active: activeDef.id, activeCd, rerolls, merges, elitesKilled, runId: Nexus.runId(),
+    seed, startWeapon, active: activeDef.id, activeCd, rerolls, merges, elitesKilled, cheated, runId: Nexus.runId(),
+    stage, stageTime, worldTime, endlessTime, restLeft, bossesKilled, clearTime, nextEndlessBoss, stageElites, altar,
     level, xp, xpNext, elapsed, kills, spawnBudget, nextElite, nextRing, wildOrbTimer, magnetTimer, walked,
     upgrades, gear, items: items.map(item => item.id), metaBonus, queue: pending,
     hero: { hp: hero.hp, lives: hero.lives, windAt: hero.windAt, hurtBy: hero.hurtBy },
@@ -55,6 +57,12 @@ function continueRun() {
   metaBonus = save.metaBonus || {};
   resetWorld();
   seed = save.seed; startWeapon = save.startWeapon; activeCd = save.activeCd; rerolls = save.rerolls;
+  cheated = !!save.cheated;
+  // Saves from before the stages start on stage 1, with the world clock where the run was.
+  stage = save.stage || 1; stageTime = save.stageTime || 0; worldTime = save.worldTime === undefined ? save.elapsed : save.worldTime;
+  endlessTime = save.endlessTime || 0; restLeft = save.restLeft || 0; bossesKilled = save.bossesKilled || 0;
+  clearTime = save.clearTime || 0; nextEndlessBoss = save.nextEndlessBoss || BOSS.endless.every;
+  stageElites = save.stageElites || 0; altar = save.altar || null;
   merges = save.merges; elitesKilled = save.elitesKilled; level = save.level; xp = save.xp; xpNext = save.xpNext;
   elapsed = save.elapsed; kills = save.kills; spawnBudget = save.spawnBudget; nextElite = save.nextElite;
   nextRing = save.nextRing; wildOrbTimer = save.wildOrbTimer; magnetTimer = save.magnetTimer; walked = save.walked;
@@ -63,6 +71,11 @@ function continueRun() {
   activeDef = ACTIVES.find(a => a.id === save.active) || ACTIVES[0];
   for (const key of Object.keys(upgrades)) upgrades[key] = (save.upgrades || {})[key] || 0;
   gear = Object.assign({}, save.gear);
+  // Before 0.3 the Hourglass cut the cooldown by a share; the same cut in Ability Haste.
+  if (gear.activeCooldown) {
+    gear.abilityHaste = (gear.abilityHaste || 0) + 100 * gear.activeCooldown / (1 - gear.activeCooldown);
+    delete gear.activeCooldown;
+  }
   items = (save.items || []).map(id => ITEMS.find(item => item.id === id)).filter(Boolean);
   for (const saved of save.weapons) {
     if (!WEAPON_DEFS.some(d => d.id === saved.id)) continue;
@@ -82,14 +95,14 @@ function continueRun() {
   hero.hurtBy = Object.assign(hero.hurtBy, save.hero.hurtBy);
   hero.iframes = SAVE_SAFETY;
   queue = (save.queue || []).filter(kind => typeof kind === 'string');
-  setText(activeNameEl, activeDef.name);
-  activeBtn.title = activeDef.blurb;
+  setText(activeNameEl, activeName(activeDef));
+  activeBtn.title = activeBlurb(activeDef);
   lastCdShare = -1;
   activeBtn.hidden = false;
   pauseBtn.hidden = false;
   phase = 'playing';
   hideOverlay();
-  say('Run continued');
+  say(t('toasts.continued'));
   dirty = true;
   if (queue.length) nextChoice();
 }

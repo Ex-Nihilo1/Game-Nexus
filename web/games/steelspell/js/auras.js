@@ -132,11 +132,6 @@ const TICK = {
     rechargeShield(w, dt);
   },
 
-  fireshield(w, dt) {
-    rechargeShield(w, dt);
-    pulseAura(w, dt, w.cfg.auraDamage);
-  },
-
   // Pike Wall: a second spear points the other way.
   spear(w, dt) {
     const d = w.cfg;
@@ -157,21 +152,59 @@ const TICK = {
     });
   },
 
-  // Blink Strike ends the phase with a blast; Shroud fades enemy shots around the hero.
   phase(w, dt) {
-    const d = w.cfg;
-    if (hero.phaseLeft > 0) {
-      hero.phaseLeft -= dt;
-      if (d.ward) eraseEnemyShots(hero.x, hero.y, auraRadius(w) * 1.3);
-      w.pulse -= dt;
-      if (w.pulse <= 0) {
-        w.pulse += d.tick;
-        eachEnemyNear(hero.x, hero.y, auraRadius(w), e => hit(e, w, d.damage, undefined, true));
-      }
-      if (hero.phaseLeft <= 0 && d.burst) explode(hero.x, hero.y, auraRadius(w) * 1.6, w, d.burst);
-      return;
+    tickPhase(w, dt);
+  },
+
+  // Blade Wraith: the ghost hurts with magic, and its blades (physical) come out with every
+  // phase, however it started. Whatever either touches loses ward, once a phase.
+  bladewraith(w, dt) {
+    tickPhase(w, dt, 'magic', e => wraithShred(w, e));
+    if (hero.phaseLeft > 0 && !w.bladesOut) {
+      w.bladesOut = true;
+      w.touched = new Set();
+      sendWraithBlades(w);
+    } else if (hero.phaseLeft <= 0) {
+      w.bladesOut = false;
     }
-    w.timer -= dt;
-    if (w.timer <= 0) startPhase(w, false);
+  },
+
+  // Mirror Shield: the Shield's charges, and the beam on a timer of its own.
+  mirrorshield(w, dt) {
+    rechargeShield(w, dt);
+    w.beamTimer = (w.beamTimer === undefined ? 0.5 : w.beamTimer) - dt;
+    if (w.beamTimer > 0) return;
+    w.beamTimer = sweepMirrorBeams(w) ? w.cfg.beamCooldown / (1 + weaponStat(w, 'haste') + w.bonus.haste) : 0;
   },
 };
+
+// Blade Wraith's support: what the ghost or its blades touch loses a share of its ward, once
+// between two phases; every phase takes more, up to SHRED_MAX.
+function wraithShred(w, e) {
+  if (e.dead || !w.touched || w.touched.has(e)) return;
+  w.touched.add(e);
+  shredShare(e, 'ward', w.cfg.shredWard, w.cfg.shredTime * weaponDuration(w));
+}
+
+// A phase on its cooldown: the hero is a ghost that hurts everything around, with damage of
+// `kind` (the weapon's own unless given); `touch(e)` runs on everything it hurts. Blink Strike
+// ends it with a blast; Shroud fades enemy shots around the hero.
+function tickPhase(w, dt, kind, touch) {
+  const d = w.cfg;
+  if (hero.phaseLeft > 0) {
+    hero.phaseLeft -= dt;
+    if (d.ward) eraseEnemyShots(hero.x, hero.y, auraRadius(w) * 1.3);
+    w.pulse -= dt;
+    if (w.pulse <= 0) {
+      w.pulse += d.tick;
+      eachEnemyNear(hero.x, hero.y, auraRadius(w), e => {
+        hit(e, w, d.damage, kind, true);
+        if (touch) touch(e);
+      });
+    }
+    if (hero.phaseLeft <= 0 && d.burst) explode(hero.x, hero.y, auraRadius(w) * 1.6, w, d.burst);
+    return;
+  }
+  w.timer -= dt;
+  if (w.timer <= 0) startPhase(w, false);
+}
